@@ -15,7 +15,7 @@ set(HW_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../hw")
 set(RTL_SRC_DIR "${HW_SRC_DIR}/rtl")
 
 set(XRV1_TB_SRC_DIR "${HW_SRC_DIR}/tb")
-set(XRV1_RTL_SRC_DIR "${RTL_SRC_DIR}/mtcore")
+set(XRV1_RTL_SRC_DIR "${RTL_SRC_DIR}/ucore")
 set(XRV1_RTL_INC_DIR "${RTL_SRC_DIR}/pkg")
 
 set(VERILATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/verilated_dir")
