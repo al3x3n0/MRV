@@ -6,27 +6,27 @@ module xrv1_iqueue
     parameter num_rs_lp = 2
 ) (
     ////////////////////////////////////////////////////////////////////////////////
-    input logic                                         clk_i,
-    input logic                                         rst_i,
+    input logic                                             clk_i,
+    input logic                                             rst_i,
     ////////////////////////////////////////////////////////////////////////////////
-    output logic                                        issue_rdy_o,
-    input logic                                         issue_vld_i,
+    output logic                                            issue_rdy_o,
+    input logic                                             issue_vld_i,
     ////////////////////////////////////////////////////////////////////////////////
-    output logic                                        retire_rdy_o,
-    input logic [ITAG_WIDTH_P-1:0]                      retire_cnt_i,
+    output logic                                            retire_rdy_o,
+    input logic [ITAG_WIDTH_P-1:0]                          retire_cnt_i,
     ////////////////////////////////////////////////////////////////////////////////
-    input logic [num_rs_lp-1:0][rf_addr_width_p-1:0]    issue_rs_addr_i,
-    input logic [num_rs_lp-1:0]                         issue_rs_vld_i,
-    input logic [rf_addr_width_p-1:0]                   issue_rd_addr_i,
-    input logic                                         issue_rd_vld_i,
+    input logic [num_rs_lp-1:0][rf_addr_width_p-1:0]        issue_rs_addr_i,
+    input logic [num_rs_lp-1:0]                             issue_rs_vld_i,
+    input logic [rf_addr_width_p-1:0]                       issue_rd_addr_i,
+    input logic                                             issue_rd_vld_i,
     ////////////////////////////////////////////////////////////////////////////////
-    output logic [ITAG_WIDTH_P-1:0]                     issue_itag_o,
-    output logic [ITAG_WIDTH_P-1:0]                     retire_itag_o,
+    output logic [ITAG_WIDTH_P-1:0]                         issue_itag_o,
+    output logic [ITAG_WIDTH_P-1:0]                         retire_itag_o,
     ////////////////////////////////////////////////////////////////////////////////
-    output logic                                        retire_rd_addr_vld_o,
-    output logic [rf_addr_width_p-1:0]                  retire_rd_addr_o,
+    output logic                                            retire_rd_addr_vld_o,
+    output logic [rf_addr_width_p-1:0]                      retire_rd_addr_o,
     ////////////////////////////////////////////////////////////////////////////////
-    output logic [num_rs_lp-1:0][iqueue_size_lp-1:0]    rs_conflict_o,
+    output logic [num_rs_lp-1:0][iqueue_size_lp-1:0]        rs_conflict_o,
     ////////////////////////////////////////////////////////////////////////////////
     output logic [iqueue_size_lp-1:0]                       iqueue_vld_o,
     output logic [iqueue_size_lp-1:0]                       iqueue_rd_vld_o,
@@ -36,9 +36,9 @@ module xrv1_iqueue
     ////////////////////////////////////////////////////////////////////////////////
     // IQueue data
     ////////////////////////////////////////////////////////////////////////////////
-    logic [iqueue_size_lp-1:0]                          iqueue_vld_r;
-    logic [iqueue_size_lp-1:0]                          iqueue_rd_vld_r;
-    logic [iqueue_size_lp-1:0][rf_addr_width_p-1:0]     iqueue_rd_addr_r;
+    logic [iqueue_size_lp-1:0]                              iqueue_vld_r;
+    logic [iqueue_size_lp-1:0]                              iqueue_rd_vld_r;
+    logic [iqueue_size_lp-1:0][rf_addr_width_p-1:0]         iqueue_rd_addr_r;
     ////////////////////////////////////////////////////////////////////////////////
     assign iqueue_vld_o     = iqueue_vld_r;
     assign iqueue_rd_vld_o  = iqueue_rd_vld_r;

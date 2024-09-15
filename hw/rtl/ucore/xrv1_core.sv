@@ -102,26 +102,26 @@ module xrv1_core
     ////////////////////////////////////////////////////////////////////////////////
     logic                           alu_rdy_lo;
     logic                           idecode_alu_req_vld_lo;
-    logic [XRV_ALU_OP_WIDTH-1:0] idecode_alu_opc_lo;
+    logic [XRV_ALU_OP_WIDTH-1:0]    idecode_alu_opc_lo;
     /////////////////////////////////////////////////////////////////////////////
-    logic                        exec_alu_req_vld_q;
-    logic [XRV_ALU_OP_WIDTH-1:0] exec_alu_opc_q;
+    logic                           exec_alu_req_vld_q;
+    logic [XRV_ALU_OP_WIDTH-1:0]    exec_alu_opc_q;
     ////////////////////////////////////////////////////////////////////////////////
-    logic                        alu_req_vld_li;
-    logic [XRV_ALU_OP_WIDTH-1:0] alu_opc_li;
+    logic                           alu_req_vld_li;
+    logic [XRV_ALU_OP_WIDTH-1:0]    alu_opc_li;
     ////////////////////////////////////////////////////////////////////////////////
-    logic                        alu_done_lo;
-    logic [DATA_WIDTH_P-1:0]     alu_res_lo;
-    logic                        alu_cmp_res_lo;
-    logic [ITAG_WIDTH_P-1:0]     alu_itag_lo;
+    logic                           alu_done_lo;
+    logic [DATA_WIDTH_P-1:0]        alu_res_lo;
+    logic                           alu_cmp_res_lo;
+    logic [ITAG_WIDTH_P-1:0]        alu_itag_lo;
     ////////////////////////////////////////////////////////////////////////////////
-    logic                        b_rdy_lo;
-    logic                        b_done_lo;
-    logic [ITAG_WIDTH_P-1:0]     b_itag_lo;
-    logic [31:0]                 b_wb_data_lo;
-    logic                        idecode_b_req_vld_lo;
-    logic                        idecode_b_is_branch_lo;
-    logic                        idecode_b_is_jump_lo;
+    logic                           b_rdy_lo;
+    logic                           b_done_lo;
+    logic [ITAG_WIDTH_P-1:0]        b_itag_lo;
+    logic [31:0]                    b_wb_data_lo;
+    logic                           idecode_b_req_vld_lo;
+    logic                           idecode_b_is_branch_lo;
+    logic                           idecode_b_is_jump_lo;
     ////////////////////////////////////////////////////////////////////////////////
     logic                           exec_b_req_vld_q;
     logic                           exec_b_is_branch_q;
@@ -139,23 +139,23 @@ module xrv1_core
     ////////////////////////////////////////////////////////////////////////////////
     logic                           exec_lsu_req_vld_q;
     logic                           exec_lsu_req_w_en_q;
-    logic [1:0]              exec_lsu_req_size_q;
-    logic                    exec_lsu_req_signed_q;
+    logic [1:0]                     exec_lsu_req_size_q;
+    logic                           exec_lsu_req_signed_q;
     ////////////////////////////////////////////////////////////////////////////////
-    logic                    exec_lsu_req_vld_li;
-    logic                    exec_lsu_req_w_en_li;
-    logic [1:0]              exec_lsu_req_size_li;
-    logic                    exec_lsu_req_signed_li;
+    logic                           exec_lsu_req_vld_li;
+    logic                           exec_lsu_req_w_en_li;
+    logic [1:0]                     exec_lsu_req_size_li;
+    logic                           exec_lsu_req_signed_li;
     ////////////////////////////////////////////////////////////////////////////////
-    logic                    lsu_done_lo;
-    logic [DATA_WIDTH_P-1:0] lsu_wb_data_lo;
-    logic [ITAG_WIDTH_P-1:0] lsu_itag_lo;
+    logic                           lsu_done_lo;
+    logic [DATA_WIDTH_P-1:0]        lsu_wb_data_lo;
+    logic [ITAG_WIDTH_P-1:0]        lsu_itag_lo;
     ////////////////////////////////////////////////////////////////////////////////
-    logic                    mul_rdy_lo;
-    logic                    idecode_mul_req_vld_lo;
-    logic [1:0]              idecode_mul_opc_lo;
+    logic                           mul_rdy_lo;
+    logic                           idecode_mul_req_vld_lo;
+    logic [1:0]                     idecode_mul_opc_lo;
     ////////////////////////////////////////////////////////////////////////////////
-    logic                    exec_mul_req_vld_q;
+    logic                           exec_mul_req_vld_q;
     logic [1:0]                     exec_mul_opc_q;
     ////////////////////////////////////////////////////////////////////////////////
     logic                           mul_req_vld_li;
@@ -439,7 +439,9 @@ module xrv1_core
     ////////////////////////////////////////////////////////////////////////////////
     // Register File
     ////////////////////////////////////////////////////////////////////////////////
-    xrv1_rf rf (
+    xrv1_rf #(
+        .DATA_WIDTH_P (DATA_WIDTH_P)
+    ) rf (
         ////////////////////////////////////////////////////////////////////////////////
         .clk_i                      (clk_i),
         .rst_i                      (rst_i),

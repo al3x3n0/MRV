@@ -1,6 +1,6 @@
 module xrv1_rf
 #(
-    parameter data_width_p = 32,
+    parameter DATA_WIDTH_P = 32,
     parameter rf_addr_width_p = 5,
     parameter rf_size_lp = (1 << rf_addr_width_p)
 ) (
@@ -11,22 +11,22 @@ module xrv1_rf
     // Read port 0
     ////////////////////////////////////////////////////////////////////////////////
     input logic [rf_addr_width_p-1:0]       rs0_addr_i,
-    output logic [data_width_p-1:0]         rs0_data_o,
+    output logic [DATA_WIDTH_P-1:0]         rs0_data_o,
     ////////////////////////////////////////////////////////////////////////////////
     // Read port 1
     ////////////////////////////////////////////////////////////////////////////////
     input logic [rf_addr_width_p-1:0]       rs1_addr_i,
-    output logic [data_width_p-1:0]         rs1_data_o,
+    output logic [DATA_WIDTH_P-1:0]         rs1_data_o,
     ////////////////////////////////////////////////////////////////////////////////
     // Write port 0
     ////////////////////////////////////////////////////////////////////////////////
     input logic                             rd_w_en_i,
     input logic [rf_addr_width_p-1:0]       rd_addr_i,
-    input logic [data_width_p-1:0]          rd_data_i
+    input logic [DATA_WIDTH_P-1:0]          rd_data_i
     ////////////////////////////////////////////////////////////////////////////////
 );
     ////////////////////////////////////////////////////////////////////////////////
-    logic [rf_size_lp-1:0][data_width_p-1:0] rf_mem;
+    logic [rf_size_lp-1:0][DATA_WIDTH_P-1:0] rf_mem;
     ////////////////////////////////////////////////////////////////////////////////
     assign rs0_data_o = rs0_addr_i == 'b0 ? 'b0 : rf_mem[rs0_addr_i];
     assign rs1_data_o = rs1_addr_i == 'b0 ? 'b0 : rf_mem[rs1_addr_i];
