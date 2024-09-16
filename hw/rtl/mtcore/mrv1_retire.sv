@@ -1,11 +1,12 @@
 module mrv1_retire #(
     ////////////////////////////////////////////////////////////////////////////////
+    parameter RETIRE_WIDTH_P = 1,
     parameter NUM_TW_P = 8,
     parameter DATA_WIDTH_P = 32,
     parameter ITAG_WIDTH_P = "inv",
     parameter rf_addr_width_p = 5,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter twid_width_lp = $clog2(NUM_TW_P),
+    parameter tid_width_lp = $clog2(NUM_TW_P),
     ////////////////////////////////////////////////////////////////////////////////
     parameter iqueue_size_lp = (1 << ITAG_WIDTH_P),
     ////////////////////////////////////////////////////////////////////////////////
@@ -20,7 +21,7 @@ module mrv1_retire #(
     input  logic [num_fu_lp-1:0]                                            fu_done_i,
     input  logic [num_fu_lp-1:0][DATA_WIDTH_P-1:0]                          fu_wb_data_i,
     input  logic [num_fu_lp-1:0][ITAG_WIDTH_P-1:0]                          fu_itag_i,
-    input  logic [num_fu_lp-1:0][twid_width_lp-1:0]                         fu_twid_i,
+    input  logic [num_fu_lp-1:0][tid_width_lp-1:0]                          fu_tid_i,
     ////////////////////////////////////////////////////////////////////////////////
     input  logic [NUM_TW_P-1:0]                                             retire_rdy_i,
     input  logic [NUM_TW_P-1:0][ITAG_WIDTH_P-1:0]                           retire_itag_i,
@@ -29,7 +30,7 @@ module mrv1_retire #(
     input  logic [NUM_TW_P-1:0][iqueue_size_lp-1:0]                         iq_rd_vld_i,
     input  logic [NUM_TW_P-1:0][iqueue_size_lp-1:0][rf_addr_width_p-1:0]    iq_rd_addr_i,
     ////////////////////////////////////////////////////////////////////////////////
-    output logic [twid_width_lp-1:0]                                        wb_twid_o,
+    output logic [tid_width_lp-1:0]                                         wb_tid_o,
     output logic [rf_addr_width_p-1:0]                                      wb_rd_addr_o,
     output logic                                                            wb_data_vld_o,
     output logic [DATA_WIDTH_P-1:0]                                         wb_data_o
@@ -40,7 +41,7 @@ module mrv1_retire #(
     logic [NUM_TW_P-1:0]                                wb_data_vld_r;
     logic [NUM_TW_P-1:0][DATA_WIDTH_P-1:0]              wb_data_r;
     ////////////////////////////////////////////////////////////////////////////////
-    logic [twid_width_lp-1:0]                           ret_twid_r;
+    logic [tid_width_lp-1:0]                           ret_tid_r;
     logic [NUM_TW_P-1:0]                                ret_rdy_r;
     logic [NUM_TW_P-1:0][ITAG_WIDTH_P-1:0]              ret_cnt_r;
     ////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +67,7 @@ module mrv1_retire #(
         logic [iqueue_size_lp-1:0][ITAG_WIDTH_P-1:0] tmp0_ptr;
         logic [iqueue_size_lp-1:0] tmp_ret_buf_vld;
         logic [iqueue_size_lp-1:0][DATA_WIDTH_P-1:0] tmp_ret_buf_data;
-        logic [num_fu_lp-1:0] fu_twid_match;
+        logic [num_fu_lp-1:0] fu_tid_match;
         ////////////////////////////////////////////////////////////////////////////////
         always_comb begin
             tmp_ret_buf_vld = ret_buf_vld_q;
@@ -76,8 +77,8 @@ module mrv1_retire #(
             ret_cnt_r[i] = 0;
             ////////////////////////////////////////////////////////////////////////////////
             for (int j = 0; j < num_fu_lp; j++) begin
-                fu_twid_match[j] = fu_twid_i[j] == twid_width_lp'(i);
-                if (fu_done_i[j] & fu_twid_match[j]) begin
+                fu_tid_match[j] = fu_tid_i[j] == tid_width_lp'(i);
+                if (fu_done_i[j] & fu_tid_match[j]) begin
                     tmp_ret_buf_vld[fu_itag_i[j]]  = 1'b1;
                     tmp_ret_buf_data[fu_itag_i[j]] = fu_wb_data_i[j];
                 end
@@ -124,17 +125,17 @@ module mrv1_retire #(
         sched_tbl_q_n = sched_any_w ? sched_tbl_q : ret_rdy_r;
         for (int i = 0; i < NUM_TW_P; i++) begin
             if (sched_tbl_q_n[i]) begin
-                ret_twid_r = twid_width_lp'(i);
+                ret_tid_r = tid_width_lp'(i);
                 sched_tbl_q_n[i] = 0;
                 break;
             end
         end
     end
     ////////////////////////////////////////////////////////////////////////////////
-    assign wb_twid_o        = ret_twid_r;
-    assign wb_rd_addr_o     = wb_rd_addr_r[ret_twid_r];
-    assign wb_data_vld_o    = wb_data_vld_r[ret_twid_r];
-    assign wb_data_o        = wb_data_r[ret_twid_r];
+    assign wb_tid_o         = ret_tid_r;
+    assign wb_rd_addr_o     = wb_rd_addr_r[ret_tid_r];
+    assign wb_data_vld_o    = wb_data_vld_r[ret_tid_r];
+    assign wb_data_o        = wb_data_r[ret_tid_r];
     ////////////////////////////////////////////////////////////////////////////////
 
 endmodule

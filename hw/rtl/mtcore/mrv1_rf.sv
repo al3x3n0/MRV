@@ -5,8 +5,8 @@ module mrv1_rf
     parameter NUM_TW_P = 8,
     parameter rf_addr_width_p = 5,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter twid_width_lp = $clog2(NUM_TW_P),
-    parameter rf_addr_width_lp = twid_width_lp + rf_addr_width_p,
+    parameter tid_width_lp = $clog2(NUM_TW_P),
+    parameter rf_addr_width_lp = tid_width_lp + rf_addr_width_p,
     parameter rf_size_lp = (1 << rf_addr_size_width_lp)
     ////////////////////////////////////////////////////////////////////////////////
 ) (
@@ -14,7 +14,7 @@ module mrv1_rf
     input  logic                                clk_i,
     input  logic                                rst_i,
     ////////////////////////////////////////////////////////////////////////////////
-    input  logic [twid_width_lp-1:0]            twid_i,
+    input  logic [tid_width_lp-1:0]             tid_i,
     ////////////////////////////////////////////////////////////////////////////////
     // Read port 0
     ////////////////////////////////////////////////////////////////////////////////
@@ -28,7 +28,7 @@ module mrv1_rf
     ////////////////////////////////////////////////////////////////////////////////
     // Write port 0
     ////////////////////////////////////////////////////////////////////////////////
-    input  logic [twid_width_lp-1:0]            rd_twid_i,
+    input  logic [tid_width_lp-1:0]             rd_tid_i,
     input  logic                                rd_w_en_i,
     input  logic [rf_addr_width_p-1:0]          rd_addr_i,
     input  logic [DATA_WIDTH_P-1:0]             rd_data_i
@@ -37,9 +37,9 @@ module mrv1_rf
     ////////////////////////////////////////////////////////////////////////////////
     logic [rf_size_lp-1:0][DATA_WIDTH_P-1:0]    rf_mem_q;
     ////////////////////////////////////////////////////////////////////////////////
-    wire [rf_addr_width_lp-1:0] rs0_addr_w = {twid_i, rs0_addr_i};
-    wire [rf_addr_width_lp-1:0] rs1_addr_w = {twid_i, rs1_addr_i};
-    wire [rf_addr_width_lp-1:0] rd_addr_w  = {rd_twid_i, rd_addr_i};
+    wire [rf_addr_width_lp-1:0] rs0_addr_w = {tid_i, rs0_addr_i};
+    wire [rf_addr_width_lp-1:0] rs1_addr_w = {tid_i, rs1_addr_i};
+    wire [rf_addr_width_lp-1:0] rd_addr_w  = {rd_tid_i, rd_addr_i};
     ////////////////////////////////////////////////////////////////////////////////
     assign rs0_data_o = rs0_addr_i == 'b0 ? 'b0 : rf_mem_q[rs0_addr_w];
     assign rs1_data_o = rs1_addr_i == 'b0 ? 'b0 : rf_mem_q[rs1_addr_w];

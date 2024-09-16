@@ -6,7 +6,7 @@ module mrv1_ifetch
     parameter ifq_size_p = 3,
     ////////////////////////////////////////////////////////////////////////////////
     parameter ifq_addr_width_lp = $clog2(ifq_size_p),
-    parameter twid_width_lp = $clog(NUM_TW_P)
+    parameter tid_width_lp = $clog(NUM_TW_P)
     ////////////////////////////////////////////////////////////////////////////////
 ) (
     ////////////////////////////////////////////////////////////////////////////////
@@ -26,59 +26,42 @@ module mrv1_ifetch
     output logic                                ifetch_insn_vld_o,
     output logic [31:0]                         ifetch_insn_data_o,
     output logic [31:0]                         ifetch_insn_pc_o,
-    output logic [twid_width_lp-1:0]            ifetch_insn_twid_o,
+    output logic [tid_width_lp-1:0]            ifetch_insn_tid_o,
     ////////////////////////////////////////////////////////////////////////////////
-    input logic [wid_width_lp-1:0]              exec_twid_i,
+    input logic [wid_width_lp-1:0]              exec_tid_i,
     input logic                                 exec_b_pc_vld_i,
     input logic [31:0]                          exec_b_pc_i,
     ////////////////////////////////////////////////////////////////////////////////
-    input logic [wid_width_lp-1:0]              dec_twid_i,
+    input logic [wid_width_lp-1:0]              dec_tid_i,
     input logic                                 dec_j_pc_vld_i,
     input logic [31:0]                          dec_j_pc_i,
     ////////////////////////////////////////////////////////////////////////////////
-    // SIMT Warp Control
-    ////////////////////////////////////////////////////////////////////////////////
-    input  logic                                join_vld_i,
-    input  logic [twid_width_lp-1:0]            join_twid_i,
-    ////////////////////////////////////////////////////////////////////////////////
     input  logic                                wstall_vld_i,
-    input  logic [twid_width_lp-1:0]            wstall_twid_i,
+    input  logic [tid_width_lp-1:0]            wstall_tid_i,
     ////////////////////////////////////////////////////////////////////////////////
-    input  logic                                twctl_vld_i,
-    input  logic [twid_width_lp-1:0]            twctl_twid_i,
+    input  logic                                th_ctl_vld_i,
+    input  logic [tid_width_lp-1:0]            th_ctl_tid_i,
+    input  logic                                th_ctl_tspawn_vld_i,
+    input  logic [31:0]                         th_ctl_tspawn_pc_i,
     ////////////////////////////////////////////////////////////////////////////////
-    input  logic                                twctl_tmc_vld_i,
-    input  logic [warp_size_p-1:0]              twctl_tmc_tmask_i,
-    ////////////////////////////////////////////////////////////////////////////////
-    input  logic                                twctl_wspawn_vld_i,
-    input  logic [num_warps_lp-1:0]             twctl_wspawn_wmask_i,
-    input  logic [31:0]                         twctl_wspawn_pc_i,
-    ////////////////////////////////////////////////////////////////////////////////
-    input  logic                                twctl_split_vld_i,
-    input  logic                                twctl_split_diverged_i,
-    input  logic [warp_size_p-1:0]              twctl_split_then_mask_i,
-    input  logic [warp_size_p-1:0]              twctl_split_else_mask_i,
-    input  logic [31:0]                         twctl_split_pc_i,
-    ////////////////////////////////////////////////////////////////////////////////
-    input logic                                 twctl_barrier_vld_i,
-    input logic [barrier_id_width_lp-1:0]       twctl_barrier_id_i,
-    input logic [twid_width_lp-1:0]             twctl_barrier_size_m1_i
+    input logic                                 th_ctl_barrier_vld_i,
+    input logic [barrier_id_width_lp-1:0]       th_ctl_barrier_id_i,
+    input logic [tid_width_lp-1:0]             th_ctl_barrier_size_m1_i
     ////////////////////////////////////////////////////////////////////////////////
 );
-
     ////////////////////////////////////////////////////////////////////////////////
     logic                                       sched_fetch_req_lo;
     logic [31:0]                                sched_pc_lo;
-    logic [twid_width_lp-1:0]                   sched_twid_lo;
+    logic [tid_width_lp-1:0]                   sched_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
     logic [31:0]                                fetch_pc_q;
-    logic [twid_width_lp-1:0]                   fetch_twid_q;
+    logic [tid_width_lp-1:0]                   fetch_tid_q;
     ////////////////////////////////////////////////////////////////////////////////
     always_ff @(posedge clk_i) begin
         if (rst_i) begin
         end else begin
             fetch_pc_q      <= sched_pc_lo;
-            fetch_twid_q    <= sched_twid_lo;
+            fetch_tid_q    <= sched_tid_lo;
         end
     end
     ////////////////////////////////////////////////////////////////////////////////
@@ -89,7 +72,7 @@ module mrv1_ifetch
     logic [31:0]                    ifq_data_lo;
     logic                           ifq_data_vld_lo;
     logic [31:0]                    ifq_pc_lo;
-    logic [twid_width_lp-1:0]       ifq_twid_lo;
+    logic [tid_width_lp-1:0]       ifq_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
     mrv1_ifbuf #(
         .NUM_TW_P (NUM_TW_P)
@@ -104,12 +87,12 @@ module mrv1_ifetch
         .fetch_data_vld_i           (imem_resp_vld_i),
         .fetch_data_i               (imem_resp_data_i),
         .fetch_pc_i                 (fetch_pc_q),
-        .fetch_twid_i               (fetch_twid_q),
+        .fetch_tid_i               (fetch_tid_q),
         ////////////////////////////////////////////////////////////////////////////////
         .fetch_data_vld_o           (ifetch_insn_vld_o),
         .fetch_data_o               (ifetch_insn_data_o),
         .fetch_pc_o                 (ifetch_insn_pc_o),
-        .fetch_twid_o               (ifetch_insn_twid_o),
+        .fetch_tid_o               (ifetch_insn_tid_o),
         ////////////////////////////////////////////////////////////////////////////////
         .empty_o                    (ifq_empty_lo),
         .full_o                     (ifq_full_lo)
@@ -127,45 +110,31 @@ module mrv1_ifetch
         .clk_i                      (clk_i),
         .rst_i                      (rst_i),
         ////////////////////////////////////////////////////////////////////////////////
-        .dec_wid_i                  (dec_twid_i),
+        .dec_wid_i                  (dec_tid_i),
         .dec_j_pc_vld_i             (dec_j_pc_vld_i),
         .dec_j_pc_i                 (dec_j_pc_i),
         ////////////////////////////////////////////////////////////////////////////////
-        .exec_wid_i                 (exec_twid_i),
+        .exec_wid_i                 (exec_tid_i),
         .exec_b_pc_vld_i            (exec_b_pc_vld_i),
         .exec_b_pc_i                (exec_b_pc_i),
         ////////////////////////////////////////////////////////////////////////////////
         .sched_vld_o                (sched_fetch_req_lo),
-        .sched_twid_o               (sched_twid_lo),
+        .sched_tid_o               (sched_tid_lo),
         .sched_pc_o                 (sched_pc_lo),
         ////////////////////////////////////////////////////////////////////////////////
-        // SIMT Warp Control
+        // IMT Control
         ////////////////////////////////////////////////////////////////////////////////
-        .join_vld_i                 (/*FIXME*/),
-        .join_twid_i                (/*FIXME*/),
+        .wstall_vld_i                (/*FIXME*/),
+        .wstall_tid_i               (/*FIXME*/),
         ////////////////////////////////////////////////////////////////////////////////
-        .wstall_vld_i               (/*FIXME*/),
-        .wstall_twid_i              (/*FIXME*/),
+        .th_ctl_vld_i                (th_ctl_vld_i),
+        .th_ctl_tid_i               (th_ctl_tid_i),
+        .th_ctl_tspawn_vld_i         (th_ctl_tspawn_vld_i),
+        .th_ctl_tspawn_pc_i          (th_ctl_tspawn_pc_i),
         ////////////////////////////////////////////////////////////////////////////////
-        .twctl_vld_i                (/*FIXME*/),
-        .twctl_twid_i               (/*FIXME*/),
-        ////////////////////////////////////////////////////////////////////////////////
-        .twctl_tmc_vld_i            (twctl_tmc_vld_i),
-        .twctl_tmc_tmask_i          (twctl_tmc_tmask_i),
-        ////////////////////////////////////////////////////////////////////////////////
-        .twctl_wspawn_vld_i         (twctl_wspawn_vld_i),
-        .twctl_wspawn_wmask_i       (twctl_wspawn_wmask_i),
-        .twctl_wspawn_pc_i          (twctl_wspawn_pc_i),
-        ////////////////////////////////////////////////////////////////////////////////
-        .twctl_split_vld_i          (twctl_split_vld_i),
-        .twctl_split_diverged_i     (twctl_split_diverged_i),
-        .twctl_split_then_mask_i    (twctl_split_then_mask_i),
-        .twctl_split_else_mask_i    (twctl_split_else_mask_i),
-        .twctl_split_pc_i           (twctl_split_pc_i),
-        ////////////////////////////////////////////////////////////////////////////////
-        .twctl_barrier_vld_i        (twctl_barrier_vld_i),
-        .twctl_barrier_id_i         (twctl_barrier_id_i),
-        .twctl_barrier_size_m1_i    (twctl_barrier_size_m1_i)
+        .th_ctl_barrier_vld_i        (th_ctl_barrier_vld_i),
+        .th_ctl_barrier_id_i         (th_ctl_barrier_id_i),
+        .th_ctl_barrier_size_m1_i    (th_ctl_barrier_size_m1_i)
         ////////////////////////////////////////////////////////////////////////////////
     );
 

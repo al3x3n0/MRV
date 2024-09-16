@@ -2,42 +2,42 @@
 // Issue-stage thread selector
 ////////////////////////////////////////////////////////////////////////////////
 
-module mrv1_issue_tw_sched
+module mrv1_th_issue
 #(
     parameter NUM_TW_P = 8,
+    parameter ISSUE_WIDTH_P = 1,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter twid_width_lp = $clog2(NUM_TW_P)
+    parameter tid_width_lp = $clog2(NUM_TW_P)
     ////////////////////////////////////////////////////////////////////////////////
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                        clk_i,
     input  logic                        rst_i,
     ////////////////////////////////////////////////////////////////////////////////
-    input logic [NUM_TW_P-1:0]          issue_rdy_o,
-    output logic [twid_width_lp-1:0]    issue_twid_o
+    input logic [NUM_TW_P-1:0]          issue_rdy_i,
+    output logic [tid_width_lp-1:0]    issue_tid_o
     ////////////////////////////////////////////////////////////////////////////////
 );
 
     ////////////////////////////////////////////////////////////////////////////////
-    logic [NUM_TW_P-1:0] sched_tbl_q, sched_tbl_q_n;
+    logic [NUM_TW_P-1:0] issue_tbl_q, issue_tbl_q_n;
     ////////////////////////////////////////////////////////////////////////////////
     always_ff @(posedge clk_i) begin
         if (rst_i)  begin
-            sched_tbl_q <= 0;
+            issue_tbl_q <= 0;
         end else begin
-            sched_tbl_q <= sched_tbl_q_n;
+            issue_tbl_q <= issue_tbl_q_n;
         end
     end
     ////////////////////////////////////////////////////////////////////////////////
-    wire sched_any_w = (|sched_tbl_q);
+    wire issue_any_w = (|issue_tbl_q);
     ////////////////////////////////////////////////////////////////////////////////
     always_comb begin
-        sched_tbl_q_n = sched_any_w ? sched_tbl_q : ret_rdy_r;
+        issue_tbl_q_n = issue_any_w ? issue_tbl_q : issue_rdy_i;
         for (int i = 0; i < NUM_TW_P; i++) begin
-            if (sched_tbl_q_n[i]) begin
-                // FIXME
-                //ret_twid_r = twid_width_lp'(i);
-                sched_tbl_q_n[i] = 0;
+            if (issue_tbl_q_n[i]) begin
+                issue_tid_o = tid_width_lp'(i);
+                issue_tbl_q_n[i] = 0;
                 break;
             end
         end

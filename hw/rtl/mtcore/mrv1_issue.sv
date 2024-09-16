@@ -9,9 +9,11 @@ module mrv1_issue #(
     parameter rf_addr_width_p = 5,
     parameter isq_size_p = 4,
     ////////////////////////////////////////////////////////////////////////////////
+    parameter num_fu_lp = 6,
+    ////////////////////////////////////////////////////////////////////////////////
     parameter num_rs_lp = 2,
     parameter isq_addr_width_lp = $clog2(isq_size_p),
-    parameter twid_width_lp = $clog2(NUM_TW_P)
+    parameter tid_width_lp = $clog2(NUM_TW_P)
     ////////////////////////////////////////////////////////////////////////////////
 ) (
     ////////////////////////////////////////////////////////////////////////////////
@@ -22,7 +24,8 @@ module mrv1_issue #(
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                        dec_vld_i,
     input  logic [31:0]                                 dec_pc_i,
-    input  logic [twid_width_lp-1:0]                    dec_twid_i,
+    input  logic [tid_width_lp-1:0]                    dec_tid_i,
+    input  mrv_fu_type_e                                dec_fu_type_i,
     ////////////////////////////////////////////////////////////////////////////////
     input  xrv_exe_src0_sel_e                           dec_src0_sel_i,
     input  xrv_exe_src1_sel_e                           dec_src1_sel_i,
@@ -37,7 +40,7 @@ module mrv1_issue #(
     input  logic                                        dec_rd_vld_i,
     input  logic [rf_addr_width_p-1:0]                  dec_rd_addr_i,
     ////////////////////////////////////////////////////////////////////////////////
-    output logic [twid_width_lp-1:0]                    rf_twid_o,
+    output logic [tid_width_lp-1:0]                    rf_tid_o,
     output logic [rf_addr_width_p-1:0]                  rs0_addr_o,
     output logic [rf_addr_width_p-1:0]                  rs1_addr_o,
     input  logic [DATA_WIDTH_P-1:0]                     rs0_data_i,
@@ -48,17 +51,27 @@ module mrv1_issue #(
     input  logic [DATA_WIDTH_P-1:0]                     rs1_byp_data_i,
     ////////////////////////////////////////////////////////////////////////////////
     output logic [31:0]                                 issue_pc_o,
-    output logic [twid_width_lp-1:0]                    issue_twid_o,
+    output logic [tid_width_lp-1:0]                    issue_tid_o,
     ////////////////////////////////////////////////////////////////////////////////
-    //alu_t                                             issue_alu_o,
-    //lsu_t                                             issue_lsu_o,
-    //mul_t                                             issue_mul_o,
-    //csr_t                                             issue_csr_o,
+    input logic [num_fu_lp-1:0]                         exec_fu_rdy_i;
+    input logic [num_fu_lp-1:0]                         exec_fu_req_o;
     ////////////////////////////////////////////////////////////////////////////////
     output logic [DATA_WIDTH_P-1:0]                     issue_src0_data_o,
     output logic [DATA_WIDTH_P-1:0]                     issue_src1_data_o,
     output logic [DATA_WIDTH_P-1:0]                     issue_src2_data_o,
-    output logic [ITAG_WIDTH_P-1:0]                     issue_itag_o
+    output logic [ITAG_WIDTH_P-1:0]                     issue_itag_o.
+    ////////////////////////////////////////////////////////////////////////////////
+    //alu_t                                             issue_alu_o,
+    //lsu_t                                             issue_lsu_o,
+    //mul_t                                             issue_mul_o,
+    ////////////////////////////////////////////////////////////////////////////////
+    // LSU
+    ////////////////////////////////////////////////////////////////////////////////
+    output logic                                        issue_lsu_req_w_en_o,
+    output logic [1:0]                                  issue_lsu_req_size_o,
+    output logic                                        issue_lsu_req_signed_o,
+    ////////////////////////////////////////////////////////////////////////////////
+    //csr_t                                             issue_csr_o
     ////////////////////////////////////////////////////////////////////////////////
 );
     ////////////////////////////////////////////////////////////////////////////////
@@ -88,18 +101,20 @@ module mrv1_issue #(
     ////////////////////////////////////////////////////////////////////////////////
     // Issue queues
     ////////////////////////////////////////////////////////////////////////////////
+    logic [NUM_TW_P-1:0] iq_rdy_lo;
+    ////////////////////////////////////////////////////////////////////////////////
     generate
     for (genvar i = 0; i < NUM_TW_P; i++) begin
         ////////////////////////////////////////////////////////////////////////////////
         wire dec_buf_full_lo, dec_buf_empty_lo;
-        wire wid_match_w = dec_twid_i == twid_width_lp'(i);
+        wire wid_match_w = dec_tid_i == tid_width_lp'(i);
         /*FIXME*/
         wire enq_w = wid_match_w & dec_vld_i & ~dec_buf_full_lo;
         ////////////////////////////////////////////////////////////////////////////////
         logic                           dec_buf_data_vld_lo;
         logic [dec_buf_width_lp-1:0]    dec_buf_data_lo;
         logic [31:0]                    dec_buf_pc_lo;
-        logic [twid_width_lp-1:0]       dec_buf_twid_lo;
+        logic [tid_width_lp-1:0]       dec_buf_tid_lo;
         xrv_exe_src0_sel_e              dec_src0_sel_lo;
         xrv_exe_src1_sel_e              dec_src1_sel_lo;
         logic [DATA_WIDTH_P-1:0]        dec_imm0_lo;
@@ -123,7 +138,7 @@ module mrv1_issue #(
             dec_buf_rd_vld_lo,
             dec_buf_rd_addr_lo
         } = dec_buf_data_lo;
-        dec_buf_twid_lo = twid_width_lp'(i);
+        dec_buf_tid_lo = tid_width_lp'(i);
         ////////////////////////////////////////////////////////////////////////////////
         // Decode buffer
         ////////////////////////////////////////////////////////////////////////////////
@@ -149,12 +164,12 @@ module mrv1_issue #(
             ////////////////////////////////////////////////////////////////////////////////
         );
         ////////////////////////////////////////////////////////////////////////////////
-        wire issue_twid_match_w = issue_twid_i == twid_width_lp'(i);
-        wire ret_twid_match_w = retire_twid_i == twid_width_lp'(i);
-        wire issue_vld_w = issue_vld_i & issue_twid_match_w;
-        wire retire_cnt_w = ret_twid_match_w ? retire_cnt_i : 0;
+        wire issue_tid_match_w = issue_tid_i == tid_width_lp'(i);
+        wire ret_tid_match_w = retire_tid_i == tid_width_lp'(i);
+        wire issue_vld_w = issue_vld_i & issue_tid_match_w;
+        wire retire_cnt_w = ret_tid_match_w ? retire_cnt_i : 0;
         ////////////////////////////////////////////////////////////////////////////////
-        // Issue Queue
+        // Instruction Track Queue
         ////////////////////////////////////////////////////////////////////////////////
         xrv1_iqueue #(
             .ITAG_WIDTH_P (ITAG_WIDTH_P)
@@ -192,25 +207,25 @@ module mrv1_issue #(
     ////////////////////////////////////////////////////////////////////////////////
     // Thread selector
     ////////////////////////////////////////////////////////////////////////////////
-    logic [twid_width_lp-1:0] issue_twid_lo;
+    logic [tid_width_lp-1:0] issue_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
-    mrv1_issue_tw_sched #(
+    mrv1_tw_issue #(
         .NUM_TW_P(NUM_TW_P)
     ) issue_tw_sched_i (
         .clk_i(clk_i),
         .rst_i(rst_i),
-        .issue_rdy_o(/* FIXME */),
-        .issue_twid_o(issue_twid_lo)
+        .issue_rdy_i(iq_rdy_lo),
+        .issue_tid_o(issue_tid_lo)
     );
     ////////////////////////////////////////////////////////////////////////////////
-    assign issue_insn_data_lo = dec_buf_data_lo[issue_twid_lo];
+    assign issue_insn_data_lo = dec_buf_data_lo[issue_tid_lo];
     ////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////
     // SRC MUX
     ////////////////////////////////////////////////////////////////////////////////
     logic [31:0]                    issue_insn_pc_lo;
-    logic [twid_width_lp-1:0]       issue_insn_twid_lo;
+    logic [tid_width_lp-1:0]       issue_insn_tid_lo;
     xrv_exe_src0_sel_e              issue_insn_src0_sel_lo;
     xrv_exe_src1_sel_e              issue_insn_src1_sel_lo;
     logic [DATA_WIDTH_P-1:0]        issue_insn_imm0_lo;

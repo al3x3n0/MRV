@@ -6,9 +6,9 @@ module xrv1_alu
     parameter ITAG_WIDTH_P = "inv"
 ) (
     ////////////////////////////////////////////////////////////////////////////////
-    input logic                         alu_req_i,
-    output logic                        alu_rdy_o,
-    input logic [XRV_ALU_OP_WIDTH-1:0]  alu_opc_i,
+    input logic                                     alu_req_i,
+    output logic                                    alu_rdy_o,
+    input logic [XRV_ALU_OP_WIDTH-1:0]              alu_opc_i,
     ////////////////////////////////////////////////////////////////////////////////
     input logic [DATA_WIDTH_P-1:0]                  alu_src0_i,
     input logic [DATA_WIDTH_P-1:0]                  alu_src1_i,

@@ -1,8 +1,7 @@
-module mrv1_tw_ctl
+module mrv1_th_ctl
 #(
     ////////////////////////////////////////////////////////////////////////////////
     parameter NUM_TW_P = 8,
-    parameter num_lanes_p = 4,
     parameter num_barriers_p = 8,
     parameter ITAG_WIDTH_P = "inv",
     ////////////////////////////////////////////////////////////////////////////////
@@ -20,16 +19,9 @@ module mrv1_tw_ctl
     input  logic [31:0]                                     tw_ctl_src1_i,
     output logic [31:0]                                     tw_ctl_wb_data_o,
     ////////////////////////////////////////////////////////////////////////////////
-    output  logic                                           tw_ctl_wspawn_vld_i,
-    output  logic [NUM_TW_P-1:0]                            tw_ctl_wspawn_wmask_i,
-    output  logic [31:0]                                    tw_ctl_wspawn_pc_i,
-    ////////////////////////////////////////////////////////////////////////////////
-    output  logic                                           tw_ctl_split_vld_i,
-    output  logic                                           tw_ctl_split_diverged_i,
-    output  logic [num_lanes_p-1:0]                         tw_ctl_split_then_mask_i,
-    output  logic [num_lanes_p-1:0]                         tw_ctl_split_else_mask_i,
-    output  logic [31:0]                                    tw_ctl_split_pc_i,
-    ////////////////////////////////////////////////////////////////////////////////
+    output logic                                            tw_ctl_wspawn_vld_i,
+    output logic [NUM_TW_P-1:0]                             tw_ctl_wspawn_wmask_i,
+    output logic [31:0]                                     tw_ctl_wspawn_pc_i,
     output logic                                            tw_ctl_barrier_vld_i,
     output logic [barrier_id_width_lp-1:0]                  tw_ctl_barrier_id_i,
     output logic [wid_width_lp-1:0]                         tw_ctl_barrier_size_m1_i,
