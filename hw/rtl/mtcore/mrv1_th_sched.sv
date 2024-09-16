@@ -7,11 +7,11 @@ module mrv1_th_sched
     ////////////////////////////////////////////////////////////////////////////////
     parameter is_simt_master_p = 0,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter NUM_TW_P = 8,
+    parameter NUM_THREADS_P = 8,
     ////////////////////////////////////////////////////////////////////////////////
     parameter num_barriers_p = 8,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter tid_width_lp = $clog2(NUM_TW_P)
+    parameter tid_width_lp = $clog2(NUM_THREADS_P)
     ////////////////////////////////////////////////////////////////////////////////
 ) (
     ////////////////////////////////////////////////////////////////////////////////
@@ -56,15 +56,13 @@ module mrv1_th_sched
     ////////////////////////////////////////////////////////////////////////////////
 );
     ////////////////////////////////////////////////////////////////////////////////
-    // Interleaved Unified Thread/Warp (IUTW) is a basic execution unit
+    logic [NUM_THREADS_P-1:0]                                    active_threads_q, active_threads_n_q;
+    logic [NUM_THREADS_P-1:0]                                    sched_table_q, sched_table_n_q;
+    logic [NUM_THREADS_P-1:0]                                    stalled_threads_q, stalled_threads_n_q;
+    logic [NUM_THREADS_P-1:0][31:0]                              thread_pcs_q;
+    logic [NUM_THREADS_P-1:0]                                    use_tspawn_r;
     ////////////////////////////////////////////////////////////////////////////////
-    logic [NUM_TW_P-1:0]                                    active_threads_q, active_threads_n_q;
-    logic [NUM_TW_P-1:0]                                    sched_table_q, sched_table_n_q;
-    logic [NUM_TW_P-1:0]                                    stalled_threads_q, stalled_threads_n_q;
-    logic [NUM_TW_P-1:0][31:0]                              thread_pcs_q;
-    logic [NUM_TW_P-1:0]                                    use_tspawn_r;
-    ////////////////////////////////////////////////////////////////////////////////
-    logic [num_barriers_p-1:0][NUM_TW_P-1:0]                barrier_stall_mask_q;
+    logic [num_barriers_p-1:0][NUM_THREADS_P-1:0]                barrier_stall_mask_q;
     
     ////////////////////////////////////////////////////////////////////////////////
     // Thread Spawn/Stall
@@ -73,7 +71,7 @@ module mrv1_th_sched
         use_tspawn_r = 'b0;
         active_threads_n_q = active_threads_q;
         if (th_ctl_vld_i && th_ctl_tspawn_vld_i) begin
-            for (int i = 0; i < NUM_TW_P; ++i) begin
+            for (int i = 0; i < NUM_THREADS_P; ++i) begin
                 if (~active_threads_n_q[i]) begin
                     active_threads_n_q[i] = 1'b1;
                     use_tspawn_r[i] = 1'b1;
@@ -88,7 +86,7 @@ module mrv1_th_sched
         ////////////////////////////////////////////////////////////////////////////////
     end
 
-    wire [NUM_TW_P-1:0] ready_threads_w = active_threads_n_q & ~stalled_threads_n_q;
+    wire [NUM_THREADS_P-1:0] ready_threads_w = active_threads_n_q & ~stalled_threads_n_q;
 
     ////////////////////////////////////////////////////////////////////////////////
     // Scheduler Logic
@@ -98,7 +96,7 @@ module mrv1_th_sched
         sched_vld_o         = 1'b0;
         sched_pc_o          = 0;
         sched_tid_o        = 0;
-        for (int i = 0; i < NUM_TW_P; ++i) begin
+        for (int i = 0; i < NUM_THREADS_P; ++i) begin
             if (ready_threads_w[i] && sched_table_n_q[i]) begin
                 sched_vld_o = 1'b1;
                 sched_pc_o = use_tspawn_r[i] ? th_ctl_tspawn_pc_i : thread_pcs_q[i];
@@ -118,7 +116,7 @@ module mrv1_th_sched
             stalled_threads_q           <= 0;
             fetch_lock_q                <= 0;
 	        ////////////////////////////////////////////////////////////////////////////////
-            for (int i = 1; i < NUM_TW_P; i++) begin
+            for (int i = 1; i < NUM_THREADS_P; i++) begin
                 thread_pcs_q[i]         <= 0;
                 active_threads_q[i]     <= 0;
                 sched_tbl_q[i]          <= 0;

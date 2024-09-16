@@ -1,12 +1,12 @@
 module mrv1_retire #(
     ////////////////////////////////////////////////////////////////////////////////
     parameter RETIRE_WIDTH_P = 1,
-    parameter NUM_TW_P = 8,
+    parameter NUM_THREADS_P = 8,
     parameter DATA_WIDTH_P = 32,
     parameter ITAG_WIDTH_P = "inv",
     parameter rf_addr_width_p = 5,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter tid_width_lp = $clog2(NUM_TW_P),
+    parameter tid_width_lp = $clog2(NUM_THREADS_P),
     ////////////////////////////////////////////////////////////////////////////////
     parameter iqueue_size_lp = (1 << ITAG_WIDTH_P),
     ////////////////////////////////////////////////////////////////////////////////
@@ -23,12 +23,12 @@ module mrv1_retire #(
     input  logic [num_fu_lp-1:0][ITAG_WIDTH_P-1:0]                          fu_itag_i,
     input  logic [num_fu_lp-1:0][tid_width_lp-1:0]                          fu_tid_i,
     ////////////////////////////////////////////////////////////////////////////////
-    input  logic [NUM_TW_P-1:0]                                             retire_rdy_i,
-    input  logic [NUM_TW_P-1:0][ITAG_WIDTH_P-1:0]                           retire_itag_i,
-    output logic [NUM_TW_P-1:0][ITAG_WIDTH_P-1:0]                           retire_cnt_o,
+    input  logic [NUM_THREADS_P-1:0]                                             retire_rdy_i,
+    input  logic [NUM_THREADS_P-1:0][ITAG_WIDTH_P-1:0]                           retire_itag_i,
+    output logic [NUM_THREADS_P-1:0][ITAG_WIDTH_P-1:0]                           retire_cnt_o,
     ////////////////////////////////////////////////////////////////////////////////
-    input  logic [NUM_TW_P-1:0][iqueue_size_lp-1:0]                         iq_rd_vld_i,
-    input  logic [NUM_TW_P-1:0][iqueue_size_lp-1:0][rf_addr_width_p-1:0]    iq_rd_addr_i,
+    input  logic [NUM_THREADS_P-1:0][iqueue_size_lp-1:0]                         iq_rd_vld_i,
+    input  logic [NUM_THREADS_P-1:0][iqueue_size_lp-1:0][rf_addr_width_p-1:0]    iq_rd_addr_i,
     ////////////////////////////////////////////////////////////////////////////////
     output logic [tid_width_lp-1:0]                                         wb_tid_o,
     output logic [rf_addr_width_p-1:0]                                      wb_rd_addr_o,
@@ -37,16 +37,16 @@ module mrv1_retire #(
     ////////////////////////////////////////////////////////////////////////////////
 );
     ////////////////////////////////////////////////////////////////////////////////
-    logic [NUM_TW_P-1:0][rf_addr_width_p-1:0]           wb_rd_addr_r;
-    logic [NUM_TW_P-1:0]                                wb_data_vld_r;
-    logic [NUM_TW_P-1:0][DATA_WIDTH_P-1:0]              wb_data_r;
+    logic [NUM_THREADS_P-1:0][rf_addr_width_p-1:0]           wb_rd_addr_r;
+    logic [NUM_THREADS_P-1:0]                                wb_data_vld_r;
+    logic [NUM_THREADS_P-1:0][DATA_WIDTH_P-1:0]              wb_data_r;
     ////////////////////////////////////////////////////////////////////////////////
     logic [tid_width_lp-1:0]                           ret_tid_r;
-    logic [NUM_TW_P-1:0]                                ret_rdy_r;
-    logic [NUM_TW_P-1:0][ITAG_WIDTH_P-1:0]              ret_cnt_r;
+    logic [NUM_THREADS_P-1:0]                                ret_rdy_r;
+    logic [NUM_THREADS_P-1:0][ITAG_WIDTH_P-1:0]              ret_cnt_r;
     ////////////////////////////////////////////////////////////////////////////////
     generate
-    for (genvar i = 0; i < NUM_TW_P; i++) begin
+    for (genvar i = 0; i < NUM_THREADS_P; i++) begin
         ////////////////////////////////////////////////////////////////////////////////
         // Retirement buffer
         ////////////////////////////////////////////////////////////////////////////////
@@ -110,7 +110,7 @@ module mrv1_retire #(
     ////////////////////////////////////////////////////////////////////////////////
     // Select thread for retirement
     ////////////////////////////////////////////////////////////////////////////////
-    logic [NUM_TW_P-1:0] sched_tbl_q, sched_tbl_q_n;
+    logic [NUM_THREADS_P-1:0] sched_tbl_q, sched_tbl_q_n;
     wire sched_any_w = (|sched_tbl_q);
     
     always_ff @(posedge clk_i) begin
@@ -123,7 +123,7 @@ module mrv1_retire #(
 
     always_comb begin
         sched_tbl_q_n = sched_any_w ? sched_tbl_q : ret_rdy_r;
-        for (int i = 0; i < NUM_TW_P; i++) begin
+        for (int i = 0; i < NUM_THREADS_P; i++) begin
             if (sched_tbl_q_n[i]) begin
                 ret_tid_r = tid_width_lp'(i);
                 sched_tbl_q_n[i] = 0;

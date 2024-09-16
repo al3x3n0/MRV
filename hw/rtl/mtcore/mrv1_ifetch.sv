@@ -2,11 +2,11 @@ module mrv1_ifetch
 #(
     ////////////////////////////////////////////////////////////////////////////////
     parameter DATA_WIDTH_P = 32,
-    parameter NUM_TW_P = 8,
+    parameter NUM_THREADS_P = 8,
     parameter ifq_size_p = 3,
     ////////////////////////////////////////////////////////////////////////////////
     parameter ifq_addr_width_lp = $clog2(ifq_size_p),
-    parameter tid_width_lp = $clog(NUM_TW_P)
+    parameter tid_width_lp = $clog(NUM_THREADS_P)
     ////////////////////////////////////////////////////////////////////////////////
 ) (
     ////////////////////////////////////////////////////////////////////////////////
@@ -36,32 +36,32 @@ module mrv1_ifetch
     input logic                                 dec_j_pc_vld_i,
     input logic [31:0]                          dec_j_pc_i,
     ////////////////////////////////////////////////////////////////////////////////
-    input  logic                                wstall_vld_i,
-    input  logic [tid_width_lp-1:0]            wstall_tid_i,
+    input  logic                                th_stall_vld_i,
+    input  logic [tid_width_lp-1:0]             th_stall_tid_i,
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                th_ctl_vld_i,
-    input  logic [tid_width_lp-1:0]            th_ctl_tid_i,
+    input  logic [tid_width_lp-1:0]             th_ctl_tid_i,
     input  logic                                th_ctl_tspawn_vld_i,
     input  logic [31:0]                         th_ctl_tspawn_pc_i,
     ////////////////////////////////////////////////////////////////////////////////
     input logic                                 th_ctl_barrier_vld_i,
     input logic [barrier_id_width_lp-1:0]       th_ctl_barrier_id_i,
-    input logic [tid_width_lp-1:0]             th_ctl_barrier_size_m1_i
+    input logic [tid_width_lp-1:0]              th_ctl_barrier_size_m1_i
     ////////////////////////////////////////////////////////////////////////////////
 );
     ////////////////////////////////////////////////////////////////////////////////
     logic                                       sched_fetch_req_lo;
     logic [31:0]                                sched_pc_lo;
-    logic [tid_width_lp-1:0]                   sched_tid_lo;
+    logic [tid_width_lp-1:0]                    sched_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
     logic [31:0]                                fetch_pc_q;
-    logic [tid_width_lp-1:0]                   fetch_tid_q;
+    logic [tid_width_lp-1:0]                    fetch_tid_q;
     ////////////////////////////////////////////////////////////////////////////////
     always_ff @(posedge clk_i) begin
         if (rst_i) begin
         end else begin
-            fetch_pc_q      <= sched_pc_lo;
-            fetch_tid_q    <= sched_tid_lo;
+            fetch_pc_q          <= sched_pc_lo;
+            fetch_tid_q         <= sched_tid_lo;
         end
     end
     ////////////////////////////////////////////////////////////////////////////////
@@ -72,10 +72,10 @@ module mrv1_ifetch
     logic [31:0]                    ifq_data_lo;
     logic                           ifq_data_vld_lo;
     logic [31:0]                    ifq_pc_lo;
-    logic [tid_width_lp-1:0]       ifq_tid_lo;
+    logic [tid_width_lp-1:0]        ifq_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
     mrv1_ifbuf #(
-        .NUM_TW_P (NUM_TW_P)
+        .NUM_THREADS_P (NUM_THREADS_P)
     ) ifq_i (
         ////////////////////////////////////////////////////////////////////////////////
         .clk_i                      (clk_i),
@@ -104,7 +104,7 @@ module mrv1_ifetch
     ////////////////////////////////////////////////////////////////////////////////
     mrv1_tw_sched #(
         .is_simt_master_p (is_simt_master_p),
-        .NUM_TW_P (NUM_TW_P)
+        .NUM_THREADS_P (NUM_THREADS_P)
     ) th_sched_i (
         ////////////////////////////////////////////////////////////////////////////////
         .clk_i                      (clk_i),
@@ -124,8 +124,8 @@ module mrv1_ifetch
         ////////////////////////////////////////////////////////////////////////////////
         // IMT Control
         ////////////////////////////////////////////////////////////////////////////////
-        .wstall_vld_i                (/*FIXME*/),
-        .wstall_tid_i               (/*FIXME*/),
+        .th_stall_vld_i                (/*FIXME*/),
+        .th_stall_tid_i               (/*FIXME*/),
         ////////////////////////////////////////////////////////////////////////////////
         .th_ctl_vld_i                (th_ctl_vld_i),
         .th_ctl_tid_i               (th_ctl_tid_i),

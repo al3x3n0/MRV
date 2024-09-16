@@ -2,7 +2,7 @@ import xrvs_pkg::*;
 
 module mrv1_issue #(
     ////////////////////////////////////////////////////////////////////////////////
-    parameter NUM_TW_P = 8,
+    parameter NUM_THREADS_P = 8,
     parameter DATA_WIDTH_P = 32,
     parameter ITAG_WIDTH_P = 3,
     ////////////////////////////////////////////////////////////////////////////////
@@ -13,14 +13,14 @@ module mrv1_issue #(
     ////////////////////////////////////////////////////////////////////////////////
     parameter num_rs_lp = 2,
     parameter isq_addr_width_lp = $clog2(isq_size_p),
-    parameter tid_width_lp = $clog2(NUM_TW_P)
+    parameter tid_width_lp = $clog2(NUM_THREADS_P)
     ////////////////////////////////////////////////////////////////////////////////
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                        clk_i,
     input  logic                                        rst_i,
     ////////////////////////////////////////////////////////////////////////////////
-    output logic [NUM_TW_P-1:0]                         issue_rdy_o,
+    output logic [NUM_THREADS_P-1:0]                         issue_rdy_o,
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                        dec_vld_i,
     input  logic [31:0]                                 dec_pc_i,
@@ -51,10 +51,10 @@ module mrv1_issue #(
     input  logic [DATA_WIDTH_P-1:0]                     rs1_byp_data_i,
     ////////////////////////////////////////////////////////////////////////////////
     output logic [31:0]                                 issue_pc_o,
-    output logic [tid_width_lp-1:0]                    issue_tid_o,
+    output logic [tid_width_lp-1:0]                     issue_tid_o,
     ////////////////////////////////////////////////////////////////////////////////
     input logic [num_fu_lp-1:0]                         exec_fu_rdy_i;
-    input logic [num_fu_lp-1:0]                         exec_fu_req_o;
+    input logic [num_fu_lp-1:0]                         issue_fu_req_o;
     ////////////////////////////////////////////////////////////////////////////////
     output logic [DATA_WIDTH_P-1:0]                     issue_src0_data_o,
     output logic [DATA_WIDTH_P-1:0]                     issue_src1_data_o,
@@ -101,10 +101,10 @@ module mrv1_issue #(
     ////////////////////////////////////////////////////////////////////////////////
     // Issue queues
     ////////////////////////////////////////////////////////////////////////////////
-    logic [NUM_TW_P-1:0] iq_rdy_lo;
+    logic [NUM_THREADS_P-1:0] iq_rdy_lo;
     ////////////////////////////////////////////////////////////////////////////////
     generate
-    for (genvar i = 0; i < NUM_TW_P; i++) begin
+    for (genvar i = 0; i < NUM_THREADS_P; i++) begin
         ////////////////////////////////////////////////////////////////////////////////
         wire dec_buf_full_lo, dec_buf_empty_lo;
         wire wid_match_w = dec_tid_i == tid_width_lp'(i);
@@ -210,7 +210,7 @@ module mrv1_issue #(
     logic [tid_width_lp-1:0] issue_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
     mrv1_tw_issue #(
-        .NUM_TW_P(NUM_TW_P)
+        .NUM_THREADS_P(NUM_THREADS_P)
     ) issue_tw_sched_i (
         .clk_i(clk_i),
         .rst_i(rst_i),

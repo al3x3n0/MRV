@@ -2,10 +2,10 @@ module mrv1_rf
 #(
     ////////////////////////////////////////////////////////////////////////////////
     parameter DATA_WIDTH_P = 32,
-    parameter NUM_TW_P = 8,
+    parameter NUM_THREADS_P = 8,
     parameter rf_addr_width_p = 5,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter tid_width_lp = $clog2(NUM_TW_P),
+    parameter tid_width_lp = $clog2(NUM_THREADS_P),
     parameter rf_addr_width_lp = tid_width_lp + rf_addr_width_p,
     parameter rf_size_lp = (1 << rf_addr_size_width_lp)
     ////////////////////////////////////////////////////////////////////////////////

@@ -1,11 +1,11 @@
 module mrv1_th_ctl
 #(
     ////////////////////////////////////////////////////////////////////////////////
-    parameter NUM_TW_P = 8,
+    parameter NUM_THREADS_P = 8,
     parameter num_barriers_p = 8,
     parameter ITAG_WIDTH_P = "inv",
     ////////////////////////////////////////////////////////////////////////////////
-    parameter wid_width_lp = $clog2(NUM_TW_P),
+    parameter wid_width_lp = $clog2(NUM_THREADS_P),
     parameter barrier_id_width_lp = $clog2(num_barriers_p)
     ////////////////////////////////////////////////////////////////////////////////
 ) (
@@ -20,7 +20,7 @@ module mrv1_th_ctl
     output logic [31:0]                                     tw_ctl_wb_data_o,
     ////////////////////////////////////////////////////////////////////////////////
     output logic                                            tw_ctl_wspawn_vld_i,
-    output logic [NUM_TW_P-1:0]                             tw_ctl_wspawn_wmask_i,
+    output logic [NUM_THREADS_P-1:0]                             tw_ctl_wspawn_wmask_i,
     output logic [31:0]                                     tw_ctl_wspawn_pc_i,
     output logic                                            tw_ctl_barrier_vld_i,
     output logic [barrier_id_width_lp-1:0]                  tw_ctl_barrier_id_i,

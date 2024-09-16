@@ -5,7 +5,7 @@ module mrv1_core
     ////////////////////////////////////////////////////////////////////////////////
     parameter CORE_ID = "inv",
     ////////////////////////////////////////////////////////////////////////////////
-    parameter NUM_TW_P = 4,
+    parameter NUM_THREADS_P = 4,
     parameter wid_width_lp = $clog2(num_warps_p),
     ////////////////////////////////////////////////////////////////////////////////
     parameter DATA_WIDTH_P = 32,
@@ -73,7 +73,7 @@ module mrv1_core
     logic [31:0]                    exec_th_ctl_tspawn_pc_lo;
     ////////////////////////////////////////////////////////////////////////////////
     mrv1_ifetch #(
-        .NUM_TW_P (NUM_TW_P)
+        .NUM_THREADS_P (NUM_THREADS_P)
     ) if_i (
         ////////////////////////////////////////////////////////////////////////////////
         .clk_i                      (clk_i),
@@ -230,7 +230,7 @@ module mrv1_core
     logic                               issue_lsu_req_signed_lo;
     ////////////////////////////////////////////////////////////////////////////////
     mrv1_issue #(
-        .NUM_TW_P (NUM_TW_P),
+        .NUM_THREADS_P (NUM_THREADS_P),
         .DATA_WIDTH_P (DATA_WIDTH_P),
         .ITAG_WIDTH_P (ITAG_WIDTH_P)
     ) issue_i (
@@ -267,7 +267,7 @@ module mrv1_core
         ////////////////////////////////////////////////////////////////////////////////
         // ISSUE -> RF interface
         ////////////////////////////////////////////////////////////////////////////////
-        .rf_tid_o                      (issue_tid_lo),
+        .rf_tid_o                       (issue_tid_lo),
         .rs0_addr_o                     (issue_rs0_addr_lo),
         .rs0_data_i                     (rf_rs0_data_lo),
         .rs1_addr_o                     (issue_rs1_addr_lo),
@@ -283,7 +283,7 @@ module mrv1_core
         // ISSUE <-> EXE interface
         ////////////////////////////////////////////////////////////////////////////////
         .exec_fu_rdy_i                  (exec_fu_rdy_lo),
-        .exec_fu_req_o                  (exec_fu_req_lo),
+        .issue_fu_req_o                 (exec_fu_req_lo),
         .issue_src0_data_o              (issue_src0_data_lo),
         .issue_src1_data_o              (issue_src1_data_lo),
         .issue_src2_data_o              (issue_src2_data_lo),
@@ -337,14 +337,14 @@ module mrv1_core
             issue_src1_data_q           <= 'b0;
             issue_src2_data_q           <= 'b0;
             issue_itag_q                <= 'b0;
-            issue_tid_q                <= 'b0;
+            issue_tid_q                 <= 'b0;
         end
         else begin
             issue_src0_data_q           <= issue_src0_data_lo;
             issue_src1_data_q           <= issue_src1_data_lo;
             issue_src2_data_q           <= issue_src2_data_lo;
             issue_itag_q                <= issue_itag_lo;
-            issue_tid_q                <= issue_tid_lo;
+            issue_tid_q                 <= issue_tid_lo;
         end
     end
     ////////////////////////////////////////////////////////////////////////////////
@@ -352,26 +352,26 @@ module mrv1_core
     ////////////////////////////////////////////////////////////////////////////////
     // Register File
     ////////////////////////////////////////////////////////////////////////////////
-    logic [tid_width_lp-1:0]       wb_tid_lo;
+    logic [tid_width_lp-1:0]        wb_tid_lo;
     logic [rf_addr_width_p-1:0]     wb_rd_addr_lo;
     logic [DATA_WIDTH_P-1:0]        wb_data_lo;
     logic                           wb_data_vld_lo;
     ////////////////////////////////////////////////////////////////////////////////
     mrv1_rf #(
-        .NUM_TW_P (NUM_TW_P),
+        .NUM_THREADS_P (NUM_THREADS_P),
         .DATA_WIDTH_P (DATA_WIDTH_P)
     ) rf_i (
         ////////////////////////////////////////////////////////////////////////////////
         .clk_i                      (clk_i),
         .rst_i                      (rst_i),
         ////////////////////////////////////////////////////////////////////////////////
-        .tid_i                     (issue_tid_lo),
+        .tid_i                      (issue_tid_lo),
         .rs0_addr_i                 (issue_rs0_addr_lo),
         .rs0_data_o                 (rf_rs0_data_lo),
         .rs1_addr_i                 (issue_rs1_addr_lo),
         .rs1_data_o                 (rf_rs1_data_lo),
         ////////////////////////////////////////////////////////////////////////////////
-        .rd_tid_i                  (wb_tid_lo),
+        .rd_tid_i                   (wb_tid_lo),
         .rd_w_en_i                  (wb_data_vld_lo),
         .rd_addr_i                  (wb_rd_addr_lo),
         .rd_data_i                  (wb_data_lo)
@@ -383,12 +383,12 @@ module mrv1_core
     // Execution stage
     ////////////////////////////////////////////////////////////////////////////////    
     logic [num_fu_lp-1:0]                       exec_fu_done_lo;
-    logic [num_fu_lp-1:0][tid_width_lp-1:0]    exec_fu_tid_lo;
+    logic [num_fu_lp-1:0][tid_width_lp-1:0]     exec_fu_tid_lo;
     logic [num_fu_lp-1:0][ITAG_WIDTH_P-1:0]     exec_fu_wb_itag_lo;
     logic [num_fu_lp-1:0][DATA_WIDTH_P-1:0]     exec_fu_wb_data_lo;
     ////////////////////////////////////////////////////////////////////////////////
     mrv1_exec #(
-        .NUM_TW_P (NUM_TW_P),
+        .NUM_THREADS_P (NUM_THREADS_P),
         .DATA_WIDTH_P (DATA_WIDTH_P),
         .ITAG_WIDTH_P (ITAG_WIDTH_P)
     ) exec_i (
@@ -444,7 +444,7 @@ module mrv1_core
     end
     ////////////////////////////////////////////////////////////////////////////////
     mrv1_retire #(
-        .NUM_TW_P (NUM_TW_P),
+        .NUM_THREADS_P (NUM_THREADS_P),
         .DATA_WIDTH_P (DATA_WIDTH_P),
         .ITAG_WIDTH_P (ITAG_WIDTH_P)
     ) wback (

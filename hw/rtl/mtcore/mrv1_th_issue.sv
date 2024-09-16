@@ -4,23 +4,23 @@
 
 module mrv1_th_issue
 #(
-    parameter NUM_TW_P = 8,
+    parameter NUM_THREADS_P = 8,
     parameter ISSUE_WIDTH_P = 1,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter tid_width_lp = $clog2(NUM_TW_P)
+    parameter tid_width_lp = $clog2(NUM_THREADS_P)
     ////////////////////////////////////////////////////////////////////////////////
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                        clk_i,
     input  logic                        rst_i,
     ////////////////////////////////////////////////////////////////////////////////
-    input logic [NUM_TW_P-1:0]          issue_rdy_i,
+    input logic [NUM_THREADS_P-1:0]          issue_rdy_i,
     output logic [tid_width_lp-1:0]    issue_tid_o
     ////////////////////////////////////////////////////////////////////////////////
 );
 
     ////////////////////////////////////////////////////////////////////////////////
-    logic [NUM_TW_P-1:0] issue_tbl_q, issue_tbl_q_n;
+    logic [NUM_THREADS_P-1:0] issue_tbl_q, issue_tbl_q_n;
     ////////////////////////////////////////////////////////////////////////////////
     always_ff @(posedge clk_i) begin
         if (rst_i)  begin
@@ -34,7 +34,7 @@ module mrv1_th_issue
     ////////////////////////////////////////////////////////////////////////////////
     always_comb begin
         issue_tbl_q_n = issue_any_w ? issue_tbl_q : issue_rdy_i;
-        for (int i = 0; i < NUM_TW_P; i++) begin
+        for (int i = 0; i < NUM_THREADS_P; i++) begin
             if (issue_tbl_q_n[i]) begin
                 issue_tid_o = tid_width_lp'(i);
                 issue_tbl_q_n[i] = 0;
