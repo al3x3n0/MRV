@@ -5,29 +5,35 @@
 
 module mrv1_int_fu
 #(
+    parameter PC_WIDTH_P = 32,
     parameter DATA_WIDTH_P = 32,
-    parameter ITAG_WIDTH_P = 3
+    parameter ITAG_WIDTH_P = 3,
+    parameter NUM_THREADS_P = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P)
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input logic [DATA_WIDTH_P-1:0]      exec_src0_data_i,
     input logic [DATA_WIDTH_P-1:0]      exec_src1_data_i,
+    input logic [DATA_WIDTH_P-1:0]      exec_src2_data_i,
     input logic [ITAG_WIDTH_P-1:0]      exec_itag_i,
-    input logic [tid_width_lp-1:0]      exec_tid_i,
+    input logic [TID_WIDTH_LP-1:0]      exec_tid_i,
     ////////////////////////////////////////////////////////////////////////////////
     input mrv_int_fu_op_e               int_fu_opc_i,
     input logic                         int_fu_req_i,
     output logic                        int_fu_rdy_o,
     output logic [DATA_WIDTH_P-1:0]     int_fu_res_o,
     output logic                        int_fu_done_o,
-    output logic [ITAG_WIDTH_P-1:0]     int_fu_itag_o
+    output logic [ITAG_WIDTH_P-1:0]     int_fu_itag_o,
+    output logic [TID_WIDTH_LP-1:0]     int_fu_tid_o,
     ////////////////////////////////////////////////////////////////////////////////
     // Branches
     ////////////////////////////////////////////////////////////////////////////////
     input logic                         b_is_branch_i,
     input logic                         b_is_jump_i,
     output logic                        b_pc_vld_o,
-    output logic [31:0]                 b_pc_o,
-    ////////////////////////////////////////////////////////////////////////////////
+    output logic [PC_WIDTH_P-1:0]       b_pc_o,
+    output logic [TID_WIDTH_LP-1:0]     b_tid_o
 );
     ////////////////////////////////////////////////////////////////////////////////
     assign int_fu_rdy_o     = 1'b1;
@@ -961,8 +967,8 @@ module mrv1_int_fu
     ////////////////////////////////////////////////////////////////////////////////
     // Conditional branch handling
     ////////////////////////////////////////////////////////////////////////////////
-    assign b_pc_vld_o  = int_fu_req_i & b_is_branch_i & ~comparison_result_w;
-    assign b_pc_o      = next_pc_i;
+    assign b_pc_vld_o = int_fu_req_i & b_is_branch_i & ~comparison_result_w;
+    assign b_pc_o = next_pc_i;
     ////////////////////////////////////////////////////////////////////////////////
     always_comb begin
         if (int_fu_req_i & b_is_branch_i) begin

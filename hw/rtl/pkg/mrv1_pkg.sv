@@ -5,7 +5,11 @@ package mrv1_pkg;
         MRV_FU_TYPE_MEM     = 3'b001,
         MRV_FU_TYPE_MUL     = 3'b010,
         MRV_FU_TYPE_SYS     = 3'b011,
+        MRV_FU_TYPE_DIV     = 3'b100
     } mrv_fu_type_e;
+
+    localparam MRV_NUM_FU = 5;
+    localparam MRV_OPC_WIDTH_P = 7;
 
     ////////////////////////////////////////////////////////////////////////////////
     localparam MRV_INT_FU_OP_WIDTH = 7;
@@ -95,5 +99,20 @@ package mrv1_pkg;
         MRV_INT_FU_PCKLO = 7'b0111000,
         MRV_INT_FU_PCKHI = 7'b0111001
     } mrv_int_fu_op_e;
+
+    ////////////////////////////////////////////////////////////////////////////////
+    localparam MRV_MUL_FU_OP_WIDTH = 4;
+    typedef enum bit [MRV_MUL_FU_OP_WIDTH-1:0] {
+    } mrv_mul_fu_op_e;
+
+    ////////////////////////////////////////////////////////////////////////////////
+    localparam MRV_SYS_FU_OP_WIDTH = 7;
+    typedef enum bit [MRV_SYS_FU_OP_WIDTH-1:0] {
+        MRV_SYS_FU_CSR_READ = 7'b00,
+        MRV_SYS_FU_CSR_WRITE = 7'b01,
+        MRV_SYS_FU_SR_SET = 7'b10,
+        MRV_SYS_FU_CSR_CLR = 7'b11,
+        MRV_SYS_FU_TSPAWN = 7'b0000100,
+    } mrv_sys_fu_op_e;
 
 endpackage

@@ -1,4 +1,5 @@
 module mrv1_src_mux #(
+    parameter PC_WIDTH_P = 32,
     parameter DATA_WIDTH_P = 32
 ) (
     input xrv_exe_src0_sel_e            src0_sel_i,
@@ -7,7 +8,7 @@ module mrv1_src_mux #(
     input logic [DATA_WIDTH_P-1:0]      rs1_data_i,
     input logic [DATA_WIDTH_P-1:0]      insn_imm0_i,
     input logic [DATA_WIDTH_P-1:0]      insn_imm1_i,
-    input logic [31:0]                  insn_pc_i,
+    input logic [PC_WIDTH_P-1:0]        insn_pc_i,
     ////////////////////////////////////////////////////////////////////////////////
     output logic [DATA_WIDTH_P-1:0]     src0_data_o,
     output logic [DATA_WIDTH_P-1:0]     src1_data_o,

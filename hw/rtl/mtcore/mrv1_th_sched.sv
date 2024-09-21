@@ -6,13 +6,11 @@ module mrv1_th_sched
 #(
     ////////////////////////////////////////////////////////////////////////////////
     parameter is_simt_master_p = 0,
-    ////////////////////////////////////////////////////////////////////////////////
+    parameter PC_WIDTH_P = 32,
     parameter NUM_THREADS_P = 8,
-    ////////////////////////////////////////////////////////////////////////////////
     parameter num_barriers_p = 8,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter tid_width_lp = $clog2(NUM_THREADS_P)
-    ////////////////////////////////////////////////////////////////////////////////
+    parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P)
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                clk_i,
@@ -23,43 +21,36 @@ module mrv1_th_sched
     input  logic                                simt_en_i,
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                fetch_done_i,
-    input  logic [tid_width_lp-1:0]             fetch_tid_i,
-    input  logic [31:0]                         fetch_pc_i,
-    ////////////////////////////////////////////////////////////////////////////////
-    // J From DEC stage
-    ////////////////////////////////////////////////////////////////////////////////
-    input  logic [tid_width_lp-1:0]             dec_tid_i,
-    input  logic                                dec_j_pc_vld_i,
-    input  logic [31:0]                         dec_j_pc_i,
+    input  logic [TID_WIDTH_LP-1:0]             fetch_tid_i,
+    input  logic [PC_WIDTH_P-1:0]               fetch_pc_i,
     ////////////////////////////////////////////////////////////////////////////////
     // B from EXEC stage
     ////////////////////////////////////////////////////////////////////////////////
-    input  logic [tid_width_lp-1:0]             exec_tid_i,
+    input  logic [TID_WIDTH_LP-1:0]             exec_tid_i,
     input  logic                                exec_b_pc_vld_i,
-    input  logic [31:0]                         exec_b_pc_i,
+    input  logic [PC_WIDTH_P-1:0]               exec_b_pc_i,
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                wstall_vld_i,
-    input  logic [tid_width_lp-1:0]             wstall_tid_i,
+    input  logic [TID_WIDTH_LP-1:0]             wstall_tid_i,
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                th_ctl_vld_i,
-    input  logic [tid_width_lp-1:0]             th_ctl_tid_i,
+    input  logic [TID_WIDTH_LP-1:0]             th_ctl_tid_i,
     input  logic                                th_ctl_tspawn_vld_i,
-    input  logic [31:0]                         th_ctl_tspawn_pc_i,
+    input  logic [PC_WIDTH_P-1:0]               th_ctl_tspawn_pc_i,
     ////////////////////////////////////////////////////////////////////////////////
     input logic                                 th_ctl_barrier_vld_i,
     input logic [barrier_id_width_lp-1:0]       th_ctl_barrier_id_i,
-    input logic [tid_width_lp-1:0]              th_ctl_barrier_size_m1_i,
+    input logic [TID_WIDTH_LP-1:0]              th_ctl_barrier_size_m1_i,
     ////////////////////////////////////////////////////////////////////////////////
     output logic                                sched_vld_o,
-    output logic [tid_width_lp-1:0]             sched_tid_o,
-    output logic [31:0]                         sched_pc_o
-    ////////////////////////////////////////////////////////////////////////////////
+    output logic [TID_WIDTH_LP-1:0]             sched_tid_o,
+    output logic [PC_WIDTH_P-1:0]               sched_pc_o
 );
     ////////////////////////////////////////////////////////////////////////////////
     logic [NUM_THREADS_P-1:0]                                    active_threads_q, active_threads_n_q;
     logic [NUM_THREADS_P-1:0]                                    sched_table_q, sched_table_n_q;
     logic [NUM_THREADS_P-1:0]                                    stalled_threads_q, stalled_threads_n_q;
-    logic [NUM_THREADS_P-1:0][31:0]                              thread_pcs_q;
+    logic [NUM_THREADS_P-1:0][PC_WIDTH_P-1:0]                    thread_pcs_q;
     logic [NUM_THREADS_P-1:0]                                    use_tspawn_r;
     ////////////////////////////////////////////////////////////////////////////////
     logic [num_barriers_p-1:0][NUM_THREADS_P-1:0]                barrier_stall_mask_q;
@@ -100,7 +91,7 @@ module mrv1_th_sched
             if (ready_threads_w[i] && sched_table_n_q[i]) begin
                 sched_vld_o = 1'b1;
                 sched_pc_o = use_tspawn_r[i] ? th_ctl_tspawn_pc_i : thread_pcs_q[i];
-                sched_tid_o = ttid_width_lp'(i);
+                sched_tid_o = TID_WIDTH_LP'(i);
                 sched_table_n_q[i] = 1'b0;
                 break;
             end
@@ -130,11 +121,6 @@ module mrv1_th_sched
             ////////////////////////////////////////////////////////////////////////////////
             // Branch
             ////////////////////////////////////////////////////////////////////////////////
-            if (dec_j_pc_vld_i) begin
-                thread_pcs_q[dec_tid_i]        <= dec_j_pc_i;
-                stalled_threads_q[dec_tid_i]   <= 1'b0;
-            end
-            ////////////////////////////////////////////////////////////////////////////////
             if (exec_b_pc_vld_i) begin
                 thread_pcs_q[exec_tid_i]       <= exec_b_pc_i;
                 stalled_threads_q[exec_tid_i]  <= 1'b0;
@@ -148,15 +134,15 @@ module mrv1_th_sched
     ////////////////////////////////////////////////////////////////////////////////
     // Lock TW until instruction decode to resolve branches
     ////////////////////////////////////////////////////////////////////////////////
-    always_ff @(posedge clk_i) begin
-        if (scheduled_warp) begin
-            fetch_lock_q[warp_to_schedule] <= 1;
-        end
-        if (ifetch_rsp_fire) begin
-            fetch_lock_q[ifetch_rsp_if.wid] <= 0;
-            thread_pcs_q[ifetch_rsp_if.wid] <= ifetch_rsp_if.PC + 4;
-        end
-    end
+    //always_ff @(posedge clk_i) begin
+    //    if (scheduled_warp) begin
+    //        fetch_lock_q[warp_to_schedule] <= 1;
+    //    end
+    //    if (ifetch_rsp_fire) begin
+    //        fetch_lock_q[ifetch_rsp_if.wid] <= 0;
+    //        thread_pcs_q[ifetch_rsp_if.wid] <= ifetch_rsp_if.PC + 4;
+    //   end
+    //end
     ////////////////////////////////////////////////////////////////////////////////
 
 
