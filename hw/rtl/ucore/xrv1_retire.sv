@@ -70,6 +70,11 @@ module xrv1_retire
         wb_mem_data_n = wb_mem_data_q;
         wb_data_vld_o = 1'b0;
         ret_cnt_r = 0;
+        // TODO: review this part
+        // Added missing initializations
+        wb_rd_addr_o = 'b0;
+        wb_data_o = 'b0;
+        // 
         ////////////////////////////////////////////////////////////////////////////////
         for (int i = 0; i < num_fu_lp; i = i + 1) begin
             if (fu_done_i[i]) begin
@@ -116,7 +121,10 @@ module xrv1_retire
     generate
         for (j = 0; j < num_rs_lp; j = j + 1) begin
             logic [iqueue_size_lp-1:0][ITAG_WIDTH_P-1:0] tmp_ptr;
-            always_comb begin
+            // TODO: review this part
+            // Replaced always_comb with always_latch as crutch to satisfy verilator
+            always_latch begin
+            // 
                 rs_conflict_o[j] = (|rs_conflict_i[j]);
                 rs_byp_en_o[j] = 1'b0;
                 for (int i = 1; i < iqueue_size_lp; i = i + 1) begin

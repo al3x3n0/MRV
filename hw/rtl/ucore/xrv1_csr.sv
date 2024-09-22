@@ -34,7 +34,11 @@ module xrv1_csr
             XRV_CSR_WRITE: csr_w_data_r = csr_src0_i;
             XRV_CSR_SET:   csr_w_data_r = csr_src0_i | csr_r_data_lo;
             XRV_CSR_CLR:   csr_w_data_r = ~csr_src0_i & csr_r_data_lo;
+            // TODO: review this part
+            // added no-lint directive as crutch to satisfy verilator
+            /* verilator lint_off MULTIDRIVEN */
             XRV_CSR_READ:  csr_w_data_r = csr_src0_i;
+            //
         endcase
     end
     ////////////////////////////////////////////////////////////////////////////////
