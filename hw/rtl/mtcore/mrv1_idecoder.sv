@@ -1,8 +1,9 @@
 import mrv1_pkg::*;
+import xrv1_pkg::*;
 
 
 module mrv1_idecoder
-#(
+#(    
     ////////////////////////////////////////////////////////////////////////////////
     parameter PC_WIDTH_P = 32,
     parameter NUM_THREADS_P = 8,
@@ -20,6 +21,7 @@ module mrv1_idecoder
     ////////////////////////////////////////////////////////////////////////////////
     output logic                                        insn_illegal_o,
     ////////////////////////////////////////////////////////////////////////////////
+    output logic                                        dec_vld_o,
     output logic [PC_WIDTH_P-1:0]                       dec_pc_o,
     output logic [NUM_FU_P-1:0]                         dec_fu_req_o,
     output logic [FU_OPC_WIDTH_P-1:0]                   dec_fu_opc_o,
@@ -32,18 +34,18 @@ module mrv1_idecoder
     output logic                                        dec_rs1_vld_o,
     output logic [rf_addr_width_p-1:0]                  dec_rs1_addr_o,
     output logic                                        dec_rd_vld_o,
-    output logic [rf_addr_width_p-1:0]                  dec_rd_addr_o
+    output logic [rf_addr_width_p-1:0]                  dec_rd_addr_o,
     output logic                                        dec_b_is_branch_o,
-    outout logic                                        dec_b_is_jump_o
+    output logic                                        dec_b_is_jump_o
 );
     ////////////////////////////////////////////////////////////////////////////////
     wire [6:0]  func7_w     = insn_i[31:25];
     wire [2:0]  func3_w     = insn_i[14:12];
     wire [4:0]  opcode_w    = insn_i[6:2];
     ////////////////////////////////////////////////////////////////////////////////
-    assign dec_rs0_addr     = insn_i[19:15];
-    assign dec_rs1_addr     = insn_i[24:20];
-    assign dec_rd_addr      = insn_i[11:7];
+    wire dec_rs0_addr       = insn_i[19:15];
+    wire dec_rs1_addr       = insn_i[24:20];
+    wire dec_rd_addr        = insn_i[11:7];
     ////////////////////////////////////////////////////////////////////////////////
     wire rs0_x0_w = dec_rs0_addr == '0;
     wire rs1_x0_w = dec_rs1_addr == '0;
@@ -65,16 +67,16 @@ module mrv1_idecoder
         // Immediate muxing
         ////////////////////////////////////////////////////////////////////////////////
         case (imm0_sel_r)
-            XRV_IMM0_Z:         dec_imm0 = imm_z_type_w;
-            XRV_IMM0_ZERO:      dec_imm0 = 'd0;
-            default:            dec_imm0 = 'd0;
+            XRV_IMM0_Z:         dec_imm0_o = imm_z_type_w;
+            XRV_IMM0_ZERO:      dec_imm0_o = 'd0;
+            default:            dec_imm0_o = 'd0;
         endcase
         ////////////////////////////////////////////////////////////////////////////////
         case (imm1_sel_r)
-            XRV_IMM1_I:         dec_imm1 = imm_i_type_w;
-            XRV_IMM1_S:         dec_imm1 = imm_s_type_w;
-            XRV_IMM1_U:         dec_imm1 = imm_u_type_w;
-            default:            dec_imm1 = imm_i_type_w;
+            XRV_IMM1_I:         dec_imm1_o = imm_i_type_w;
+            XRV_IMM1_S:         dec_imm1_o = imm_s_type_w;
+            XRV_IMM1_U:         dec_imm1_o = imm_u_type_w;
+            default:            dec_imm1_o = imm_i_type_w;
         endcase
         ////////////////////////////////////////////////////////////////////////////////
     end
@@ -85,11 +87,12 @@ module mrv1_idecoder
     logic lsu_w_en_r;
     logic [1:0] lsu_size_r;
     logic lsu_sign_r;
+
     always_comb begin
         ////////////////////////////////////////////////////////////////////////////////
         dec_src0_sel_o          = XRV_SRC0_RS0;
         dec_src1_sel_o          = XRV_SRC1_RS1;
-        dec_imm1_sel_o          = XRV_IMM1_I;
+        imm1_sel_r              = XRV_IMM1_I;
         ////////////////////////////////////////////////////////////////////////////////
         dec_rs0_vld_o           = 1'b0;
         dec_rs1_vld_o           = 1'b0;
@@ -119,16 +122,16 @@ module mrv1_idecoder
             end
             ////////////////////////////////////////////////////////////////////////////////
             XRV_AUIPC: begin
-                dec_src0_sel = XRV_SRC0_PC;
-                dec_src1_sel = XRV_SRC1_IMM;
+                dec_src0_sel_o = XRV_SRC0_PC;
+                dec_src1_sel_o = XRV_SRC1_IMM;
                 imm1_sel_r = XRV_IMM1_U;
                 dec_fu_opc_o = MRV_INT_FU_ADD;
                 dec_fu_req_o[MRV_FU_TYPE_INT] = 1'b1;
             end
             ////////////////////////////////////////////////////////////////////////////////
             XRV_ARITH_IMM: begin
-                dec_src0_sel = XRV_SRC0_RS0;
-                dec_src1_sel = XRV_SRC1_IMM;
+                dec_src0_sel_o = XRV_SRC0_RS0;
+                dec_src1_sel_o = XRV_SRC1_IMM;
                 imm1_sel_r = XRV_IMM1_I;
                 dec_rs0_vld_o = 1'b1;
                 dec_fu_req_o[MRV_FU_TYPE_INT] = 1'b1;
@@ -208,7 +211,7 @@ module mrv1_idecoder
             XRV_BRANCH: begin
                 dec_rs0_vld_o = 1'b1;
                 dec_rs1_vld_o = 1'b1;
-                dec_rd_vld = 1'b0;
+                dec_rd_vld_o = 1'b0;
                 dec_b_is_branch_o = 1'b1;
                 dec_fu_req_o[MRV_FU_TYPE_INT] = 1'b1;
                 case (func3_w)
@@ -224,25 +227,25 @@ module mrv1_idecoder
             ////////////////////////////////////////////////////////////////////////////////
             XRV_LOAD: begin
                 dec_rs0_vld_o = 1'b1;
-                dec_src1_sel = XRV_SRC1_IMM;
+                dec_src1_sel_o = XRV_SRC1_IMM;
                 imm1_sel_r = XRV_IMM1_I;
                 lsu_w_en_r = 1'b0;
                 lsu_size_r = func3_w[1:0];
-                lsu_signed_r = ~func3_w[2];
+                lsu_sign_r = ~func3_w[2];
                 dec_fu_req_o[MRV_FU_TYPE_MEM] = 1'b1;
-                dec_fu_opc_o = {lsu_signed_r, lsu_size_r, lsu_w_en_r};
+                dec_fu_opc_o = {lsu_sign_r, lsu_size_r, lsu_w_en_r};
             end
             ////////////////////////////////////////////////////////////////////////////////
             XRV_STORE: begin
                 dec_rs0_vld_o = 1'b1;
                 dec_rs1_vld_o = 1'b1;
-                dec_rd_vld = 1'b0;
-                dec_src1_sel = XRV_SRC1_IMM;
+                dec_rd_vld_o = 1'b0;
+                dec_src1_sel_o = XRV_SRC1_IMM;
                 imm1_sel_r = XRV_IMM1_S;
                 lsu_w_en_r = 1'b1;
                 lsu_size_r = func3_w[1:0];
                 dec_fu_req_o[MRV_FU_TYPE_MEM] = 1'b1;
-                dec_fu_opc_o = {lsu_size_r, lsu_w_en_r};
+                dec_fu_opc_o = {1'b0, lsu_size_r, lsu_w_en_r};
             end
             ////////////////////////////////////////////////////////////////////////////////
             XRV_FENCE: begin
@@ -255,7 +258,7 @@ module mrv1_idecoder
                     dec_fu_req_o[MRV_FU_TYPE_SYS] = 1'b1;
                     imm0_sel_r = XRV_IMM0_Z;
                     imm1_sel_r = XRV_IMM1_I;
-                    dec_src0_sel = func3_w[2] ? XRV_SRC0_IMM : XRV_SRC0_RS0;
+                    dec_src0_sel_o = func3_w[2] ? XRV_SRC0_IMM : XRV_SRC0_RS0;
                     dec_rs0_vld_o  = ~func3_w[2];
                     if (func3_w[1:0] == 2'b01)
                         dec_fu_opc_o = XRV_CSR_WRITE;
@@ -265,7 +268,6 @@ module mrv1_idecoder
                         dec_fu_opc_o = XRV_CSR_CLR;
                     else
                         dec_fu_opc_o = XRV_CSR_READ;
-                    dec_csr_addr = insn_i[31:20];
                 end
             end
             ////////////////////////////////////////////////////////////////////////////////
@@ -273,5 +275,6 @@ module mrv1_idecoder
         endcase
     end
 
-endmodule
+    assign dec_vld_o = insn_vld_i;
 
+endmodule

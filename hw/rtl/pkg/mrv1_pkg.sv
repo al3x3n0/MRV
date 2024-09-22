@@ -1,5 +1,7 @@
 package mrv1_pkg;
 
+    import xrv1_pkg::*;
+
     typedef enum bit [2:0] {
         MRV_FU_TYPE_INT     = 3'b000,
         MRV_FU_TYPE_MEM     = 3'b001,
@@ -105,7 +107,8 @@ package mrv1_pkg;
     // added dummy value as a crutch to satisfy verilator
     localparam MRV_MUL_FU_OP_WIDTH = 4;
     typedef enum bit [MRV_MUL_FU_OP_WIDTH-1:0] {
-        VERILATOR_DOESNT_ALLOW_EMPTY_ENUMV = 4'b00
+        MRV_MUL_FUL_MUL = 4'b0000
+
     } mrv_mul_fu_op_e;
     //
 
@@ -114,9 +117,17 @@ package mrv1_pkg;
     typedef enum bit [MRV_SYS_FU_OP_WIDTH-1:0] {
         MRV_SYS_FU_CSR_READ = 7'b00,
         MRV_SYS_FU_CSR_WRITE = 7'b01,
-        MRV_SYS_FU_SR_SET = 7'b10,
+        MRV_SYS_FU_CSR_SET = 7'b10,
         MRV_SYS_FU_CSR_CLR = 7'b11,
         MRV_SYS_FU_TSPAWN = 7'b0000100
     } mrv_sys_fu_op_e;
+
+    typedef enum bit [2:0] {
+        MRV_VEC_MODE32 = 3'b000,
+        MRV_VEC_MODE16 = 3'b001,
+        MRV_VEC_MODE8  = 3'b010,
+        MRV_VEC_MODE4  = 3'b011,
+        MRV_VEC_MODE2  = 3'b100
+    } mrv_vec_mode_e;
 
 endpackage

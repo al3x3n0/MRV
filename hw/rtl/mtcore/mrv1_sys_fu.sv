@@ -55,7 +55,7 @@ module mrv1_sys_fu
     // CSR File
     ////////////////////////////////////////////////////////////////////////////////
     logic [11:0] csr_addr_w     = exec_src1_data_i[11:0];
-    mrv1_csrf csrf #(
+    mrv1_csrf #(
         .DATA_WIDTH_P           (DATA_WIDTH_P),
         .NUM_THREADS_P          (NUM_THREADS_P),
     ) csrf_i (

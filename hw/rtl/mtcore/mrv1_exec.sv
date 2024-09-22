@@ -14,6 +14,7 @@ module mrv1_exec
     input logic                                         clk_i,
     input logic                                         rst_i,
     ////////////////////////////////////////////////////////////////////////////////
+    input logic [PC_WIDTH_P-1:0]                        exec_pc_i,
     input logic [DATA_WIDTH_P-1:0]                      exec_src0_data_i,
     input logic [DATA_WIDTH_P-1:0]                      exec_src1_data_i,
     input logic [DATA_WIDTH_P-1:0]                      exec_src2_data_i,
@@ -23,15 +24,12 @@ module mrv1_exec
     output logic [NUM_FU_P-1:0]                         exec_fu_rdy_o,
     input logic [NUM_FU_P-1:0]                          issue_fu_req_i,
     input logic [FU_OPC_WIDTH_P-1:0]                    issue_fu_opc_i,
+    input mrv_vec_mode_e                                issue_fu_vec_mode_i,
     ////////////////////////////////////////////////////////////////////////////////
     output logic [NUM_FU_P-1:0]                         exec_fu_done_o,
     output logic [NUM_FU_P-1:0][DATA_WIDTH_P-1:0]       exec_fu_res_data_o,
     output logic [NUM_FU_P-1:0][ITAG_WIDTH_P-1:0]       exec_fu_itag_o,
     output logic [NUM_FU_P-1:0][TID_WIDTH_LP-1:0]       exec_fu_tid_o,
-    ////////////////////////////////////////////////////////////////////////////////
-    // ALU
-    ////////////////////////////////////////////////////////////////////////////////
-    output logic                                        int_fu_cmp_res_o,
     ////////////////////////////////////////////////////////////////////////////////
     // Branches
     ////////////////////////////////////////////////////////////////////////////////
@@ -72,26 +70,31 @@ module mrv1_exec
         ////////////////////////////////////////////////////////////////////////////////
         // ISSUE -> EXEC (ALU interface)
         ////////////////////////////////////////////////////////////////////////////////
-        .int_fu_rdy_o       (exec_fu_rdy_o[MRV_FU_TYPE_INT]),
-        .int_fu_req_i       (issue_fu_req_i[MRV_FU_TYPE_INT]),
-        .int_fu_opc_i       (issue_fu_opc_i),
-        .exec_src0_data_i   (exec_src0_data_i),
-        .exec_src1_data_i   (exec_src1_data_i),
-        .exec_itag_i        (exec_itag_i),
-        .exec_tid_i         (exec_tid_i),
-        .int_fu_done_o      (exec_fu_done_o[MRV_FU_TYPE_INT]),
-        .int_fu_res_o       (exec_fu_res_data_o[MRV_FU_TYPE_INT]),
-        .int_fu_cmp_res_o   (int_fu_cmp_res_o),
-        .int_fu_itag_o      (exec_fu_itag_o[MRV_FU_TYPE_INT]),
-        .int_fu_tid_o       (exec_fu_tid_o[MRV_FU_TYPE_INT]),
+        .int_fu_rdy_o           (exec_fu_rdy_o[MRV_FU_TYPE_INT]),
+        .int_fu_req_i           (issue_fu_req_i[MRV_FU_TYPE_INT]),
+        .int_fu_opc_i           (issue_fu_opc_i),
+        .int_fu_vec_mode_i      (issue_fu_vec_mode_i),
+        .int_fu_bmask0_i        ('0/*FIXME*/),
+        .int_fu_bmask1_i        ('0/*FIXME*/),
+        .int_fu_imm_vec_ext_i   ('0/*FIXME*/),
+        .exec_src0_data_i       (exec_src0_data_i),
+        .exec_src1_data_i       (exec_src1_data_i),
+        .exec_src2_data_i       (exec_src2_data_i),
+        .exec_pc_i              (exec_pc_i),
+        .exec_itag_i            (exec_itag_i),
+        .exec_tid_i             (exec_tid_i),
+        .int_fu_done_o          (exec_fu_done_o[MRV_FU_TYPE_INT]),
+        .int_fu_res_o           (exec_fu_res_data_o[MRV_FU_TYPE_INT]),
+        .int_fu_itag_o          (exec_fu_itag_o[MRV_FU_TYPE_INT]),
+        .int_fu_tid_o           (exec_fu_tid_o[MRV_FU_TYPE_INT]),
         ////////////////////////////////////////////////////////////////////////////////
         // Branches
         ////////////////////////////////////////////////////////////////////////////////
-        .b_is_branch_i      (b_is_branch_i),
-        .b_is_jump_i        (b_is_jump_i)
-        .b_pc_vld_o         (b_pc_vld_o),
-        .b_pc_o             (b_pc_o),
-        .b_tid_o            (b_tid_o)
+        .b_is_branch_i          (b_is_branch_i),
+        .b_is_jump_i            (b_is_jump_i),
+        .b_pc_vld_o             (b_pc_vld_o),
+        .b_pc_o                 (b_pc_o),
+        .b_tid_o                (b_tid_o)
     );
     ////////////////////////////////////////////////////////////////////////////////
     
@@ -143,7 +146,7 @@ module mrv1_exec
         .exec_itag_i                    (exec_itag_i),
         .exec_tid_i                     (exec_tid_i),
         .lsu_rdy_o                      (exec_fu_rdy_o[MRV_FU_TYPE_MEM]),
-        .lsu_req_vld_i                  (issue_fu_req_i[MRV_FU_TYPE_MEM]),
+        .lsu_req_i                      (issue_fu_req_i[MRV_FU_TYPE_MEM]),
         .lsu_req_w_en_i                 (lsu_w_en_w),
         .lsu_req_addr_base_i            (exec_src0_data_i),
         .lsu_req_addr_offset_i          (exec_src1_data_i),
@@ -155,7 +158,7 @@ module mrv1_exec
         ////////////////////////////////////////////////////////////////////////////////
         .dmem_req_vld_o                 (dmem_req_vld_o),
         .dmem_req_rdy_i                 (dmem_req_rdy_i),
-        .dmem_resp_err_i                (dmem_resp_err_i,
+        .dmem_resp_err_i                (dmem_resp_err_i),
         .dmem_req_addr_o                (dmem_req_addr_o),
         .dmem_req_w_en_o                (dmem_req_w_en_o),
         .dmem_req_w_be_o                (dmem_req_w_be_o),
@@ -167,8 +170,8 @@ module mrv1_exec
         ////////////////////////////////////////////////////////////////////////////////
         .lsu_done_o                     (exec_fu_done_o[MRV_FU_TYPE_MEM]),
         .lsu_wb_data_o                  (exec_fu_res_data_o[MRV_FU_TYPE_MEM]),
-        .lsu_itag_o                     (exec_itag_o[MRV_FU_TYPE_MEM]),
-        .lsu_tid_o                      (exec_tid_o[MRV_FU_TYPE_MEM])
+        .lsu_itag_o                     (exec_fu_itag_o[MRV_FU_TYPE_MEM]),
+        .lsu_tid_o                      (exec_fu_tid_o[MRV_FU_TYPE_MEM])
     );
     ////////////////////////////////////////////////////////////////////////////////
 
@@ -193,8 +196,8 @@ module mrv1_exec
         .sys_fu_rdy_o                   (exec_fu_rdy_o[MRV_FU_TYPE_SYS]),
         .sys_fu_res_o                   (exec_fu_res_data_o[MRV_FU_TYPE_SYS]),
         .sys_fu_done_o                  (exec_fu_res_data_o[MRV_FU_TYPE_SYS]),
-        .sys_fu_itag_o                  (exec_itag_o[MRV_FU_TYPE_SYS]),
-        .sys_fu_tid_o                   (exec_tid_o[MRV_FU_TYPE_SYS])
+        .sys_fu_itag_o                  (exec_fu_itag_o[MRV_FU_TYPE_SYS]),
+        .sys_fu_tid_o                   (exec_fu_tid_o[MRV_FU_TYPE_SYS]),
         ////////////////////////////////////////////////////////////////////////////////
         .th_ctl_vld_o                   (th_ctl_vld_o),
         .th_ctl_tid_o                   (th_ctl_tid_o),
@@ -202,5 +205,5 @@ module mrv1_exec
         .th_ctl_tspawn_pc_o             (th_ctl_tspawn_pc_o)
     );
     ////////////////////////////////////////////////////////////////////////////////
-);
+
 endmodule

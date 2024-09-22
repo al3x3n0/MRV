@@ -4,15 +4,19 @@ module mrv1_ifetch
     parameter PC_WIDTH_P = 32,
     parameter DATA_WIDTH_P = 32,
     parameter NUM_THREADS_P = 8,
+    parameter NUM_BARR_P = 8,
     parameter ifq_size_p = 3,
     ////////////////////////////////////////////////////////////////////////////////
     parameter ifq_addr_width_lp = $clog2(ifq_size_p),
-    parameter TID_WIDTH_LP = $clog(NUM_THREADS_P)
+    parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P),
+    parameter BARR_ID_WIDTH_LP = $clog2(NUM_BARR_P)
     ////////////////////////////////////////////////////////////////////////////////
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                clk_i,
     input  logic                                rst_i,
+    ////////////////////////////////////////////////////////////////////////////////
+    input  logic                                simt_en_i,
     ////////////////////////////////////////////////////////////////////////////////
     // IFETCH <-> IMEM interface
     ////////////////////////////////////////////////////////////////////////////////
@@ -42,7 +46,7 @@ module mrv1_ifetch
     input  logic [PC_WIDTH_P-1:0]               th_ctl_tspawn_pc_i,
     ////////////////////////////////////////////////////////////////////////////////
     input logic                                 th_ctl_barrier_vld_i,
-    input logic [barrier_id_width_lp-1:0]       th_ctl_barrier_id_i,
+    input logic [BARR_ID_WIDTH_LP-1:0]          th_ctl_barrier_id_i,
     input logic [TID_WIDTH_LP-1:0]              th_ctl_barrier_size_m1_i
 );
     ////////////////////////////////////////////////////////////////////////////////
@@ -99,13 +103,18 @@ module mrv1_ifetch
     // Thread Scheduler
     ////////////////////////////////////////////////////////////////////////////////
     mrv1_th_sched #(
-        .is_simt_master_p           (is_simt_master_p),
         .NUM_THREADS_P              (NUM_THREADS_P),
         .PC_WIDTH_P                 (PC_WIDTH_P)
     ) th_sched_i (
         ////////////////////////////////////////////////////////////////////////////////
         .clk_i                      (clk_i),
         .rst_i                      (rst_i),
+        ////////////////////////////////////////////////////////////////////////////////
+        .simt_en_i                  (simt_en_i),
+        ////////////////////////////////////////////////////////////////////////////////
+        .fetch_done_i               (/* FIXME */),
+        .fetch_tid_i                (/* FIXME */),
+        .fetch_pc_i                 (/* FIXME */),
         ////////////////////////////////////////////////////////////////////////////////
         .exec_tid_i                 (exec_tid_i),
         .exec_b_pc_vld_i            (exec_b_pc_vld_i),

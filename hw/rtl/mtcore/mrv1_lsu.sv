@@ -101,7 +101,7 @@ module mrv1_lsu #(
             req_signed_1_q <= lsu_req_signed_i;
             req_offset_1_q <= lsu_req_offset_w;
             req_unalgn_1_q <= unaligned_acc_w;
-            req_itag_1_q   <= lsu_itag_i;
+            req_itag_1_q   <= exec_itag_i;
         end
         else if (lsu_accept_w) begin
             req_w_en_0_q   <= lsu_req_w_en_i;
@@ -111,7 +111,7 @@ module mrv1_lsu #(
             req_addr_0_q   <= lsu_req_addr_algn_w;
             req_offset_0_q <= lsu_req_offset_w;
             req_unalgn_0_q <= unaligned_acc_w;
-            req_itag_0_q   <= lsu_itag_i;
+            req_itag_0_q   <= exec_itag_i;
         end
         else if (n_req_q != '0 & n_req_n_r == '0) begin
             req_w_en_1_q   <= req_w_en_0_q;
@@ -328,7 +328,7 @@ module mrv1_lsu #(
     always_comb begin
         if (dmem_req_vld_o)
             $display("w_en=%h addr=%h req_w_data=%h itag=%d",
-                dmem_req_w_en_o, dmem_req_addr_o, dmem_req_w_data_o, lsu_itag_i);
+                dmem_req_w_en_o, dmem_req_addr_o, dmem_req_w_data_o, exec_itag_i);
         if (dmem_resp_vld_i)
             $display("resp_data=%h n_resp=%d lsu_done_o=%d", dmem_resp_r_data_i, n_resp_q, lsu_done_o);
     end

@@ -1,3 +1,6 @@
+import xrv1_pkg::*;
+
+
 module mrv1_idecode #(
     ////////////////////////////////////////////////////////////////////////////////
     parameter PC_WIDTH_P = 32,
@@ -5,9 +8,9 @@ module mrv1_idecode #(
     parameter DATA_WIDTH_P = 32,
     parameter NUM_FU_P = "inv",
     parameter FU_OPC_WIDTH_P = "inv",
-    parameter rf_addr_width_p = 5
+    parameter rf_addr_width_p = 5,
     ////////////////////////////////////////////////////////////////////////////////
-
+    parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P)
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                        insn_vld_i,
@@ -37,7 +40,7 @@ module mrv1_idecode #(
     output logic [rf_addr_width_p-1:0]                  dec_rd_addr_o,
     ////////////////////////////////////////////////////////////////////////////////
     output logic                                        dec_b_is_branch_o,
-    outout logic                                        dec_b_is_jump_o
+    output logic                                        dec_b_is_jump_o
 );
     ////////////////////////////////////////////////////////////////////////////////
     wire insn_is_rv16_w = insn_i[1:0] != 2'b11;
@@ -74,6 +77,7 @@ module mrv1_idecode #(
         .insn_illegal_i             (insn_illegal_li),
         .insn_illegal_o             (insn_illegal_o),
         ////////////////////////////////////////////////////////////////////////////////
+        .dec_vld_o                  (dec_vld_o),
         .dec_pc_o                   (dec_pc_o),
         .dec_fu_req_o               (dec_fu_req_o),
         .dec_fu_opc_o               (dec_fu_opc_o),

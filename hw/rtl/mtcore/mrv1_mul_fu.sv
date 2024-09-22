@@ -22,7 +22,7 @@ module mrv1_mul_fu
     output logic [DATA_WIDTH_P-1:0]     mul_fu_res_o,
     output logic                        mul_fu_done_o,
     output logic [ITAG_WIDTH_P-1:0]     mul_fu_itag_o,
-    output logic [TID_WIDTH_LP-1:0]     mul_fu_tid_o,
+    output logic [TID_WIDTH_LP-1:0]     mul_fu_tid_o
 );
     /* Stub */
     assign mul_fu_rdy_o = 1'b0;
