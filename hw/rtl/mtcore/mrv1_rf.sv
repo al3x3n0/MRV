@@ -5,16 +5,16 @@ module mrv1_rf
     parameter NUM_THREADS_P = 8,
     parameter rf_addr_width_p = 5,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter tid_width_lp = $clog2(NUM_THREADS_P),
-    parameter rf_addr_width_lp = tid_width_lp + rf_addr_width_p,
-    parameter rf_size_lp = (1 << rf_addr_size_width_lp)
+    parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P),
+    parameter rf_addr_width_lp = TID_WIDTH_LP + rf_addr_width_p,
+    parameter rf_size_lp = (1 << rf_addr_width_lp)
     ////////////////////////////////////////////////////////////////////////////////
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                clk_i,
     input  logic                                rst_i,
     ////////////////////////////////////////////////////////////////////////////////
-    input  logic [tid_width_lp-1:0]             tid_i,
+    input  logic [TID_WIDTH_LP-1:0]             tid_i,
     ////////////////////////////////////////////////////////////////////////////////
     // Read port 0
     ////////////////////////////////////////////////////////////////////////////////
@@ -28,7 +28,7 @@ module mrv1_rf
     ////////////////////////////////////////////////////////////////////////////////
     // Write port 0
     ////////////////////////////////////////////////////////////////////////////////
-    input  logic [tid_width_lp-1:0]             rd_tid_i,
+    input  logic [TID_WIDTH_LP-1:0]             rd_tid_i,
     input  logic                                rd_w_en_i,
     input  logic [rf_addr_width_p-1:0]          rd_addr_i,
     input  logic [DATA_WIDTH_P-1:0]             rd_data_i

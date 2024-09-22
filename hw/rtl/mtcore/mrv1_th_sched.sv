@@ -8,9 +8,10 @@ module mrv1_th_sched
     parameter is_simt_master_p = 0,
     parameter PC_WIDTH_P = 32,
     parameter NUM_THREADS_P = 8,
-    parameter num_barriers_p = 8,
+    parameter NUM_BARR_P = 8,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P)
+    parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P),
+    parameter BARR_ID_WIDTH_LP = $clog2(NUM_BARR_P)
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                clk_i,
@@ -30,8 +31,8 @@ module mrv1_th_sched
     input  logic                                exec_b_pc_vld_i,
     input  logic [PC_WIDTH_P-1:0]               exec_b_pc_i,
     ////////////////////////////////////////////////////////////////////////////////
-    input  logic                                wstall_vld_i,
-    input  logic [TID_WIDTH_LP-1:0]             wstall_tid_i,
+    input  logic                                th_stall_vld_i,
+    input  logic [TID_WIDTH_LP-1:0]             th_stall_tid_i,
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                th_ctl_vld_i,
     input  logic [TID_WIDTH_LP-1:0]             th_ctl_tid_i,
@@ -39,7 +40,7 @@ module mrv1_th_sched
     input  logic [PC_WIDTH_P-1:0]               th_ctl_tspawn_pc_i,
     ////////////////////////////////////////////////////////////////////////////////
     input logic                                 th_ctl_barrier_vld_i,
-    input logic [barrier_id_width_lp-1:0]       th_ctl_barrier_id_i,
+    input logic [BARR_ID_WIDTH_LP-1:0]          th_ctl_barrier_id_i,
     input logic [TID_WIDTH_LP-1:0]              th_ctl_barrier_size_m1_i,
     ////////////////////////////////////////////////////////////////////////////////
     output logic                                sched_vld_o,
@@ -48,13 +49,13 @@ module mrv1_th_sched
 );
     ////////////////////////////////////////////////////////////////////////////////
     logic [NUM_THREADS_P-1:0]                                    active_threads_q, active_threads_n_q;
-    logic [NUM_THREADS_P-1:0]                                    sched_table_q, sched_table_n_q;
+    logic [NUM_THREADS_P-1:0]                                    sched_tbl_q, sched_tbl_n_q;
     logic [NUM_THREADS_P-1:0]                                    stalled_threads_q, stalled_threads_n_q;
     logic [NUM_THREADS_P-1:0][PC_WIDTH_P-1:0]                    thread_pcs_q;
     logic [NUM_THREADS_P-1:0]                                    use_tspawn_r;
     ////////////////////////////////////////////////////////////////////////////////
-    logic [num_barriers_p-1:0][NUM_THREADS_P-1:0]                barrier_stall_mask_q;
-    
+    logic [NUM_BARR_P-1:0][NUM_THREADS_P-1:0]                barrier_stall_mask_q;
+
     ////////////////////////////////////////////////////////////////////////////////
     // Thread Spawn/Stall
     ////////////////////////////////////////////////////////////////////////////////
@@ -66,33 +67,33 @@ module mrv1_th_sched
                 if (~active_threads_n_q[i]) begin
                     active_threads_n_q[i] = 1'b1;
                     use_tspawn_r[i] = 1'b1;
-                break;
+                    break;
+                end
             end
         end
         ////////////////////////////////////////////////////////////////////////////////
         stalled_threads_n_q = stalled_threads_q;
-        if (wstall_vld_i) begin
-            stalled_threads_n_q[wstall_tid_i] = 1'b1;
+        if (th_stall_vld_i) begin
+            stalled_threads_n_q[th_stall_tid_i] = 1'b1;
         end
         ////////////////////////////////////////////////////////////////////////////////
     end
-
-    wire [NUM_THREADS_P-1:0] ready_threads_w = active_threads_n_q & ~stalled_threads_n_q;
+    logic [NUM_THREADS_P-1:0] ready_threads_w = active_threads_n_q & ~stalled_threads_n_q;
 
     ////////////////////////////////////////////////////////////////////////////////
     // Scheduler Logic
     ////////////////////////////////////////////////////////////////////////////////
     always_comb begin
-        sched_table_n_q     = sched_table_q;
-        sched_vld_o         = 1'b0;
-        sched_pc_o          = 0;
-        sched_tid_o        = 0;
+        sched_tbl_n_q   = sched_tbl_q;
+        sched_vld_o     = 1'b0;
+        sched_pc_o      = 'b0;
+        sched_tid_o     = 'b0;
         for (int i = 0; i < NUM_THREADS_P; ++i) begin
-            if (ready_threads_w[i] && sched_table_n_q[i]) begin
+            if (ready_threads_w[i] && sched_tbl_n_q[i]) begin
                 sched_vld_o = 1'b1;
                 sched_pc_o = use_tspawn_r[i] ? th_ctl_tspawn_pc_i : thread_pcs_q[i];
                 sched_tid_o = TID_WIDTH_LP'(i);
-                sched_table_n_q[i] = 1'b0;
+                sched_tbl_n_q[i] = 1'b0;
                 break;
             end
         end
@@ -105,7 +106,6 @@ module mrv1_th_sched
             active_threads_q[0]         <= 1;   // Activating first thread
             sched_tbl_q[0]              <= 1;   // set first thread as ready
             stalled_threads_q           <= 0;
-            fetch_lock_q                <= 0;
 	        ////////////////////////////////////////////////////////////////////////////////
             for (int i = 1; i < NUM_THREADS_P; i++) begin
                 thread_pcs_q[i]         <= 0;
@@ -115,8 +115,8 @@ module mrv1_th_sched
             ////////////////////////////////////////////////////////////////////////////////
         end else begin
             ////////////////////////////////////////////////////////////////////////////////
-            if (wstall_vld_i) begin
-                stalled_threads_q[wstall_wid_i] <= 1'b1;
+            if (th_stall_vld_i) begin
+                stalled_threads_q[th_stall_tid_i] <= 1'b1;
             end
             ////////////////////////////////////////////////////////////////////////////////
             // Branch
@@ -127,7 +127,7 @@ module mrv1_th_sched
             end
             ////////////////////////////////////////////////////////////////////////////////
             active_threads_q    <= active_threads_n_q;
-	        sched_table_q       <= (|sched_tbl_n_q) ? sched_tbl_n_q : active_threads_n_q;
+	        sched_tbl_q       <= (|sched_tbl_n_q) ? sched_tbl_n_q : active_threads_n_q;
         end
     end
 

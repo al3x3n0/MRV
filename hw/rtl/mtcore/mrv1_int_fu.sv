@@ -16,10 +16,15 @@ module mrv1_int_fu
     input logic [DATA_WIDTH_P-1:0]      exec_src0_data_i,
     input logic [DATA_WIDTH_P-1:0]      exec_src1_data_i,
     input logic [DATA_WIDTH_P-1:0]      exec_src2_data_i,
+    input logic [PC_WIDTH_P-1:0]        exec_pc_i,
     input logic [ITAG_WIDTH_P-1:0]      exec_itag_i,
     input logic [TID_WIDTH_LP-1:0]      exec_tid_i,
     ////////////////////////////////////////////////////////////////////////////////
     input mrv_int_fu_op_e               int_fu_opc_i,
+    input mrv_vec_mode_e                int_fu_vec_mode_i,
+    input logic [4:0]                   int_fu_bmask0_i,
+    input logic [4:0]                   int_fu_bmask1_i,
+    input logic [1:0]                   int_fu_imm_vec_ext_i,
     input logic                         int_fu_req_i,
     output logic                        int_fu_rdy_o,
     output logic [DATA_WIDTH_P-1:0]     int_fu_res_o,
@@ -73,7 +78,7 @@ module mrv1_int_fu
     //////////////////////////////////////////////////////////////////////////////////////////
     // Partitioned Adder
     //////////////////////////////////////////////////////////////////////////////////////////
-    logic        adder_op_b_negate;
+    logic adder_op_b_negate;
     logic [DATA_WIDTH_P-1:0] adder_op_a, adder_op_b;
     logic [DATA_WIDTH_P+3:0] adder_in_a, adder_in_b;
     logic [DATA_WIDTH_P-1:0] adder_result;
@@ -87,7 +92,7 @@ module mrv1_int_fu
     };
 
     //////////////////////////////////////////////////////////////////////////////////////////
-    assign adder_op_a = (int_fu_opc_i == MRV_INT_FU_ABS) ? exec_src0_data_neg : exec_src0_data_i);
+    assign adder_op_a = (int_fu_opc_i == MRV_INT_FU_ABS) ? exec_src0_data_neg : exec_src0_data_i;
     assign adder_op_b = adder_op_b_negate ? exec_src1_data_neg : exec_src1_data_i;
     //////////////////////////////////////////////////////////////////////////////////////////
     // prepare carry
@@ -111,7 +116,7 @@ module mrv1_int_fu
         adder_in_b[27]    = 1'b0;
         adder_in_b[35:28] = adder_op_b[31:24];
 
-        if (adder_op_b_negate || (int_fu_opc_i inside { MRV_INT_FU_ABS, MRV_INT_FU_CLIP }) begin
+        if (adder_op_b_negate || int_fu_opc_i inside { MRV_INT_FU_ABS, MRV_INT_FU_CLIP }) begin
             // special case for subtractions and absolute number calculations
             adder_in_b[0] = 1'b1;
 
@@ -212,20 +217,35 @@ module mrv1_int_fu
     ////////////////////////////////////////////////////////////////////////////////
     // MRV_INT_FU_FL1 and MRV_INT_FU_CBL are used for the bit counting ops later
     ////////////////////////////////////////////////////////////////////////////////
-    assign shift_left = (int_fu_opc_i == MRV_INT_FU_SLL) || (int_fu_opc_i == MRV_INT_FU_BINS) ||
-                      (int_fu_opc_i == MRV_INT_FU_FL1) || (int_fu_opc_i == MRV_INT_FU_CLB)  ||
-                      (int_fu_opc_i == MRV_INT_FU_BREV);
+    assign shift_left = int_fu_opc_i inside {
+        MRV_INT_FU_SLL,
+        MRV_INT_FU_BINS,
+        MRV_INT_FU_FL1,
+        MRV_INT_FU_CLB,
+        MRV_INT_FU_BREV
+    };
 
     ////////////////////////////////////////////////////////////////////////////////
-    assign shift_use_round = (int_fu_opc_i == MRV_INT_FU_ADD)   || (int_fu_opc_i == MRV_INT_FU_SUB)   ||
-                           (int_fu_opc_i == MRV_INT_FU_ADDR)  || (int_fu_opc_i == MRV_INT_FU_SUBR)  ||
-                           (int_fu_opc_i == MRV_INT_FU_ADDU)  || (int_fu_opc_i == MRV_INT_FU_SUBU)  ||
-                           (int_fu_opc_i == MRV_INT_FU_ADDUR) || (int_fu_opc_i == MRV_INT_FU_SUBUR);
+    assign shift_use_round = int_fu_opc_i inside {
+        MRV_INT_FU_SUB,
+        MRV_INT_FU_SUBR,
+        MRV_INT_FU_SUBU,
+        MRV_INT_FU_SUBUR,
+        MRV_INT_FU_ADD,
+        MRV_INT_FU_ADDR,
+        MRV_INT_FU_ADDU,
+        MRV_INT_FU_ADDUR
+    };
 
     ////////////////////////////////////////////////////////////////////////////////
-    assign shift_arithmetic = (int_fu_opc_i == MRV_INT_FU_SRA)  || (int_fu_opc_i == MRV_INT_FU_BEXT) ||
-                            (int_fu_opc_i == MRV_INT_FU_ADD)  || (int_fu_opc_i == MRV_INT_FU_SUB)  ||
-                            (int_fu_opc_i == MRV_INT_FU_ADDR) || (int_fu_opc_i == MRV_INT_FU_SUBR);
+    assign shift_arithmetic = int_fu_opc_i inside {
+        MRV_INT_FU_SRA,
+        MRV_INT_FU_BEXT,
+        MRV_INT_FU_ADD,
+        MRV_INT_FU_ADDR,
+        MRV_INT_FU_SUB,
+        MRV_INT_FU_SUBR
+    };
 
     ////////////////////////////////////////////////////////////////////////////////
     // choose the bit reversed or the normal input for shift operand a
@@ -234,7 +254,7 @@ module mrv1_int_fu
                           (shift_use_round ? adder_round_result : exec_src0_data_i);
     assign shift_amt_int = shift_use_round ? shift_amt_norm :
                             (shift_left ? shift_amt_left : shift_amt);
-    assign shift_amt_norm = {4{3'b000, bmask_b_i}};
+    assign shift_amt_norm = {4{3'b000, int_fu_bmask1_i}};
 
     ////////////////////////////////////////////////////////////////////////////////
     // right shifts, we let the synthesizer optimize this
@@ -300,22 +320,12 @@ module mrv1_int_fu
     logic [ 3:0] cmp_signed;
     logic [ 3:0] is_equal_vec;
     logic [ 3:0] is_greater_vec;
-    logic [31:0] exec_src1_data_eq;
-    logic        is_equal_clip;
 
     //////////////////////////////////////////////////////////////////
     //second == comparator for CLIP instructions
     //////////////////////////////////////////////////////////////////
-    always_comb begin
-        exec_src1_data_eq = exec_src1_data_neg;
-        if (int_fu_opc_i == MRV_INT_FU_CLIPU) begin
-            exec_src1_data_eq = '0;
-        end
-        else begin
-            exec_src1_data_eq = exec_src1_data_neg;
-        end
-    end
-    assign is_equal_clip = exec_src0_data_i == exec_src1_data_eq;
+    logic [DATA_WIDTH_P-1:0] exec_src1_data_eq = int_fu_opc_i == MRV_INT_FU_CLIPU ? '0 : exec_src1_data_neg;
+    logic is_equal_clip = exec_src0_data_i == exec_src1_data_eq;
     //////////////////////////////////////////////////////////////////
     always_comb begin
         cmp_signed = 4'b0;
@@ -428,8 +438,12 @@ module mrv1_int_fu
     logic [31:0] minmax_b;
     //////////////////////////////////////////////////////////////////
     assign minmax_b = (int_fu_opc_i == MRV_INT_FU_ABS) ? adder_result : exec_src1_data_i;
-    assign do_min   = (int_fu_opc_i == MRV_INT_FU_MIN)  || (int_fu_opc_i == MRV_INT_FU_MINU) ||
-        (int_fu_opc_i == MRV_INT_FU_CLIP) || (int_fu_opc_i == MRV_INT_FU_CLIPU);
+    assign do_min = int_fu_opc_i inside {
+        MRV_INT_FU_MIN,
+        MRV_INT_FU_MINU,
+        MRV_INT_FU_CLIP,
+        MRV_INT_FU_CLIPU
+    };
     assign sel_minmax[3:0] = is_greater ^ {4{do_min}};
     assign result_minmax[31:24] = (sel_minmax[3] == 1'b1) ? exec_src0_data_i[31:24] : minmax_b[31:24];
     assign result_minmax[23:16] = (sel_minmax[2] == 1'b1) ? exec_src0_data_i[23:16] : minmax_b[23:16];
@@ -444,20 +458,12 @@ module mrv1_int_fu
     always_comb begin
         clip_result = result_minmax;
         if (int_fu_opc_i == MRV_INT_FU_CLIPU) begin
-            if (exec_src0_data_i[31] || is_equal_clip) begin
-                clip_result = '0;
-            end else begin
-                clip_result = result_minmax;
-            end
+            clip_result = (exec_src0_data_i[31] || is_equal_clip) ? '0 : result_minmax;
         end else begin
             //////////////////////////////////////////////////////////////////
             //CLIP
             //////////////////////////////////////////////////////////////////
-            if (adder_result_expanded[36] || is_equal_clip) begin
-                clip_result = exec_src1_data_neg;
-            end else begin
-                clip_result = result_minmax;
-            end
+            clip_result = (adder_result_expanded[36] || is_equal_clip) ? exec_src1_data_neg : result_minmax;
         end
     end
     //////////////////////////////////////////////////////////////////
@@ -542,7 +548,7 @@ module mrv1_int_fu
                 unique case (int_fu_vec_mode_i)
                     MRV_VEC_MODE8: begin
                         shuffle_reg0_sel = 2'b00;
-                        unique case (imm_vec_ext_i)
+                        unique case (int_fu_imm_vec_ext_i)
                         2'b00: begin
                             shuffle_reg_sel[3:0] = 4'b1110;
                         end
@@ -559,10 +565,10 @@ module mrv1_int_fu
                     end
                     MRV_VEC_MODE16: begin
                         shuffle_reg0_sel   = 2'b01;
-                        shuffle_reg_sel[3] = ~imm_vec_ext_i[0];
-                        shuffle_reg_sel[2] = ~imm_vec_ext_i[0];
-                        shuffle_reg_sel[1] = imm_vec_ext_i[0];
-                        shuffle_reg_sel[0] = imm_vec_ext_i[0];
+                        shuffle_reg_sel[3] = ~int_fu_imm_vec_ext_i[0];
+                        shuffle_reg_sel[2] = ~int_fu_imm_vec_ext_i[0];
+                        shuffle_reg_sel[1] = int_fu_imm_vec_ext_i[0];
+                        shuffle_reg_sel[0] = int_fu_imm_vec_ext_i[0];
                     end
                     default: ;
                 endcase
@@ -581,16 +587,16 @@ module mrv1_int_fu
             MRV_INT_FU_EXT: begin
                 unique case (int_fu_vec_mode_i)
                     MRV_VEC_MODE8: begin
-                        shuffle_byte_sel[3] = imm_vec_ext_i[1:0];
-                        shuffle_byte_sel[2] = imm_vec_ext_i[1:0];
-                        shuffle_byte_sel[1] = imm_vec_ext_i[1:0];
-                        shuffle_byte_sel[0] = imm_vec_ext_i[1:0];
+                        shuffle_byte_sel[3] = int_fu_imm_vec_ext_i[1:0];
+                        shuffle_byte_sel[2] = int_fu_imm_vec_ext_i[1:0];
+                        shuffle_byte_sel[1] = int_fu_imm_vec_ext_i[1:0];
+                        shuffle_byte_sel[0] = int_fu_imm_vec_ext_i[1:0];
                     end
                     MRV_VEC_MODE16: begin
-                        shuffle_byte_sel[3] = {imm_vec_ext_i[0], 1'b1};
-                        shuffle_byte_sel[2] = {imm_vec_ext_i[0], 1'b1};
-                        shuffle_byte_sel[1] = {imm_vec_ext_i[0], 1'b1};
-                        shuffle_byte_sel[0] = {imm_vec_ext_i[0], 1'b0};
+                        shuffle_byte_sel[3] = {int_fu_imm_vec_ext_i[0], 1'b1};
+                        shuffle_byte_sel[2] = {int_fu_imm_vec_ext_i[0], 1'b1};
+                        shuffle_byte_sel[1] = {int_fu_imm_vec_ext_i[0], 1'b1};
+                        shuffle_byte_sel[0] = {int_fu_imm_vec_ext_i[0], 1'b0};
                     end
                     default: ;
                 endcase
@@ -718,8 +724,8 @@ module mrv1_int_fu
     logic [ 5:0] bitop_result;  // result of all bitop operations muxed together
     /////////////////////////////////////////////////////////////////////
     mrv1_popcnt popcnt_i (
-        .in_i    (exec_src0_data_i),
-        .result_o(cnt_result)
+        .in_i       (exec_src0_data_i),
+        .result_o   (cnt_result)
     );
     ////////////////////////////////////////////////
     always_comb begin
@@ -746,10 +752,12 @@ module mrv1_int_fu
     end
     /////////////////////////////////////////////////////////////////////////////////
 
-    cv32e40p_ff_one ff_one_i (
-        .in_i       (ff_input),
-        .first_one_o(ff1_result),
-        .no_ones_o  (ff_no_one)
+    xrv_ff_one #(
+        .DATA_WIDTH_P   (DATA_WIDTH_P)
+    ) ff_one_i (
+        .in_i           (ff_input),
+        .first_one_o    (ff1_result),
+        .no_ones_o      (ff_no_one)
     );
 
     /////////////////////////////////////////////////////////////////////////////////
@@ -793,12 +801,12 @@ module mrv1_int_fu
     // construct bit mask for insert/extract/bclr/bset
     // bmask looks like this 00..0011..1100..00
     /////////////////////////////////////////////////////////////////////////////////
-    assign bmask_first       = {32'hFFFFFFFE} << bmask_a_i;
-    assign bmask             = (~bmask_first) << bmask_b_i;
+    assign bmask_first       = {32'hFFFFFFFE} << int_fu_bmask0_i;
+    assign bmask             = (~bmask_first) << int_fu_bmask1_i;
     assign bmask_inv         = ~bmask;
     assign bextins_and       = (int_fu_opc_i == MRV_INT_FU_BINS) ? exec_src2_data_i : {32{extract_sign}};
     assign extract_is_signed = (int_fu_opc_i == MRV_INT_FU_BEXT);
-    assign extract_sign      = extract_is_signed & shift_result[bmask_a_i];
+    assign extract_sign      = extract_is_signed & shift_result[int_fu_bmask0_i];
     assign bextins_result    = (bmask & shift_result) | (bextins_and & bmask_inv);
     assign bclr_result       = exec_src0_data_i & bmask_inv;
     assign bset_result       = exec_src0_data_i | bmask;
@@ -813,7 +821,7 @@ module mrv1_int_fu
     logic [31:0] reverse_result;
     logic [ 1:0] radix_mux_sel;
     /////////////////////////////////////////////////////////////////////////////////
-    assign radix_mux_sel = bmask_a_i[1:0];
+    assign radix_mux_sel = int_fu_bmask0_i[1:0];
     generate
         /////////////////////////////////////////////////////////////////////////////////
         // radix-2 bit reverse
@@ -968,11 +976,11 @@ module mrv1_int_fu
     // Conditional branch handling
     ////////////////////////////////////////////////////////////////////////////////
     assign b_pc_vld_o = int_fu_req_i & b_is_branch_i & ~comparison_result_w;
-    assign b_pc_o = next_pc_i;
+    assign b_pc_o = exec_pc_i + exec_src0_data_i;
     ////////////////////////////////////////////////////////////////////////////////
     always_comb begin
         if (int_fu_req_i & b_is_branch_i) begin
-            $display("next_pc_i=%h taken=%d", next_pc_i, comparison_result_w);
+            $display("next_pc_i=%h taken=%d", b_pc_o, comparison_result_w);
         end
     end
     ////////////////////////////////////////////////////////////////////////////////
