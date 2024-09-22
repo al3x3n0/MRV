@@ -1,12 +1,18 @@
+#include <string>
+
 #include "xrv1_top.hpp"
+
+// verilator includes
 #include "Vxrv1_sim_top.h"
-#include "Vxrv1_sim_top__Syms.h"
 
 xrv1_top::xrv1_top(sc_module_name name) : sc_module(name)
 {
     m_rtl = new Vxrv1_sim_top("Vxrv1_sim_top");
 
-    auto* scope = svGetScopeFromName("tb.dut.Vxrv1_sim_top.xrv1_sim_top");
+    std::string scope_name{"tb.dut."};
+    scope_name += std::string(VERILATOR_PREFIX) + "." + std::string(TOP_MODULE);
+
+    auto* scope = svGetScopeFromName(scope_name.c_str());
     assert(scope);
     svSetScope(scope);
 
