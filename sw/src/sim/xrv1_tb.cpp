@@ -1,12 +1,9 @@
 #include "xrv1_tb.hpp"
 #include "elf_loader.hpp"
-
-#include "Vxrv1_sim_top.h"
-#include "Vxrv1_sim_top_xrv1_core.h"
-#include "Vxrv1_sim_top__Syms.h"
-
 #include "isa_sim/riscv_inst_dump.h"
 
+// verilator includes
+#include "Vxrv1_sim_top.h"
 
 xrv1_tb::xrv1_tb(sc_module_name name, const std::string elf_filename, uint64_t cycle_count) :
     sc_module(name),

@@ -103,10 +103,14 @@ package mrv1_pkg;
     } mrv_int_fu_op_e;
 
     ////////////////////////////////////////////////////////////////////////////////
+    // TODO: review this part
+    // added dummy value as a crutch to satisfy verilator
     localparam MRV_MUL_FU_OP_WIDTH = 4;
     typedef enum bit [MRV_MUL_FU_OP_WIDTH-1:0] {
         MRV_MUL_FUL_MUL = 4'b0000
+
     } mrv_mul_fu_op_e;
+    //
 
     ////////////////////////////////////////////////////////////////////////////////
     localparam MRV_SYS_FU_OP_WIDTH = 7;

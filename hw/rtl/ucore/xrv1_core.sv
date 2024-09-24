@@ -779,9 +779,9 @@ module xrv1_core
     // Verification functions
     ////////////////////////////////////////////////////////////////////////////////
 
-    function [0:0] get_imem_resp_vld;
+    function [7:0] get_imem_resp_vld;
         /*verilator public*/
-        get_imem_resp_vld = imem_resp_vld_i;
+        get_imem_resp_vld = 8'(imem_resp_vld_i);
     endfunction
 
     function [31:0] get_imem_resp_data;
@@ -789,9 +789,9 @@ module xrv1_core
         get_imem_resp_data = imem_resp_data_i;
     endfunction
 
-    function [0:0] get_imem_req_vld;
+    function [7:0] get_imem_req_vld;
         /*verilator public*/
-        get_imem_req_vld = imem_req_vld_o;
+        get_imem_req_vld = 8'(imem_req_vld_o);
     endfunction
 
     function [31:0] get_imem_req_addr;
@@ -809,9 +809,9 @@ module xrv1_core
         get_if_dec_insn_pc = ifetch_insn_pc_q;
     endfunction
 
-    function [0:0] get_if_dec_insn_vld;
+    function [7:0] get_if_dec_insn_vld;
         /*verilator public*/
-        get_if_dec_insn_vld = ifetch_insn_vld_q;
+        get_if_dec_insn_vld = 8'(ifetch_insn_vld_q);
     endfunction
 
     function [31:0] get_ifetch_insn_data;
@@ -819,9 +819,9 @@ module xrv1_core
         get_ifetch_insn_data = ifetch_insn_data_lo;
     endfunction
 
-    function [0:0] get_ifetch_insn_vld;
+    function [7:0] get_ifetch_insn_vld;
         /*verilator public*/
-        get_ifetch_insn_vld = ifetch_insn_vld_lo;
+        get_ifetch_insn_vld = 8'(ifetch_insn_vld_lo);
     endfunction
 
     function [31:0] get_ifetch_insn_pc;
@@ -829,9 +829,9 @@ module xrv1_core
         get_ifetch_insn_pc = ifetch_insn_pc_lo;
     endfunction
 
-    function [rf_addr_width_p-1:0] get_wb_rd_addr;
+    function [7:0] get_wb_rd_addr;
         /*verilator public*/
-        get_wb_rd_addr = wb_rd_addr_lo;
+        get_wb_rd_addr = 8'(wb_rd_addr_lo);
     endfunction
 
     function [31:0] get_wb_data;
@@ -839,19 +839,19 @@ module xrv1_core
         get_wb_data = wb_data_lo;
     endfunction
 
-    function [0:0] get_wb_data_vld;
+    function [7:0] get_wb_data_vld;
         /*verilator public*/
-        get_wb_data_vld = wb_data_vld_lo;
+        get_wb_data_vld = {7'b0, wb_data_vld_lo};
     endfunction
 
-    function [0:0] get_idecode_issue_vld;
+    function [7:0] get_idecode_issue_vld;
         /*verilator public*/
-        get_idecode_issue_vld = idecode_issue_vld_lo;
+        get_idecode_issue_vld = {7'b0, idecode_issue_vld_lo};
     endfunction
 
-    function [ITAG_WIDTH_P-1:0] get_idecode_itag;
+    function [7:0] get_idecode_itag;
         /*verilator public*/
-        get_idecode_itag = idecode_itag_lo;
+        get_idecode_itag = 8'(idecode_itag_lo);
     endfunction
 
     function [7:0] get_ret_retire_cnt;
@@ -859,9 +859,9 @@ module xrv1_core
         get_ret_retire_cnt = 8'(ret_retire_cnt_lo);
     endfunction
 
-    function [ITAG_WIDTH_P-1:0] get_iq_retire_itag;
+    function [7:0] get_iq_retire_itag;
         /*verilator public*/
-        get_iq_retire_itag = iq_retire_itag_lo;
+        get_iq_retire_itag = 8'(iq_retire_itag_lo);
     endfunction
 
 /*
