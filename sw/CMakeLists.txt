@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(verilator)
 
+option(ENABLE_SIMULATION_MODE "Enable verilator simulation mode" ON)
+
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
@@ -47,6 +49,9 @@ set(XRV1_TB_SRC
 
 add_executable(${OUTPUT_BINARY} ${XRV1_TB_SRC})
 
+# Extra args to pass to verilator
+set(VERILATOR_EXTRA_ARGS "")
+
 # For available options see:
 # - https://verilator.org/guide/latest/verilating.html#verilate-in-cmake
 # - https://veripool.org/guide/latest/exe_verilator.html
@@ -59,6 +64,7 @@ verilate(${OUTPUT_BINARY}
     TOP_MODULE "${DESIGN_TOP_MODULE_NAME}"
     PREFIX "${VERILATOR_PREFIX_NAME}"
     SOURCES ${XRV1_SV_SRC}
+    VERILATOR_ARGS "${VERILATOR_EXTRA_ARGS}"
     )
 
 verilator_link_systemc(${OUTPUT_BINARY})
