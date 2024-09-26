@@ -1,7 +1,8 @@
 module xrv1_ifetch
 #(
     parameter ifq_size_p = 3,
-    parameter ifq_addr_width_lp = $clog2(ifq_size_p)
+    parameter ifq_addr_width_lp = $clog2(ifq_size_p),
+    parameter ifq_default_reset_addr
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input logic                                 clk_i,
@@ -82,7 +83,7 @@ module xrv1_ifetch
     ////////////////////////////////////////////////////////////////////////////////
     always_comb begin
         if (rst_down_i)
-            fetch_addr_r = 'h2000;
+            fetch_addr_r = ifq_default_reset_addr;
         else if (exec_b_pc_vld_i)
             fetch_addr_r = exec_b_pc_i;
         else if (dec_j_pc_vld_i)
@@ -97,7 +98,7 @@ module xrv1_ifetch
     ////////////////////////////////////////////////////////////////////////////////
     always_ff @(posedge clk_i) begin
         if (rst_i)
-            fetch_addr_q <= 'h2000;
+            fetch_addr_q <= ifq_default_reset_addr;
         else if (exec_b_pc_vld_i)
             fetch_addr_q <= exec_b_pc_i;
         else if (dec_j_pc_vld_i)

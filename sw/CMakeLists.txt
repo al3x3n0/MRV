@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(verilator)
 
 option(ENABLE_SIMULATION_MODE "Enable verilator simulation mode" ON)
+option(CPU_RESET_ADDRESS "Set CPU reset address" OFF)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -57,6 +58,11 @@ if (ENABLE_SIMULATION_MODE)
     list(APPEND VERILATOR_EXTRA_ARGS "-DSIM_ENABLED=1")
 endif ()
 
+# if cpu reset address option is set, add such define for verilator
+if (CPU_RESET_ADDRESS)
+    list(APPEND VERILATOR_EXTRA_ARGS "-DCPU_RESET_ADDRESS='h${CPU_RESET_ADDRESS}")
+endif ()
+
 # For available options see:
 # - https://verilator.org/guide/latest/verilating.html#verilate-in-cmake
 # - https://veripool.org/guide/latest/exe_verilator.html
@@ -70,6 +76,7 @@ verilate(${OUTPUT_BINARY}
     PREFIX "${VERILATOR_PREFIX_NAME}"
     SOURCES ${XRV1_SV_SRC}
     VERILATOR_ARGS "${VERILATOR_EXTRA_ARGS}"
+    INCLUDE_DIRS "../hw/"
     )
 
 verilator_link_systemc(${OUTPUT_BINARY})

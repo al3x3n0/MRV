@@ -2,6 +2,7 @@ module xrv1_core
 #(
     parameter ITAG_WIDTH_P = 2,
     parameter DATA_WIDTH_P = 32,
+    parameter CORE_RESET_ADDR = 'h2000,
     parameter rf_addr_width_p = 5,
     ////////////////////////////////////////////////////////////////////////////////
     parameter iqueue_size_lp = (1 << ITAG_WIDTH_P),
@@ -223,7 +224,7 @@ module xrv1_core
     ////////////////////////////////////////////////////////////////////////////////
     // Instruction fetch unit
     ////////////////////////////////////////////////////////////////////////////////
-    xrv1_ifetch ifetch (
+    xrv1_ifetch #(.ifq_default_reset_addr(CORE_RESET_ADDR)) ifetch (
         ////////////////////////////////////////////////////////////////////////////////
         .clk_i                      (clk_i),
         .rst_i                      (rst_i),
