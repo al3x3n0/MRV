@@ -52,6 +52,11 @@ add_executable(${OUTPUT_BINARY} ${XRV1_TB_SRC})
 # Extra args to pass to verilator
 set(VERILATOR_EXTRA_ARGS "")
 
+# if simulation option is enabled, add such define for verilator
+if (ENABLE_SIMULATION_MODE)
+    list(APPEND VERILATOR_EXTRA_ARGS "-DSIM_ENABLED=1")
+endif ()
+
 # For available options see:
 # - https://verilator.org/guide/latest/verilating.html#verilate-in-cmake
 # - https://veripool.org/guide/latest/exe_verilator.html

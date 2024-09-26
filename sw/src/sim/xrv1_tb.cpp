@@ -13,6 +13,7 @@ xrv1_tb::xrv1_tb(sc_module_name name, const std::string elf_filename, uint64_t c
     SC_CTHREAD(process, clk);
 
     m_dut = new xrv1_top("dut");
+    m_ctx = new VerilatedContext;
     m_dut->clk_i(clk);
     m_dut->rst_i(rst_i);
 }
@@ -38,9 +39,10 @@ void xrv1_tb::process() {
     uint32_t icnt = 0;
     uint32_t ccnt = 0;
 
+
     while (true) {
         cycle_count += 1;
-        if (cycle_count >= m_cycle_count && m_cycle_count != -1)
+        if ((cycle_count >= m_cycle_count && m_cycle_count != -1) || m_ctx->gotFinish())
             break;
 
         if (m_dut->get_imem_resp_vld()) {

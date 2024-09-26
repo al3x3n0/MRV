@@ -16,6 +16,7 @@ public:
     sc_signal<bool> rst_i;
 
     xrv1_top* m_dut = nullptr;
+    VerilatedContext* m_ctx = nullptr;
 
     SC_HAS_PROCESS(xrv1_tb);
     xrv1_tb(sc_module_name name, const std::string elf_filename, uint64_t cycle_count);
