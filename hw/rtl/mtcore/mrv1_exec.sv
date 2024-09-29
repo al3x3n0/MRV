@@ -195,7 +195,7 @@ module mrv1_exec
         .sys_fu_req_i                   (issue_fu_req_i[MRV_FU_TYPE_SYS]),
         .sys_fu_rdy_o                   (exec_fu_rdy_o[MRV_FU_TYPE_SYS]),
         .sys_fu_res_o                   (exec_fu_res_data_o[MRV_FU_TYPE_SYS]),
-        .sys_fu_done_o                  (exec_fu_res_data_o[MRV_FU_TYPE_SYS]),
+        .sys_fu_done_o                  (exec_fu_done_o[MRV_FU_TYPE_SYS]),
         .sys_fu_itag_o                  (exec_fu_itag_o[MRV_FU_TYPE_SYS]),
         .sys_fu_tid_o                   (exec_fu_tid_o[MRV_FU_TYPE_SYS]),
         ////////////////////////////////////////////////////////////////////////////////

@@ -9,6 +9,7 @@ module mrv1_ifetch
     ////////////////////////////////////////////////////////////////////////////////
     parameter ifq_addr_width_lp = $clog2(ifq_size_p),
     parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P),
+    parameter IMEM_TAG_WIDTH_P = TID_WIDTH_LP,
     parameter BARR_ID_WIDTH_LP = $clog2(NUM_BARR_P)
     ////////////////////////////////////////////////////////////////////////////////
 ) (
@@ -23,7 +24,9 @@ module mrv1_ifetch
     output logic                                imem_req_vld_o,
     input  logic                                imem_req_rdy_i,
     output logic [31:0]                         imem_req_addr_o,
+    output logic [IMEM_TAG_WIDTH_P-1:0]         imem_req_tag_o,
     input  logic                                imem_resp_vld_i,
+    input  logic [IMEM_TAG_WIDTH_P-1:0]         imem_resp_tag_i,
     input  logic [31:0]                         imem_resp_data_i,
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                fetch_en_i,
@@ -74,8 +77,14 @@ module mrv1_ifetch
     logic [PC_WIDTH_P-1:0]          ifq_pc_lo;
     logic [TID_WIDTH_LP-1:0]        ifq_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
+    logic ifq_enqueue_li; /* FIXME */
+    logic ifq_dequeue_li;
+    logic ifq_empty_lo;
+    logic ifq_full_lo;
+    ////////////////////////////////////////////////////////////////////////////////
     mrv1_ifbuf #(
-        .NUM_THREADS_P (NUM_THREADS_P)
+        .NUM_THREADS_P              (NUM_THREADS_P),
+        .PC_WIDTH_P                 (PC_WIDTH_P)
     ) ifq_i (
         ////////////////////////////////////////////////////////////////////////////////
         .clk_i                      (clk_i),
@@ -86,8 +95,8 @@ module mrv1_ifetch
         ////////////////////////////////////////////////////////////////////////////////
         .fetch_data_vld_i           (imem_resp_vld_i),
         .fetch_data_i               (imem_resp_data_i),
-        .fetch_pc_i                 (fetch_pc_q),
-        .fetch_tid_i                (fetch_tid_q),
+        .fetch_pc_i                 (fetch_pc_q /* FIXME */),
+        .fetch_tid_i                (imem_resp_tag_i),
         ////////////////////////////////////////////////////////////////////////////////
         .fetch_data_vld_o           (ifetch_insn_vld_o),
         .fetch_data_o               (ifetch_insn_data_o),

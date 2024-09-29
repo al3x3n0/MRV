@@ -43,9 +43,9 @@ module mrv1_idecoder
     wire [2:0]  func3_w     = insn_i[14:12];
     wire [4:0]  opcode_w    = insn_i[6:2];
     ////////////////////////////////////////////////////////////////////////////////
-    wire dec_rs0_addr       = insn_i[19:15];
-    wire dec_rs1_addr       = insn_i[24:20];
-    wire dec_rd_addr        = insn_i[11:7];
+    wire [rf_addr_width_p-1:0] dec_rs0_addr       = insn_i[19:15];
+    wire [rf_addr_width_p-1:0] dec_rs1_addr       = insn_i[24:20];
+    wire [rf_addr_width_p-1:0] dec_rd_addr        = insn_i[11:7];
     ////////////////////////////////////////////////////////////////////////////////
     wire rs0_x0_w = dec_rs0_addr == '0;
     wire rs1_x0_w = dec_rs1_addr == '0;
@@ -185,11 +185,11 @@ module mrv1_idecoder
                 else if (func7_w == 7'd1) begin
                     if (func3_w[2]) begin
                         dec_fu_req_o[MRV_FU_TYPE_DIV] = 1'b1;
-                        dec_fu_opc_o = func3_w[1:0];
+                        dec_fu_opc_o = FU_OPC_WIDTH_P'(func3_w[1:0]);
                     end
                     else begin
                         dec_fu_req_o[MRV_FU_TYPE_MUL] = 1'b1;
-                        dec_fu_opc_o = func3_w[1:0];
+                        dec_fu_opc_o = FU_OPC_WIDTH_P'(func3_w[1:0]);
                     end
                 end
                 else begin
@@ -233,7 +233,7 @@ module mrv1_idecoder
                 lsu_size_r = func3_w[1:0];
                 lsu_sign_r = ~func3_w[2];
                 dec_fu_req_o[MRV_FU_TYPE_MEM] = 1'b1;
-                dec_fu_opc_o = {lsu_sign_r, lsu_size_r, lsu_w_en_r};
+                dec_fu_opc_o = FU_OPC_WIDTH_P'({lsu_sign_r, lsu_size_r, lsu_w_en_r});
             end
             ////////////////////////////////////////////////////////////////////////////////
             XRV_STORE: begin
@@ -245,7 +245,7 @@ module mrv1_idecoder
                 lsu_w_en_r = 1'b1;
                 lsu_size_r = func3_w[1:0];
                 dec_fu_req_o[MRV_FU_TYPE_MEM] = 1'b1;
-                dec_fu_opc_o = {1'b0, lsu_size_r, lsu_w_en_r};
+                dec_fu_opc_o = FU_OPC_WIDTH_P'({1'b0, lsu_size_r, lsu_w_en_r});
             end
             ////////////////////////////////////////////////////////////////////////////////
             XRV_FENCE: begin
@@ -261,13 +261,13 @@ module mrv1_idecoder
                     dec_src0_sel_o = func3_w[2] ? XRV_SRC0_IMM : XRV_SRC0_RS0;
                     dec_rs0_vld_o  = ~func3_w[2];
                     if (func3_w[1:0] == 2'b01)
-                        dec_fu_opc_o = XRV_CSR_WRITE;
+                        dec_fu_opc_o = FU_OPC_WIDTH_P'(XRV_CSR_WRITE);
                     else if (func3_w[1:0] == 2'b10 & ~rs0_x0_w)
-                        dec_fu_opc_o = XRV_CSR_SET;
+                        dec_fu_opc_o = FU_OPC_WIDTH_P'(XRV_CSR_SET);
                     else if (func3_w[1:0] == 2'b11 & ~rs0_x0_w)
-                        dec_fu_opc_o = XRV_CSR_CLR;
+                        dec_fu_opc_o = FU_OPC_WIDTH_P'(XRV_CSR_CLR);
                     else
-                        dec_fu_opc_o = XRV_CSR_READ;
+                        dec_fu_opc_o = FU_OPC_WIDTH_P'(XRV_CSR_READ);
                 end
             end
             ////////////////////////////////////////////////////////////////////////////////

@@ -33,7 +33,8 @@ module xrv_ff_one #(
 
   localparam NUM_LEVELS = $clog2(DATA_WIDTH_P);
 
-  logic [          DATA_WIDTH_P-1:0][NUM_LEVELS-1:0] index_lut;
+  /* verilator lint_off UNOPTFLAT */
+  logic [DATA_WIDTH_P-1:0][NUM_LEVELS-1:0]  index_lut;
   logic [2**NUM_LEVELS-1:0]                 sel_nodes;
   logic [2**NUM_LEVELS-1:0][NUM_LEVELS-1:0] index_nodes;
 
@@ -45,7 +46,7 @@ module xrv_ff_one #(
   generate
     genvar j;
     for (j = 0; j < DATA_WIDTH_P; j++) begin : gen_index_lut
-      assign index_lut[j] = $unsigned(j);
+      assign index_lut[j] = $unsigned(NUM_LEVELS'(j));
     end
   endgenerate
 

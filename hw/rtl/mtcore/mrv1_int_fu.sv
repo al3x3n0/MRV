@@ -119,7 +119,6 @@ module mrv1_int_fu
         if (adder_op_b_negate || int_fu_opc_i inside { MRV_INT_FU_ABS, MRV_INT_FU_CLIP }) begin
             // special case for subtractions and absolute number calculations
             adder_in_b[0] = 1'b1;
-
             case (int_fu_vec_mode_i)
                 MRV_VEC_MODE16: begin
                     adder_in_b[18] = 1'b1;
@@ -129,6 +128,7 @@ module mrv1_int_fu
                     adder_in_b[18] = 1'b1;
                     adder_in_b[27] = 1'b1;
                 end
+                default:;
             endcase
         end else begin
             // take care of partitioning the adder for the addition case
@@ -141,6 +141,7 @@ module mrv1_int_fu
                     adder_in_a[18] = 1'b0;
                     adder_in_a[27] = 1'b0;
                 end
+                default:;
             endcase
         end
     end
@@ -179,14 +180,15 @@ module mrv1_int_fu
     logic        shift_use_round;
     logic        shift_arithmetic;
 
-    logic [31:0] shift_amt_left;  // amount of shift, if to the left
-    logic [31:0] shift_amt;  // amount of shift, to the right
-    logic [31:0] shift_amt_int;  // amount of shift, used for the actual shifters
-    logic [31:0] shift_amt_norm;  // amount of shift, used for normalization
-    logic [31:0] shift_op_a;  // input of the shifter
-    logic [31:0] shift_result;
-    logic [31:0] shift_right_result;
-    logic [31:0] shift_left_result;
+    logic [DATA_WIDTH_P-1:0] shift_amt_left;  // amount of shift, if to the left
+    logic [DATA_WIDTH_P-1:0] shift_amt;  // amount of shift, to the right
+    logic [DATA_WIDTH_P-1:0] shift_amt_int;  // amount of shift, used for the actual shifters
+    logic [DATA_WIDTH_P-1:0] shift_amt_norm;  // amount of shift, used for normalization
+    logic [DATA_WIDTH_P-1:0] shift_op_a;  // input of the shifter
+    logic [DATA_WIDTH_P-1:0] shift_result;
+    logic [DATA_WIDTH_P-1:0] shift_right_result;
+    logic [DATA_WIDTH_P*2-1:0] shift_right_result_wide;
+    logic [DATA_WIDTH_P-1:0] shift_left_result;
     ////////////////////////////////////////////////////////////////////////////////
     assign shift_amt = exec_src1_data_i;
     ////////////////////////////////////////////////////////////////////////////////
@@ -259,41 +261,34 @@ module mrv1_int_fu
     ////////////////////////////////////////////////////////////////////////////////
     // right shifts, we let the synthesizer optimize this
     ////////////////////////////////////////////////////////////////////////////////
-    logic [63:0] shift_op_a_32;
-    assign shift_op_a_32 = (int_fu_opc_i == MRV_INT_FU_ROR) ? {
+    logic [DATA_WIDTH_P*2-1:0] shift_op_a_wide = (int_fu_opc_i == MRV_INT_FU_ROR) ? {
         shift_op_a, shift_op_a
-    } : $signed({{32{shift_arithmetic & shift_op_a[31]}}, shift_op_a});
+    } : $signed({{DATA_WIDTH_P{shift_arithmetic & shift_op_a[DATA_WIDTH_P-1]}}, shift_op_a});
+    logic [DATA_WIDTH_P/8-1:0] shift_right_result_unused;
     ////////////////////////////////////////////////////////////////////////////////
     always_comb begin
         case (int_fu_vec_mode_i)
             ////////////////////////////////////////////////////////////////////////////////
             MRV_VEC_MODE16: begin
-                shift_right_result[31:16] = $signed(
-                    {shift_arithmetic & shift_op_a[31], shift_op_a[31:16]}
-                ) >>> shift_amt_int[19:16];
-                shift_right_result[15:0] = $signed(
-                    {shift_arithmetic & shift_op_a[15], shift_op_a[15:0]}
-                ) >>> shift_amt_int[3:0];
+                for (int j = 0; j < (DATA_WIDTH_P / 16); j ++) begin
+                    {shift_right_result_unused[j], shift_right_result[16*j+:16]} = $signed(
+                        {shift_arithmetic & shift_op_a[16*(j+1)-1], shift_op_a[16*j+:16]}
+                    ) >>> shift_amt_int[16*j+:4];
+                end
             end
             ////////////////////////////////////////////////////////////////////////////////
             MRV_VEC_MODE8: begin
-                shift_right_result[31:24] = $signed(
-                    {shift_arithmetic & shift_op_a[31], shift_op_a[31:24]}
-                ) >>> shift_amt_int[26:24];
-                shift_right_result[23:16] = $signed(
-                    {shift_arithmetic & shift_op_a[23], shift_op_a[23:16]}
-                ) >>> shift_amt_int[18:16];
-                shift_right_result[15:8] = $signed(
-                    {shift_arithmetic & shift_op_a[15], shift_op_a[15:8]}
-                ) >>> shift_amt_int[10:8];
-                shift_right_result[7:0] = $signed(
-                    {shift_arithmetic & shift_op_a[7], shift_op_a[7:0]}
-                ) >>> shift_amt_int[2:0];
+                for (int j = 0; j < (DATA_WIDTH_P / 8); j ++) begin
+                    {shift_right_result_unused[j], shift_right_result[8*j+:8]} = $signed(
+                        {shift_arithmetic & shift_op_a[8*(j+1)-1], shift_op_a[8*j+:8]}
+                    ) >>> shift_amt_int[8*j+:3];
+                end
             end
             ////////////////////////////////////////////////////////////////////////////////
             default: // MRV_VEC_MODE32
             begin
-                shift_right_result = shift_op_a_32 >> shift_amt_int[4:0];
+                shift_right_result_wide = shift_op_a_wide >> shift_amt_int[4:0];
+                shift_right_result = shift_right_result_wide[DATA_WIDTH_P-1:0];
             end
         endcase
         ;  // case (vec_mode_i)
@@ -715,7 +710,7 @@ module mrv1_int_fu
     /////////////////////////////////////////////////////////////////////
     // Bit count operations
     /////////////////////////////////////////////////////////////////////
-    logic [31:0] ff_input;  // either op_a_i or its bit reversed version
+    logic [DATA_WIDTH_P-1:0] ff_input;  // either op_a_i or its bit reversed version
     logic [ 5:0] cnt_result;  // population count
     logic [ 5:0] clb_result;  // count leading bits
     logic [ 4:0] ff1_result;  // holds the index of the first '1'
@@ -748,6 +743,7 @@ module mrv1_int_fu
                     ff_input = exec_src0_data_rev;
                 end
             end
+            default:;
         endcase
     end
     /////////////////////////////////////////////////////////////////////////////////

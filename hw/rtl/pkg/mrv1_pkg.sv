@@ -102,15 +102,10 @@ package mrv1_pkg;
         MRV_INT_FU_PCKHI = 7'b0111001
     } mrv_int_fu_op_e;
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // TODO: review this part
-    // added dummy value as a crutch to satisfy verilator
-    localparam MRV_MUL_FU_OP_WIDTH = 4;
+    localparam MRV_MUL_FU_OP_WIDTH = 7;
     typedef enum bit [MRV_MUL_FU_OP_WIDTH-1:0] {
-        MRV_MUL_FUL_MUL = 4'b0000
-
+        MRV_MUL_FUL_MUL = 7'b0000000
     } mrv_mul_fu_op_e;
-    //
 
     ////////////////////////////////////////////////////////////////////////////////
     localparam MRV_SYS_FU_OP_WIDTH = 7;
@@ -118,8 +113,8 @@ package mrv1_pkg;
         MRV_SYS_FU_CSR_READ = 7'b00,
         MRV_SYS_FU_CSR_WRITE = 7'b01,
         MRV_SYS_FU_CSR_SET = 7'b10,
-        MRV_SYS_FU_CSR_CLR = 7'b11,
-        MRV_SYS_FU_TSPAWN = 7'b0000100
+        MRV_SYS_FU_CSR_CLR = 7'b11
+        //MRV_SYS_FU_TSPAWN = 7'b0000100
     } mrv_sys_fu_op_e;
 
     typedef enum bit [2:0] {

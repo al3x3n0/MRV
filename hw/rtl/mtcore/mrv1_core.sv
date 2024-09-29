@@ -14,7 +14,8 @@ module mrv1_core
     ////////////////////////////////////////////////////////////////////////////////
     parameter NUM_RS_LP = 2,
     parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P),
-    parameter IQ_SZ_LP = (1 << ITAG_WIDTH_P)
+    parameter IQ_SZ_LP = (1 << ITAG_WIDTH_P),
+    parameter IMEM_TAG_WIDTH_P = TID_WIDTH_LP
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                        clk_i,
@@ -24,8 +25,10 @@ module mrv1_core
     ////////////////////////////////////////////////////////////////////////////////
     output logic                                        imem_req_vld_o,
     input  logic                                        imem_req_rdy_i,
+    output logic [IMEM_TAG_WIDTH_P-1:0]                 imem_req_tag_o,
     output logic [PC_WIDTH_P-1:0]                       imem_req_addr_o,
     input  logic                                        imem_resp_vld_i,
+    input  logic [IMEM_TAG_WIDTH_P-1:0]                 imem_resp_tag_i,
     input  logic [31:0]                                 imem_resp_data_i,
     ////////////////////////////////////////////////////////////////////////////////
     // Data memory interface
@@ -96,8 +99,10 @@ module mrv1_core
         ////////////////////////////////////////////////////////////////////////////////
         .imem_req_vld_o             (imem_req_vld_o),
         .imem_req_rdy_i             (imem_req_rdy_i),
+        .imem_req_tag_o             (imem_req_tag_o),
         .imem_req_addr_o            (imem_req_addr_o),
         .imem_resp_vld_i            (imem_resp_vld_i),
+        .imem_resp_tag_i            (imem_resp_tag_i),
         .imem_resp_data_i           (imem_resp_data_i),
         ////////////////////////////////////////////////////////////////////////////////
         // IMT Control
@@ -321,10 +326,8 @@ module mrv1_core
         .rs1_addr_o                     (issue_rs1_addr_lo),
         .rs1_data_i                     (rf_rs1_data_lo),
         ////////////////////////////////////////////////////////////////////////////////
-        .rs0_byp_en_i                   (ret_rs_byp_en_lo[0]),
-        .rs1_byp_en_i                   (ret_rs_byp_en_lo[1]),
-        .rs0_byp_data_i                 (ret_rs_byp_data_lo[0]),
-        .rs1_byp_data_i                 (ret_rs_byp_data_lo[1]),
+        .rs_byp_en_i                    (ret_rs_byp_en_lo),
+        .rs_byp_data_i                  (ret_rs_byp_data_lo),
         ////////////////////////////////////////////////////////////////////////////////
         // ISSUE <-> EXE interface
         ////////////////////////////////////////////////////////////////////////////////
@@ -448,9 +451,9 @@ module mrv1_core
         .issue_fu_opc_i         (issue_fu_opc_q),
         .issue_fu_vec_mode_i    (issue_fu_vec_mode_q),
         .exec_fu_done_o         (exec_fu_done_lo),
-        .exec_fu_res_data_o     (exec_fu_tid_lo),
+        .exec_fu_res_data_o     (exec_fu_wb_data_lo),
         .exec_fu_itag_o         (exec_fu_wb_itag_lo),
-        .exec_fu_tid_o          (exec_fu_wb_data_lo),
+        .exec_fu_tid_o          (exec_fu_tid_lo),
         ////////////////////////////////////////////////////////////////////////////////
         .b_is_branch_i          (issue_b_is_branch_q),
         .b_is_jump_i            (issue_b_is_jump_q),

@@ -41,11 +41,12 @@ module mrv1_sys_fu
     logic [DATA_WIDTH_P-1:0] csr_w_data_r;
     logic [DATA_WIDTH_P-1:0] csr_r_data_lo;
     always_comb begin
-        unique case (sys_fu_opc_i)
+        case (sys_fu_opc_i)
             MRV_SYS_FU_CSR_WRITE: csr_w_data_r = exec_src0_data_i;
             MRV_SYS_FU_CSR_SET: csr_w_data_r = exec_src0_data_i | csr_r_data_lo;
             MRV_SYS_FU_CSR_CLR: csr_w_data_r = ~exec_src0_data_i & csr_r_data_lo;
             MRV_SYS_FU_CSR_READ: csr_w_data_r = exec_src0_data_i;
+            default:;
         endcase
     end
     ////////////////////////////////////////////////////////////////////////////////
