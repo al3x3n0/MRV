@@ -52,9 +52,11 @@ ElfLoaderArchTests::ElfLoaderArchTests(Mem32Iface* mem_img) :
 {
 }
 
-bool ElfLoaderArchTests::load_data(const char* filename, int verbose_lvl) {
+bool ElfLoaderArchTests::load_data(const char* filename, uint32_t ram_max_addr, int verbose_lvl) {
     m_filename = std::string(filename);
-    const auto res = load(verbose_lvl);
+    auto res = load(verbose_lvl);
+    if (res)
+        res = check_elf_against_ram_size(ram_max_addr);
     if (res)
         fill_section_addresses(verbose_lvl);
     return res;
@@ -106,4 +108,16 @@ void ElfLoaderArchTests::fill_section_addresses(int verbose_lvl) {
                 printf("Found address of \"%s\" section: 0x%x\n", m_section_name_fromhost.c_str(), m_section_addr_sig_end);
         }
     }
+}
+
+bool ElfLoaderArchTests::check_elf_against_ram_size(uint32_t ram_max_addr) const {
+    for (size_t i = 0; i < m_reader.sections.size(); i++) {
+        ELFIO::section* sec = m_reader.sections[i];
+        uint32_t sec_size = sec->get_size();
+        uint32_t sec_addr = sec->get_address();
+        uint32_t max_addr = sec_addr + sec_size;
+        if (max_addr > ram_max_addr)
+            return false;
+    }
+    return true;
 }

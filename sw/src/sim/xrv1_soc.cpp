@@ -50,6 +50,12 @@ uint8_t xrv1_soc::read_u8(uint32_t addr) {
     return static_cast<uint8_t>(data);
 }
 
+uint32_t xrv1_soc::get_ram_size_bits() const {
+    int bits;
+    m_rtl->get_ram_size_bits(&bits);
+    return static_cast<uint32_t>(bits);
+}
+
 uint16_t xrv1_soc::read_u16(uint32_t addr) {
     uint8_t bytes[2];
     for (int i = 0; i < 2; i++)
@@ -192,7 +198,8 @@ int64_t xrv1_soc::get_ticks_number() const {
 }
 
 bool xrv1_soc::load_elf(const std::string& elf_path, int verbose_lvl) {
-    if (!m_elf_loader.load_data(elf_path.c_str(), verbose_lvl)) {
+    uint32_t ram_max_addr = 1UL << get_ram_size_bits();
+    if (!m_elf_loader.load_data(elf_path.c_str(), ram_max_addr, verbose_lvl)) {
         std::cout << "Failed to load elf: " << elf_path << std::endl;
         return false;
     }

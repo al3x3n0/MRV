@@ -9,6 +9,7 @@ find_package(verilator)
 option(ENABLE_SIMULATION_MODE "Enable verilator simulation mode" ON)
 option(CPU_RESET_ADDRESS "Set CPU reset address" OFF)
 option(BUILD_PYTHON_LIBRARY "Build python module instead of just binary" OFF)
+option(CPU_RAM_SIZE_BITS "Set RAM bits number" OFF)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -96,6 +97,11 @@ endif ()
 # if cpu reset address option is set, add such define for verilator
 if (CPU_RESET_ADDRESS)
     list(APPEND VERILATOR_EXTRA_ARGS "-DCPU_RESET_ADDRESS='h${CPU_RESET_ADDRESS}")
+endif ()
+
+# if cpu ram size bits option is set, add such define for verilator
+if (CPU_RAM_SIZE_BITS)
+    list(APPEND VERILATOR_EXTRA_ARGS "-DCPU_RAM_SIZE_BITS=${CPU_RAM_SIZE_BITS}")
 endif ()
 
 # For available options see:

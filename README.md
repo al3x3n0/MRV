@@ -12,6 +12,7 @@ Depening on the options the outcome of the build might be either **xrv1_tb** bin
 - -DENABLE_SIMULATION_MODE=ON/OFF, default is **ON**
 - -DCPU_RESET_ADDRESS=<val>, default is **OFF**
 - -DBUILD_PYTHON_LIBRARY=ON/OFF, default is **OFF**
+- -DCPU_RAM_SIZE_BITS=<val>, default is **OFF**
 
 ### ENABLE_SIMULATION_MODE
 This option allows you to choose if you'd like to include simulation helper code in the design. By default this option is enabled.
@@ -23,3 +24,8 @@ I.e. -DCPU_RESET_ADDRESS=3000 would set reset addres of the core to 0x3000.
 ### BUILD_PYTHON_LIBRARY
 This option allows you to select which type of target to build. By default SystemC binary is built.
 If you choose to build python3 library, you could find example script in **sw/dut/dut.py**
+
+
+### CPU_RAM_SIZE_BITS
+This option allows you to override the default RAM size. The proper value is number of available bits for RAM address.
+I.e. -DCPU_RAM_SIZE_BITS=22 would configure ram to (1<<22) bytes of size.

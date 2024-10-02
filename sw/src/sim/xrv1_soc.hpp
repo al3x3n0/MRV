@@ -47,6 +47,8 @@ public:
     uint16_t read_u16(uint32_t addr);
     uint32_t read_u32(uint32_t addr);
 
+    uint32_t get_ram_size_bits() const;
+
 
     // release reset for design
     void release_reset();

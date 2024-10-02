@@ -26,7 +26,7 @@ public:
     ~ElfLoaderArchTests() = default;
 
     // load elf binary data to memory interface
-    bool load_data(const char* filename, int verbose_lvl);
+    bool load_data(const char* filename, uint32_t ram_max_addr, int verbose_lvl);
     
     // get address of "sig_begin" section
     uint32_t get_address_sig_begin() const;
@@ -56,6 +56,9 @@ private:
     // go through all sections and try to find corresponding addresses
     // for given sections
     void fill_section_addresses(int verbose_lvl);
+    // go through all sections and compare section max addres and
+    // max available ram
+    bool check_elf_against_ram_size(uint32_t ram_max_addr) const;
 };
 
 #endif /* __XRV1_ELF_LOADER_4498_HPP__ */
