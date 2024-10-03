@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+
+import sys
+import argparse
+import libdut
+
+def main():
+    
+    # xrv1 --signature=<sig_path> --elf=<elf_path> --verbose=<num>
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--signature', help='path to signature output', required=True)
+    parser.add_argument('--elf', help='path to elf', required=True)
+    parser.add_argument('--verbose', help='verbosity level', type=int)
+    args = parser.parse_args()
+
+    print("Elf path: {}".format(args.elf))
+    print("Sig path: {}".format(args.signature))
+
+    dut = libdut.XRV1()
+    elf_loaded = dut.load_elf(args.elf, args.verbose)
+    if not elf_loaded:
+        print("Failed to load elf {}".format(args.elf))
+        return
+    
+    print("Elf {} successfully loaded".format(elf_loaded))
+    res = dut.run_simulation(100000, args.verbose)
+    dut.dump_signature(args.signature, args.verbose)
+
+if __name__ == "__main__":
+    main()
