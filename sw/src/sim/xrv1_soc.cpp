@@ -232,6 +232,12 @@ bool xrv1_soc::is_simulation_finished() const {
     return m_ctx->gotFinish();
 }
 
+uint32_t xrv1_soc::get_reg_val_u32(uint32_t addr) const {
+    int32_t val = 0;
+    m_rtl->read_register(addr, &val);
+    return static_cast<uint32_t>(val);
+}
+
 bool xrv1_soc::run_simulation(int num_cycles, int verbose_lvl) {
     char inst_dec_buf [1024];
 

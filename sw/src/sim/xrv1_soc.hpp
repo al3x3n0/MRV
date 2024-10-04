@@ -49,6 +49,8 @@ public:
 
     uint32_t get_ram_size_bits() const;
 
+    uint32_t get_reg_val_u32(uint32_t addr) const;
+
 
     // release reset for design
     void release_reset();
