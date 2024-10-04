@@ -198,7 +198,7 @@ int64_t xrv1_soc::get_ticks_number() const {
 }
 
 bool xrv1_soc::load_elf(const std::string& elf_path, int verbose_lvl) {
-    uint32_t ram_max_addr = 1UL << get_ram_size_bits();
+    uint32_t ram_max_addr = get_ram_size_bits();
     if (!m_elf_loader.load_data(elf_path.c_str(), ram_max_addr, verbose_lvl)) {
         std::cout << "Failed to load elf: " << elf_path << std::endl;
         return false;
@@ -230,6 +230,12 @@ bool xrv1_soc::dump_signature(const std::string& path, int verbose_lvl) {
 
 bool xrv1_soc::is_simulation_finished() const {
     return m_ctx->gotFinish();
+}
+
+uint32_t xrv1_soc::get_reg_val_u32(uint32_t addr) const {
+    int32_t val = 0;
+    m_rtl->read_register(addr, &val);
+    return static_cast<uint32_t>(val);
 }
 
 bool xrv1_soc::run_simulation(int num_cycles, int verbose_lvl) {

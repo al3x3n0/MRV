@@ -20,5 +20,6 @@ BOOST_PYTHON_MODULE(libdut)
         .def("read_short", &xrv1_soc::read_u16)
         .def("read_word", &xrv1_soc::read_u32)
         .def("dump_signature", &xrv1_soc::dump_signature)
-        .def("is_sim_finished", &xrv1_soc::is_simulation_finished);
+        .def("is_sim_finished", &xrv1_soc::is_simulation_finished)
+        .def("get_reg_val", &xrv1_soc::get_reg_val_u32);
 }
