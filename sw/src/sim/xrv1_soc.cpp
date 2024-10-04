@@ -198,7 +198,7 @@ int64_t xrv1_soc::get_ticks_number() const {
 }
 
 bool xrv1_soc::load_elf(const std::string& elf_path, int verbose_lvl) {
-    uint32_t ram_max_addr = 1UL << get_ram_size_bits();
+    uint32_t ram_max_addr = get_ram_size_bits();
     if (!m_elf_loader.load_data(elf_path.c_str(), ram_max_addr, verbose_lvl)) {
         std::cout << "Failed to load elf: " << elf_path << std::endl;
         return false;

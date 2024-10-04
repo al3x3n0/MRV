@@ -41,6 +41,14 @@ bool ElfLoader::load(int verbose_lvl) {
                     m_mem_img->write_u8(sec_addr + j, sec_data[j]);
                     byte_written++;
                 }
+                // revalidate ram image
+                for (uint32_t j = 0; j < sec_size; j++) {
+                    uint8_t r = m_mem_img->read_u8(sec_addr + j);
+                    if (r != static_cast<uint8_t>(sec_data[j])) {
+                        printf("At MEM[0x%x] expected value is 0x%x but got 0x%x\n", sec_addr + j, static_cast<uint8_t>(sec_data[j]), r);
+                        return false;
+                    }
+                }
             }
         }
     }
@@ -116,8 +124,12 @@ bool ElfLoaderArchTests::check_elf_against_ram_size(uint32_t ram_max_addr) const
         uint32_t sec_size = sec->get_size();
         uint32_t sec_addr = sec->get_address();
         uint32_t max_addr = sec_addr + sec_size;
-        if (max_addr > ram_max_addr)
+        if (max_addr > ram_max_addr) {
+            printf("Failed RAM size check:\n");
+            printf("\tRAM size needed is 0x%x bytes\n", max_addr);
+            printf("\tRAM size got is 0x%x bytes\n", ram_max_addr);
             return false;
+        }
     }
     return true;
 }
