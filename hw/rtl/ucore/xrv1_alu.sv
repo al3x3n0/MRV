@@ -95,6 +95,7 @@ module xrv1_alu
         case (alu_opc_i)
             XRV_ALU_ADD:     alu_res_o = add_sub_res_w[31:0];
             XRV_ALU_SUB:     alu_res_o = add_sub_res_w[31:0];
+            XRV_ALU_SLTS:    alu_res_o = {31'b0, add_sub_res_w[32]};
             XRV_ALU_SLTU:    alu_res_o = {31'b0, add_sub_res_w[32]};
             XRV_ALU_AND:     alu_res_o = alu_and_w;
             XRV_ALU_OR:      alu_res_o = alu_or_w;
