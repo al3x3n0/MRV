@@ -1,3 +1,5 @@
+`include "rtl/pkg/mrv1_pkg.sv"
+
 import mrv1_pkg::*;
 import xrv1_pkg::*;
 

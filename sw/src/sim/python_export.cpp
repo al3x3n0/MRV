@@ -5,7 +5,7 @@
 
 #include "xrv1_soc.hpp"
 
-BOOST_PYTHON_MODULE(libdut)
+BOOST_PYTHON_MODULE(libxrv1_sim_top_dut)
 {
     using namespace boost::python;
 

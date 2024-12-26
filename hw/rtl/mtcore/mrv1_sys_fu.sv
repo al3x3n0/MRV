@@ -58,7 +58,7 @@ module mrv1_sys_fu
     logic [11:0] csr_addr_w     = exec_src1_data_i[11:0];
     mrv1_csrf #(
         .DATA_WIDTH_P           (DATA_WIDTH_P),
-        .NUM_THREADS_P          (NUM_THREADS_P),
+        .NUM_THREADS_P          (NUM_THREADS_P)
     ) csrf_i (
         .clk_i                  (clk_i),
         .rst_i                  (rst_i),

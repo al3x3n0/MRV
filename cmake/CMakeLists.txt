@@ -1,0 +1,32 @@
+function(ADD_VERILATED_TARGET
+         DESIGN_TOP_NAME
+         DESIGN_SV_SOURCES
+         DESIGN_CPP_SOURCES
+         VERILATOR_EXTRA_ARGS
+         )
+
+    set(VERILATOR_PREFIX_NAME "V${DESIGN_TOP_NAME}")
+    set(OUTPUT_LIBRARY_NAME "${DESIGN_TOP_NAME}_dut")
+
+    add_library(${OUTPUT_LIBRARY_NAME} SHARED ${DESIGN_CPP_SOURCES})
+    target_compile_definitions(${OUTPUT_LIBRARY_NAME} PUBLIC TOP_MODULE=\"${DESIGN_TOP_NAME}\")
+    target_compile_definitions(${OUTPUT_LIBRARY_NAME} PUBLIC VERILATOR_PREFIX=\"${VERILATOR_PREFIX_NAME}\")
+    target_link_libraries(${OUTPUT_LIBRARY_NAME} PUBLIC ${Boost_LIBRARIES} ${Python3_LIBRARIES})
+    set(VERILATOR_USE_SYSTEMC "")
+
+    set(INSTALL_LIB_DIR "lib")
+    install(TARGETS ${OUTPUT_LIBRARY_NAME}
+        RUNTIME  DESTINATION ${INSTALL_LIB_DIR}
+        )
+    
+    verilate(${OUTPUT_LIBRARY_NAME}
+        ""
+        COVERAGE
+        TRACE
+        TOP_MODULE "${DESIGN_TOP_NAME}"
+        PREFIX "${VERILATOR_PREFIX_NAME}"
+        SOURCES ${DESIGN_SV_SOURCES}
+        VERILATOR_ARGS "${VERILATOR_EXTRA_ARGS}"
+        INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/hw/"
+        )
+endfunction()
