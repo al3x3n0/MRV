@@ -2,7 +2,7 @@
 
 import sys
 import argparse
-import lib.libxrv1_sim_top_dut
+import lib.libxrv1_sim_top_dut as libdut
 
 def main():
     
@@ -16,7 +16,7 @@ def main():
     print("Elf path: {}".format(args.elf))
     print("Sig path: {}".format(args.signature))
 
-    dut = libxrv1_sim_top_dut.XRV1()
+    dut = libdut.XRV1()
     elf_loaded = dut.load_elf(args.elf, args.verbose)
     if not elf_loaded:
         print("Failed to load elf {}".format(args.elf))
