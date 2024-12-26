@@ -1,7 +1,6 @@
 #ifndef __XRV1_SOC_HPP__
 #define __XRV1_SOC_HPP__
 
-#include "xrv1_soc.hpp"
 #include "elf_loader.hpp"
 #include "memory_base.hpp"
 

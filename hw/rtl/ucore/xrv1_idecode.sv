@@ -129,16 +129,13 @@ module xrv1_idecode
             $display("j_pc_vld_o=%d j_pc_o=%h", j_pc_vld_o, j_pc_o);
     end
 
+    rv_inst inst;
+    assign inst = insn_i;
+
     ////////////////////////////////////////////////////////////////////////////////
-    wire [6:0] func7_w = insn_i[31:25];
-    ////////////////////////////////////////////////////////////////////////////////
-    wire [2:0] func3_w = insn_i[14:12];
-    ////////////////////////////////////////////////////////////////////////////////
-    wire [4:0] opcode_w = insn_i[6:2];
-    ////////////////////////////////////////////////////////////////////////////////
-    assign rs0_addr_o = insn_i[19:15];
-    assign rs1_addr_o = insn_i[24:20];
-    assign rd_addr_o  = insn_i[11:7];
+    assign rs0_addr_o = inst.r_type.rs1;
+    assign rs1_addr_o = inst.r_type.rs2;
+    assign rd_addr_o  = inst.r_type.rd;
     wire rs0_x0_o   = rs0_addr_o == '0;
     wire rs1_x0_o   = rs1_addr_o == '0;
     ////////////////////////////////////////////////////////////////////////////////
@@ -156,12 +153,48 @@ module xrv1_idecode
     ////////////////////////////////////////////////////////////////////////////////
     // Immediate decoding
     ////////////////////////////////////////////////////////////////////////////////
-    wire [31:0] imm_i_type_w = {{20 {insn_i[31]}}, insn_i[31:20]};
-    wire [31:0] imm_z_type_w = {20'b0, insn_i[31:20]};
-    wire [31:0] imm_s_type_w = {{20 {insn_i[31]}}, insn_i[31:25], insn_i[11:7]};
-    wire [31:0] imm_b_type_w = {{19 {insn_i[31]}}, insn_i[31], insn_i[7], insn_i[30:25], insn_i[11:8], 1'b0};
-    wire [31:0] imm_u_type_w = {insn_i[31:12], 12'b0};
-    wire [31:0] imm_j_type_w = {{12{insn_i[31]}}, insn_i[19:12], insn_i[20], insn_i[30:21], 1'b0};
+    wire [31:0] imm_i_type_w = {{20 {inst.i_type.imm[11]}}, inst.i_type.imm};
+    wire [31:0] imm_z_type_w = {20'b0, inst.i_type.imm};
+    wire [31:0] imm_s_type_w = {{20 {inst.s_type.imm_11_5[6]}}, inst.s_type.imm_11_5, inst.s_type.imm_4_0};
+    wire [31:0] imm_b_type_w = {{19 {inst.b_type.imm_12}}, inst.b_type.imm_12, inst.b_type.imm_11, inst.b_type.imm_10_5, inst.b_type.imm_4_1, 1'b0};
+    wire [31:0] imm_u_type_w = {inst.u_type.imm, 12'b0};
+    wire [31:0] imm_j_type_w = {{12{inst.j_type.imm_20}}, inst.j_type.imm_19_12, inst.j_type.imm_11, inst.j_type.imm_10_1, 1'b0};
+    ////////////////////////////////////////////////////////////////////////////////
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // Instruction decoding
+    ////////////////////////////////////////////////////////////////////////////////
+    xrv_idecoder #(.XRV_XLEN(DATA_WIDTH_P))
+    my_decoder(.insn_i(insn_i),
+
+               .lsu_req_vld_o(lsu_req_vld_o),
+               .lsu_req_w_en_o(lsu_req_w_en_o),
+               .lsu_req_size_o(lsu_req_size_o),
+               .lsu_req_signed_o(lsu_req_signed_o),
+
+               .rs0_vld_o(rs0_vld_o),
+               .rs1_vld_o(rs1_vld_o),
+               .rd_vld_o(rd_vld_o),
+
+               .src0_sel_o(src0_sel_r),
+               .src1_sel_o(src1_sel_r),
+               .imm0_sel_o(imm0_sel_r),
+               .imm1_sel_o(imm1_sel_r),
+
+               .alu_opc_o(alu_opc_o),
+               .alu_req_vld_o(alu_req_vld_o),
+
+               .b_req_vld_o(b_req_vld_o),
+               .b_is_branch_o(b_is_branch_o),
+               .b_is_jump_o(b_is_jump_o),
+               .j_pc_vld_o(j_pc_vld_r),
+
+               .div_opc_o(div_opc_o),
+               .div_req_vld_o(div_req_vld_o),
+               .mul_opc_o(mul_opc_o),
+               .mul_req_vld_o(mul_req_vld_o),
+
+               .insn_illegal_o(insn_illegal_o));
     ////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -208,235 +241,6 @@ module xrv1_idecode
     end
     ////////////////////////////////////////////////////////////////////////////////
     assign exec_src2_o = rs1_data_w;
-    ////////////////////////////////////////////////////////////////////////////////
-
-    ////////////////////////////////////////////////////////////////////////////////
-    // Instruction decoding
-    ////////////////////////////////////////////////////////////////////////////////
-    always_comb begin
-        ////////////////////////////////////////////////////////////////////////////////
-        src0_sel_r = XRV_SRC0_RS0;
-        src1_sel_r = XRV_SRC1_RS1;
-        ////////////////////////////////////////////////////////////////////////////////
-        imm1_sel_r = XRV_IMM1_I;
-        ////////////////////////////////////////////////////////////////////////////////
-        rs0_vld_o     = 1'b0;
-        rs1_vld_o     = 1'b0;
-        rd_vld_o      = 1'b1;
-        ////////////////////////////////////////////////////////////////////////////////
-        alu_req_vld_o = 1'b0;
-        alu_opc_o     = 'b0;
-        ////////////////////////////////////////////////////////////////////////////////
-        b_req_vld_o   = 'b0;
-        b_is_branch_o = 'b0;
-        b_is_jump_o    = 'b0;
-        ////////////////////////////////////////////////////////////////////////////////
-        j_pc_vld_r     = 1'b0;
-        ////////////////////////////////////////////////////////////////////////////////
-        csr_req_vld_o = 'b0;
-        ////////////////////////////////////////////////////////////////////////////////
-        lsu_req_vld_o    = 'b0;
-        lsu_req_w_en_o   = 'b0;
-        lsu_req_size_o   = 'b0;
-        lsu_req_signed_o = 'b0;
-        ////////////////////////////////////////////////////////////////////////////////
-        mul_req_vld_o    = 'b0;
-        mul_opc_o        = 'b0;
-        ////////////////////////////////////////////////////////////////////////////////
-        div_req_vld_o    = 'b0;
-        div_opc_o        = 'b0;
-        ////////////////////////////////////////////////////////////////////////////////
-        insn_illegal_o   = 'b0;
-        ////////////////////////////////////////////////////////////////////////////////
-        
-        // TODO: review this part
-        // added missing initializations
-        imm0_sel_r = XRV_IMM0_ZERO;
-        csr_opc_o = XRV_CSR_READ;
-        csr_addr_o = 'b0;
-        //
-        case (opcode_w)
-            ////////////////////////////////////////////////////////////////////////////////
-            // ALU instructions
-            ////////////////////////////////////////////////////////////////////////////////
-            XRV_LUI: begin
-                src0_sel_r    = XRV_SRC0_IMM;
-                src1_sel_r    = XRV_SRC1_IMM;
-                imm0_sel_r    = XRV_IMM0_ZERO;
-                imm1_sel_r    = XRV_IMM1_U;
-                alu_req_vld_o = 1'b1;
-                alu_opc_o     = XRV_ALU_ADD;
-            end
-            ////////////////////////////////////////////////////////////////////////////////
-            XRV_AUIPC: begin
-                src0_sel_r    = XRV_SRC0_PC;
-                src1_sel_r    = XRV_SRC1_IMM;
-                imm1_sel_r    = XRV_IMM1_U;
-                alu_req_vld_o = 1'b1;
-                alu_opc_o     = XRV_ALU_ADD;
-            end
-            ////////////////////////////////////////////////////////////////////////////////
-            XRV_ARITH_IMM: begin
-                src0_sel_r    = XRV_SRC0_RS0;
-                src1_sel_r    = XRV_SRC1_IMM;
-                imm1_sel_r    = XRV_IMM1_I;
-                rs0_vld_o     = 1'b1;
-                alu_req_vld_o = 1'b1;
-                case (func3_w)
-                    3'b000: alu_opc_o = XRV_ALU_ADD;
-                    3'b010: alu_opc_o = XRV_ALU_SLTS;
-                    3'b011: alu_opc_o = XRV_ALU_SLTU;
-                    3'b100: alu_opc_o = XRV_ALU_XOR;
-                    3'b110: alu_opc_o = XRV_ALU_OR;
-                    3'b111: alu_opc_o = XRV_ALU_AND;
-                    3'b001: begin
-                        alu_opc_o = XRV_ALU_SLL;  // Shift Left Logical by Immediate
-                        insn_illegal_o = func7_w != 7'b0;
-                    end
-                    3'b101: begin
-                        if (func7_w == 7'b0)
-                            alu_opc_o = XRV_ALU_SRL;  // Shift Right Logical by Immediate
-                        else if (func7_w == 7'b0100000)
-                            alu_opc_o = XRV_ALU_SRA;  // Shift Right Arithmetically by Immediate
-                        else
-                            insn_illegal_o = 1'b1;
-                    end
-                endcase
-            end
-            ////////////////////////////////////////////////////////////////////////////////
-            XRV_ARITH: begin
-                ////////////////////////////////////////////////////////////////////////////////
-                rs0_vld_o = 1'b1;
-                rs1_vld_o = 1'b1;
-                alu_req_vld_o = 1'b1;
-                ////////////////////////////////////////////////////////////////////////////////
-                if (func7_w == 7'd0) begin
-                    case (func3_w)
-                        3'b000: alu_opc_o = XRV_ALU_ADD;
-                        3'b001: alu_opc_o = XRV_ALU_SLL;
-                        3'b010: alu_opc_o = XRV_ALU_SLTS;
-                        3'b011: alu_opc_o = XRV_ALU_SLTU;
-                        3'b100: alu_opc_o = XRV_ALU_XOR;
-                        3'b101: alu_opc_o = XRV_ALU_SRL;
-                        3'b110: alu_opc_o = XRV_ALU_OR;
-                        3'b111: alu_opc_o = XRV_ALU_AND;
-                    endcase
-                end
-                else if (func7_w == 7'd32) begin
-                    if (func3_w == 3'b000)
-                        alu_opc_o = XRV_ALU_SUB;
-                    else if (func3_w == 3'b101)
-                        alu_opc_o = XRV_ALU_SRA;
-                    else
-                        insn_illegal_o = 1'b1;
-                end
-                else if (func7_w == 7'd1) begin
-                    if (func3_w[2]) begin
-                        div_req_vld_o = 1'b1;
-                        div_opc_o     = func3_w[1:0];
-                    end
-                    else begin
-                        mul_req_vld_o = 1'b1;
-                        mul_opc_o     = func3_w[1:0];
-                    end
-                end
-                else begin
-                    // FIXME ILLEGAL
-                end
-            end
-            ////////////////////////////////////////////////////////////////////////////////
-            XRV_JAL: begin
-                b_req_vld_o = 1'b1;
-                b_is_jump_o  = 1'b1;
-            end
-            ////////////////////////////////////////////////////////////////////////////////
-            XRV_JALR: begin
-                rs0_vld_o   = 1'b1;
-                b_req_vld_o = 1'b1;
-                b_is_jump_o = 1'b1;
-                j_pc_vld_r  = 1'b1;
-            end
-            ////////////////////////////////////////////////////////////////////////////////
-            XRV_BRANCH: begin
-                rs0_vld_o     = 1'b1;
-                rs1_vld_o     = 1'b1;
-                rd_vld_o      = 1'b0;
-                b_req_vld_o   = 1'b1;
-                b_is_branch_o = 1'b1;
-                ////////////////////////////////////////////////////////////////////////////////
-                case (func3_w)
-                    3'b000: alu_opc_o = XRV_ALU_EQ;
-                    3'b001: alu_opc_o = XRV_ALU_NE;
-                    3'b100: alu_opc_o = XRV_ALU_LTS;
-                    3'b101: alu_opc_o = XRV_ALU_GES;
-                    3'b110: alu_opc_o = XRV_ALU_LTU;
-                    3'b111: alu_opc_o = XRV_ALU_GEU;
-                    default: alu_opc_o = XRV_ALU_EQ;
-                endcase
-            end
-            ////////////////////////////////////////////////////////////////////////////////
-            XRV_LOAD: begin
-                ////////////////////////////////////////////////////////////////////////////////
-                rs0_vld_o  = 1'b1;
-                ////////////////////////////////////////////////////////////////////////////////
-                src1_sel_r = XRV_SRC1_IMM;
-                imm1_sel_r = XRV_IMM1_I;
-                ////////////////////////////////////////////////////////////////////////////////
-                lsu_req_vld_o    = 1'b1;
-                lsu_req_w_en_o   = 1'b0;
-                lsu_req_size_o   = func3_w[1:0];
-                lsu_req_signed_o = ~func3_w[2];
-                ////////////////////////////////////////////////////////////////////////////////
-            end
-            ////////////////////////////////////////////////////////////////////////////////
-            XRV_STORE: begin
-                ////////////////////////////////////////////////////////////////////////////////
-                rs0_vld_o  = 1'b1;
-                rs1_vld_o  = 1'b1;
-                ////////////////////////////////////////////////////////////////////////////////
-                rd_vld_o   = 1'b0;
-                ////////////////////////////////////////////////////////////////////////////////
-                src1_sel_r = XRV_SRC1_IMM;
-                imm1_sel_r = XRV_IMM1_S;
-                ////////////////////////////////////////////////////////////////////////////////
-                lsu_req_vld_o  = 1'b1;
-                lsu_req_w_en_o = 1'b1;
-                lsu_req_size_o = func3_w[1:0];
-                ////////////////////////////////////////////////////////////////////////////////
-            end
-            ////////////////////////////////////////////////////////////////////////////////
-            XRV_FENCE: begin
-            end
-            ////////////////////////////////////////////////////////////////////////////////
-            XRV_SYSTEM: begin
-                if (insn_i[14:12] == 3'b000) begin
-`ifdef SIM_ENABLED
-                    // For now we will finish simulation on any system instruction
-                    // with funct3 == 0
-                    $finish;
-`endif
-                end
-                else begin
-                    csr_req_vld_o = 1'b1;
-                    imm0_sel_r = XRV_IMM0_Z;
-                    imm1_sel_r = XRV_IMM1_I;
-                    src0_sel_r = func3_w[2] ? XRV_SRC0_IMM : XRV_SRC0_RS0;
-                    rs0_vld_o  = ~func3_w[2];
-                    if (func3_w[1:0] == 2'b01)
-                        csr_opc_o = XRV_CSR_WRITE;
-                    else if (func3_w[1:0] == 2'b10 & ~rs0_x0_o)
-                        csr_opc_o = XRV_CSR_SET;
-                    else if (func3_w[1:0] == 2'b11 & ~rs0_x0_o)
-                        csr_opc_o = XRV_CSR_CLR;
-                    else
-                        csr_opc_o = XRV_CSR_READ;
-                    csr_addr_o = insn_i[31:20];
-                end
-            end
-            ////////////////////////////////////////////////////////////////////////////////
-            default: insn_illegal_o = 1'b1;
-        endcase
-    end
     ////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////
