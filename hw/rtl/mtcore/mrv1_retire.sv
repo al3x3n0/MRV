@@ -77,8 +77,11 @@ module mrv1_retire #(
             tmp_ret_buf_vld = ret_buf_vld_q;
             tmp_ret_buf_data = ret_buf_data_q;
             wb_data_vld_r[i] = 1'b0;
-            ret_rdy_r[i] = 0;
-            ret_cnt_r[i] = 0;
+            wb_rd_addr_r[i] = '0;
+            wb_data_r[i] = '0;
+            ret_rdy_r[i] = '0;
+            ret_cnt_r[i] = '0;
+            tmp0_ptr = '0;
             ////////////////////////////////////////////////////////////////////////////////
             for (int j = 0; j < NUM_FU_P; j++) begin
                 fu_tid_match[j] = fu_tid_i[j] == TID_WIDTH_LP'(i);
@@ -126,6 +129,7 @@ module mrv1_retire #(
     end
 
     always_comb begin
+        ret_tid_r = '0;
         sched_tbl_q_n = sched_any_w ? sched_tbl_q : ret_rdy_r;
         for (int i = 0; i < NUM_THREADS_P; i++) begin
             if (sched_tbl_q_n[i]) begin

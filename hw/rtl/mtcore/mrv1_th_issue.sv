@@ -15,6 +15,7 @@ module mrv1_th_issue
     input  logic                            rst_i,
     ////////////////////////////////////////////////////////////////////////////////
     input logic [NUM_THREADS_P-1:0]         issue_rdy_i,
+    output logic                            issue_vld_o,
     output logic [TID_WIDTH_LP-1:0]         issue_tid_o
     ////////////////////////////////////////////////////////////////////////////////
 );
@@ -33,9 +34,12 @@ module mrv1_th_issue
     wire issue_any_w = (|issue_tbl_q);
     ////////////////////////////////////////////////////////////////////////////////
     always_comb begin
+        issue_vld_o = 'b0;
+        issue_tid_o = 'b0;
         issue_tbl_q_n = issue_any_w ? issue_tbl_q : issue_rdy_i;
         for (int i = 0; i < NUM_THREADS_P; i++) begin
             if (issue_tbl_q_n[i]) begin
+                issue_vld_o = 'b1;
                 issue_tid_o = TID_WIDTH_LP'(i);
                 issue_tbl_q_n[i] = 0;
                 break;

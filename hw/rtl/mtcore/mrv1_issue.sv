@@ -185,7 +185,7 @@ module mrv1_issue #(
         ////////////////////////////////////////////////////////////////////////////////
         wire issue_tid_match_w = issue_tid_o == TID_WIDTH_LP'(i);
         wire ret_tid_match_w = retire_tid_i == TID_WIDTH_LP'(i);
-        wire issue_vld_w = issue_any_w & issue_tid_match_w;
+        wire issue_vld_w = issue_any_w & issue_tid_match_w & issue_tid_vld_lo;
         wire [ITAG_WIDTH_P-1:0] retire_cnt_w = ret_tid_match_w ? retire_cnt_i[i] : 0;
         ////////////////////////////////////////////////////////////////////////////////
         // Instruction Track Queue
@@ -226,12 +226,14 @@ module mrv1_issue #(
     // Thread selector
     ////////////////////////////////////////////////////////////////////////////////
     logic [TID_WIDTH_LP-1:0] issue_tid_lo;
+    logic issue_tid_vld_lo;
     mrv1_th_issue #(
         .NUM_THREADS_P(NUM_THREADS_P)
     ) issue_tw_sched_i (
         .clk_i(clk_i),
         .rst_i(rst_i),
         .issue_rdy_i(iq_rdy_lo),
+        .issue_vld_o(issue_tid_vld_lo),
         .issue_tid_o(issue_tid_lo)
     );
     assign issue_insn_data_lo = ths_dec_buf_data_lo[issue_tid_lo];
