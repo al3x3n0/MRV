@@ -92,7 +92,7 @@ module mrv1_int_fu
     };
 
     //////////////////////////////////////////////////////////////////////////////////////////
-    assign adder_op_a = (int_fu_opc_i == MRV_INT_FU_ABS) ? exec_src0_data_neg : exec_src0_data_i;
+    assign adder_op_a = int_fu_opc_i == MRV_INT_FU_ABS ? exec_src0_data_neg : exec_src0_data_i;
     assign adder_op_b = adder_op_b_negate ? exec_src1_data_neg : exec_src1_data_i;
     //////////////////////////////////////////////////////////////////////////////////////////
     // prepare carry
@@ -917,7 +917,7 @@ module mrv1_int_fu
             MRV_INT_FU_MIN,
             MRV_INT_FU_MINU,
             MRV_INT_FU_MAX,
-            MRV_INT_FU_MAXU:
+            MRV_INT_FU_MAXU,
             MRV_INT_FU_ABS:
             begin
                 int_fu_res_o = result_minmax;

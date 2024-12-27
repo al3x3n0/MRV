@@ -15,7 +15,7 @@ module mrv1_csrf #(
     input  logic [11:0]                     csr_addr_i,
     output logic [DATA_WIDTH_P-1:0]         csr_r_data_o,
     input  logic                            csr_w_en_i,
-    output logic [DATA_WIDTH_P-1:0]         csr_w_data_i
+    input  logic [DATA_WIDTH_P-1:0]         csr_w_data_i
 );
     ////////////////////////////////////////////////////////////////////////////////
     // Machine Status Register
