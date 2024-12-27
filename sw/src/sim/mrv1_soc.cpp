@@ -34,7 +34,7 @@ mrv1_soc::mrv1_soc() : m_elf_loader(this) {
     m_ticks_passed_ = 0;
 }
 
-xrv1_soc::~xrv1_soc() {
+mrv1_soc::~mrv1_soc() {
     delete m_rtl;
     delete m_ctx;
     delete m_vcd;

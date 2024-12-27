@@ -1,3 +1,7 @@
+`ifndef XRV1_PKG_VH
+`define XRV1_PKG_VH
+
+
 package xrv1_pkg;
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -207,3 +211,5 @@ package xrv1_pkg;
     } rv_inst;
 
 endpackage
+
+`endif

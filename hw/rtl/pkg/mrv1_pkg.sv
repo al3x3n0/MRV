@@ -1,3 +1,6 @@
+`ifndef MRV1_PKG_VH
+`define MRV1_PKG_VH
+
 `include "rtl/pkg/xrv1_pkg.sv"
 
 package mrv1_pkg;
@@ -128,3 +131,5 @@ package mrv1_pkg;
     } mrv_vec_mode_e;
 
 endpackage
+
+`endif

@@ -203,8 +203,8 @@ module mrv1_core
             dec_tid_q           <= 'b0;
             dec_fu_req_q        <= 'b0;
             dec_fu_opc_q        <= 'b0;
-            dec_src0_sel_q      <= 'b0;
-            dec_src1_sel_q      <= 'b0;
+            dec_src0_sel_q      <= XRV_SRC0_RS0;
+            dec_src1_sel_q      <= XRV_SRC1_RS0;
             dec_imm0_q          <= 'b0;
             dec_imm1_q          <= 'b0;
             dec_rs0_vld_q       <= 'b0;
@@ -372,7 +372,7 @@ module mrv1_core
             issue_tid_q                 <= 'b0;
             issue_fu_req_q              <= 'b0;
             issue_fu_opc_q              <= 'b0;
-            issue_fu_vec_mode_q         <= 'b0;
+            issue_fu_vec_mode_q         <= MRV_VEC_MODE32;
             issue_b_is_branch_q         <= 'b0;
             issue_b_is_jump_q           <= 'b0;
         end
@@ -385,7 +385,7 @@ module mrv1_core
             issue_tid_q                 <= issue_tid_lo;
             issue_fu_req_q              <= issue_fu_req_lo;
             issue_fu_opc_q              <= issue_fu_opc_lo;
-            issue_fu_vec_mode_q         <= 'b0;
+            issue_fu_vec_mode_q         <= MRV_VEC_MODE32;
             issue_b_is_branch_q         <= issue_b_is_branch_lo;
             issue_b_is_jump_q           <= issue_b_is_jump_lo;
         end
