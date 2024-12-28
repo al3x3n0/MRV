@@ -130,11 +130,15 @@ ADD_VERILATED_TARGET(
 ###############################################################################
 set(MRV1_TB_SRC_DIR "${HW_SRC_DIR}/tb")
 set(MRV1_RTL_SRC_DIR "${RTL_SRC_DIR}/mtcore")
+set(MRV1_COMMON_SRC_DIR "${RTL_SRC_DIR}/common")
 set(MRV1_RTL_INC_DIR "${RTL_SRC_DIR}/pkg")
 
 file(GLOB MRV1_SV_SRC
     "${MRV1_TB_SRC_DIR}/*.sv"
     "${MRV1_RTL_SRC_DIR}/*.sv"
+    "${MRV1_COMMON_SRC_DIR}/*.sv"
+    "${XRV1_RTL_SRC_DIR}/xrv1_ialigner.sv"
+    "${XRV1_RTL_SRC_DIR}/xrv1_iqueue.sv"
 )
 
 set(MRV1_LIBDUT_CPP_SRC
@@ -144,12 +148,12 @@ set(MRV1_LIBDUT_CPP_SRC
     "${ISA_SIM_DIR}/riscv_inst_dump.cpp"
     )
 
-# ADD_VERILATED_TARGET(
-#     "mrv1_sim_top"
-#     "${MRV1_SV_SRC}"
-#     "${MRV1_LIBDUT_CPP_SRC}"
-#     "${VERILATOR_EXTRA_ARGS}"
-#     )
+ ADD_VERILATED_TARGET(
+     "mrv1_sim_top"
+     "${MRV1_SV_SRC}"
+     "${MRV1_LIBDUT_CPP_SRC}"
+     "${VERILATOR_EXTRA_ARGS}"
+     )
 ###############################################################################
 
 
