@@ -130,6 +130,11 @@ ADD_VERILATED_TARGET(
     "${RV_IDECODER_LIBDUT_CPP_SRC}"
     "${VERILATOR_EXTRA_ARGS}"
     )
+
+install(FILES "${SW_SRC_DIR}/dut/rv_idecoder.py"
+    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    DESTINATION "lib/.."
+    )
 ###############################################################################
 
 ###############################################################################
