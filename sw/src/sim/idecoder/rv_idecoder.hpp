@@ -23,6 +23,9 @@ public:
     void tick();
     bool check_m_ext_enabled() const;
 
+    //
+    bool decode(uint32_t inst);
+
 public:
     Vrv_idecoder_sim_top* m_rtl = nullptr;
     VerilatedContext* m_ctx = nullptr;

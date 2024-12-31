@@ -23,6 +23,7 @@ rv_idecoder::rv_idecoder() {
     m_vcd = new VerilatedVcdC;
     assert(m_vcd);
     m_rtl->trace(m_vcd, 99);
+    m_vcd->open("trace.vcd");
     // to print all available scopes
     //Verilated::scopesDump();
 
@@ -36,6 +37,7 @@ rv_idecoder::rv_idecoder() {
 }
 
 rv_idecoder::~rv_idecoder() {
+    m_vcd->close();
     delete m_rtl;
     delete m_ctx;
     delete m_vcd;
@@ -45,6 +47,9 @@ rv_idecoder::~rv_idecoder() {
 void rv_idecoder::tick() {
     m_rtl->clk_i = !m_rtl->clk_i;
     m_rtl->eval();
+    if (m_vcd)
+        m_vcd->dump(static_cast<uint64_t>(m_ticks_passed_));
+    m_ticks_passed_++;
     m_rtl->clk_i = !m_rtl->clk_i;
     m_rtl->eval();
     if (m_vcd)
@@ -56,4 +61,12 @@ bool rv_idecoder::check_m_ext_enabled() const {
     char valid;
     m_rtl->check_m_ext_enabled(&valid);
     return valid;
+}
+
+
+bool rv_idecoder::decode(uint32_t inst) {
+    m_rtl->inst_i = inst;
+    tick();
+    const auto is_illegal = m_rtl->insn_illegal_o;
+    return is_illegal;
 }
