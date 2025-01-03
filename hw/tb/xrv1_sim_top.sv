@@ -1,7 +1,15 @@
 `include "rtl/common/defines.sv"
+`include "xm_cores.svh"
+`include "xm_macro.svh"
+`include "pkg/xrv1_pkg.sv"
+`include "pkg/mrv1_pkg.sv"
 
-module xrv1_sim_top
-(
+
+module xrv1_sim_top #(
+    parameter NUM_THREADS_P = 8,
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter MEM_TAG_WIDTH_P = `XM_CLOG2(NUM_THREADS_P)
+) (
     ////////////////////////////////////////////////////////////////////////////////
     input logic                                 clk_i,
     input logic                                 rst_i
@@ -29,6 +37,7 @@ module xrv1_sim_top
     logic [31:0]                dmem_resp_r_data;
     ////////////////////////////////////////////////////////////////////////////////
 
+`ifdef TB_CORE_TYPE_XRV1
     ////////////////////////////////////////////////////////////////////////////////
     // XRV1 core instance
     ////////////////////////////////////////////////////////////////////////////////
@@ -54,7 +63,47 @@ module xrv1_sim_top
         .dmem_resp_r_data_i         (dmem_resp_r_data)
         ////////////////////////////////////////////////////////////////////////////////
     );
+`elsif TB_CORE_TYPE_MRV1
     ////////////////////////////////////////////////////////////////////////////////
+    // MRV1 core instance
+    ////////////////////////////////////////////////////////////////////////////////
+    logic [MEM_TAG_WIDTH_P-1:0] imem_tag_q, imem_req_tag_lo, imem_resp_tag_li;
+    always_ff @(posedge clk_i) begin
+        imem_tag_q <= imem_req_tag_lo;
+    end
+    assign imem_resp_tag_li = imem_tag_q;
+
+    mrv1_core #(
+        .CORE_RESET_ADDR    (`CPU_RESET_ADDRESS),
+        .NUM_THREADS_P      (NUM_THREADS_P)
+    ) core_i (
+        ////////////////////////////////////////////////////////////////////////////////
+        .clk_i                      (clk_i),
+        .rst_i                      (rst_i),
+        ////////////////////////////////////////////////////////////////////////////////
+        .fetch_en_i                 (1'b1),
+        .simt_en_i                  (1'b0),
+        ////////////////////////////////////////////////////////////////////////////////
+        .imem_req_vld_o             (imem_req_vld),
+        .imem_req_rdy_i             (imem_req_rdy),
+        .imem_req_addr_o            (imem_req_addr),
+        .imem_req_tag_o             (imem_req_tag_lo),
+        .imem_resp_vld_i            (imem_resp_vld),
+        .imem_resp_data_i           (imem_resp_data),
+        .imem_resp_tag_i            (imem_resp_tag_li),
+        ////////////////////////////////////////////////////////////////////////////////
+        .dmem_req_vld_o             (dmem_req_vld),
+        .dmem_req_rdy_i             (dmem_req_rdy),
+        .dmem_resp_err_i            (/*FIXME*/),
+        .dmem_req_addr_o            (dmem_req_addr),
+        .dmem_req_w_en_o            (dmem_req_w_en),
+        .dmem_req_w_be_o            (dmem_req_w_be),
+        .dmem_req_w_data_o          (dmem_req_w_data),
+        .dmem_resp_vld_i            (dmem_resp_vld),
+        .dmem_resp_r_data_i         (dmem_resp_r_data)
+        ////////////////////////////////////////////////////////////////////////////////
+    );
+`endif
 
     ////////////////////////////////////////////////////////////////////////////////
     // TCM simulation model
@@ -82,15 +131,9 @@ module xrv1_sim_top
     );
     ////////////////////////////////////////////////////////////////////////////////
 
-export "DPI-C" task read_register;
-task read_register
-(
-    input int reg_addr,
-    output int val
-);
-    val = xrv1_sim_top.core_i.rf.read_reg(reg_addr);
-endtask
-
+////////////////////////////////////////////////////////////////////////////////
+// Verification routines
+////////////////////////////////////////////////////////////////////////////////
 export "DPI-C" task get_ram_size_bits;
 task get_ram_size_bits
 (
@@ -117,133 +160,10 @@ task read_u8
     data = xrv1_sim_top.tcm_i.itcm_i.read_u8(addr);
 endtask
 
-export "DPI-C" task get_imem_resp_vld;
-task get_imem_resp_vld
-(
-    output byte valid
-);
-    valid = xrv1_sim_top.core_i.get_imem_resp_vld();
-endtask
-
-export "DPI-C" task get_imem_resp_data;
-task get_imem_resp_data
-(
-    output int data
-);
-    data = xrv1_sim_top.core_i.get_imem_resp_data();
-endtask
-
-export "DPI-C" task get_imem_req_vld;
-task get_imem_req_vld
-(
-    output byte valid
-);
-    valid = xrv1_sim_top.core_i.get_imem_req_vld();
-endtask
-
-export "DPI-C" task get_ifetch_insn_data;
-task get_ifetch_insn_data
-(
-    output int data
-);
-    data = xrv1_sim_top.core_i.get_ifetch_insn_data();
-endtask
-
-
-export "DPI-C" task get_ifetch_insn_pc;
-task get_ifetch_insn_pc
-(
-    output int pc
-);
-    pc = xrv1_sim_top.core_i.get_ifetch_insn_pc();
-endtask
-
-export "DPI-C" task get_ifetch_insn_vld;
-task get_ifetch_insn_vld
-(
-    output byte valid
-);
-    valid = xrv1_sim_top.core_i.get_ifetch_insn_vld();
-endtask
-
-export "DPI-C" task get_if_dec_insn_data;
-task get_if_dec_insn_data
-(
-    output int data
-);
-    data = xrv1_sim_top.core_i.get_if_dec_insn_data();
-endtask
-
-export "DPI-C" task get_if_dec_insn_pc;
-task get_if_dec_insn_pc
-(
-    output int pc
-);
-    pc = xrv1_sim_top.core_i.get_if_dec_insn_pc();
-endtask
-
-export "DPI-C" task get_if_dec_insn_vld;
-task get_if_dec_insn_vld
-(
-    output byte valid
-);
-    valid = xrv1_sim_top.core_i.get_if_dec_insn_vld();
-endtask
-
-export "DPI-C" task get_wb_data_vld;
-task get_wb_data_vld
-(
-    output byte valid
-);
-    valid = xrv1_sim_top.core_i.get_wb_data_vld();
-endtask
-
-export "DPI-C" task get_wb_data;
-task get_wb_data
-(
-    output int data
-);
-    data = xrv1_sim_top.core_i.get_wb_data();
-endtask
-
-export "DPI-C" task get_wb_rd_addr;
-task get_wb_rd_addr
-(
-    output byte addr
-);
-    addr = xrv1_sim_top.core_i.get_wb_rd_addr();
-endtask
-
-export "DPI-C" task get_idecode_issue_vld;
-task get_idecode_issue_vld
-(
-    output byte valid
-);
-    valid = xrv1_sim_top.core_i.get_idecode_issue_vld();
-endtask
-
-export "DPI-C" task get_idecode_itag;
-task get_idecode_itag
-(
-    output byte itag
-);
-    itag = xrv1_sim_top.core_i.get_idecode_itag();
-endtask
-
-export "DPI-C" task get_ret_retire_cnt;
-task get_ret_retire_cnt
-(
-    output byte cnt
-);
-    cnt = xrv1_sim_top.core_i.get_ret_retire_cnt();
-endtask
-
-export "DPI-C" task get_iq_retire_itag;
-task get_iq_retire_itag
-(
-    output byte itag
-);
-    itag = xrv1_sim_top.core_i.get_iq_retire_itag();
-endtask
+`ifdef TB_CORE_TYPE_XRV1
+`include "tb/ucore_dpi.svh"
+`elsif TB_CORE_TYPE_MRV1
+`include "tb/mtcore_dpi.svh"
+`endif
 
 endmodule

@@ -20,7 +20,6 @@
     `define CPU_RAM_SIZE_BITS `DEFAULT_RAM_SIZE_BITS
 `endif
 
-
 `ifndef RV_XLEN
     `define RV_XLEN `DEFAULT_RV_XLEN
 `endif
