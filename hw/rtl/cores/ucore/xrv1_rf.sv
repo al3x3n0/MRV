@@ -36,10 +36,17 @@ module xrv1_rf
             rf_mem[rd_addr_i] <= rd_data_i;
     end
     ////////////////////////////////////////////////////////////////////////////////
-    function [DATA_WIDTH_P - 1:0] read_reg;
-        /* verilator public */
+    function [DATA_WIDTH_P - 1:0] read_register;
         input integer reg_addr;
-        read_reg = rf_mem[reg_addr];
+        read_register = rf_mem[reg_addr];
     endfunction
+
+    task write_register
+    (
+        input integer reg_addr,
+        input [DATA_WIDTH_P - 1:0] data
+    );
+        //rf_mem[reg_addr] <= data;
+    endtask
     ////////////////////////////////////////////////////////////////////////////////
 endmodule

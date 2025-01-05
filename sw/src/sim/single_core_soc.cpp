@@ -4,7 +4,7 @@
 #include "isa_sim/riscv_inst_dump.h"
 
 // verilator includes
-#include "Vxrv1_sim_top.h"
+#include "Vrv_soc_sim_top.h"
 #include "verilated.h"
 #include "verilated_vcd_c.h"
 
@@ -17,7 +17,7 @@ single_core_soc::single_core_soc() : m_elf_loader(this) {
     assert(m_ctx);
 
     // allocate rtl design
-    m_rtl = new Vxrv1_sim_top(m_ctx, prefix.c_str());
+    m_rtl = new Vrv_soc_sim_top(m_ctx, prefix.c_str());
     assert(m_rtl);
 
     Verilated::traceEverOn(true);
@@ -133,6 +133,16 @@ uint32_t single_core_soc::get_reg_val_u32(uint32_t addr) const {
     int32_t val = 0;
     m_rtl->read_register(addr, &val);
     return static_cast<uint32_t>(val);
+}
+
+uint64_t single_core_soc::read_arch_reg(uint32_t addr) const {
+    long long val = 0;
+    m_rtl->soc_read_arch_register(0, 0, addr, &val);
+    return static_cast<uint64_t>(val);
+}
+
+void single_core_soc::write_arch_reg(uint32_t addr, uint64_t val) {
+    m_rtl->soc_write_arch_register(0, 0, addr, val);
 }
 
 bool single_core_soc::run_simulation(int num_cycles, int verbose_lvl) {

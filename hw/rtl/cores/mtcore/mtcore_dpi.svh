@@ -4,5 +4,5 @@ task read_register
     input int reg_addr,
     output int val
 );
-    val = xrv1_sim_top.core_i.rf_i.read_reg(0, reg_addr);
+    val = 0;//rv_soc_sim_top.core_i[0].rf.read_register(reg_addr);
 endtask

@@ -4,7 +4,7 @@
 #include "isa_sim/riscv_inst_dump.h"
 
 // verilator includes
-#include "Vxrv1_sim_top.h"
+#include "Vrv_soc_sim_top.h"
 #include "verilated.h"
 #include "verilated_vcd_c.h"
 

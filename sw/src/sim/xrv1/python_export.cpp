@@ -5,7 +5,7 @@
 
 #include "xrv1_soc.hpp"
 
-BOOST_PYTHON_MODULE(libxrv1_sim_top_dut)
+BOOST_PYTHON_MODULE(libxrv1_rv_soc_sim_top_dut)
 {
     using namespace boost::python;
 
@@ -13,6 +13,8 @@ BOOST_PYTHON_MODULE(libxrv1_sim_top_dut)
         .def("release_reset", &xrv1_soc::release_reset)
         .def("get_reset_status", &xrv1_soc::get_reset_status)
         .def("tick", &xrv1_soc::tick)
+        .def("read_arch_register", &xrv1_soc::read_arch_reg)
+        .def("write_arch_register", &xrv1_soc::write_arch_reg)
         .def("get_ticks_number", &xrv1_soc::get_ticks_number)
         .def("load_elf", &xrv1_soc::load_elf)
         .def("run_simulation", &xrv1_soc::run_simulation)

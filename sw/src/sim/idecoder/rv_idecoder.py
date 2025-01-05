@@ -2,7 +2,7 @@
 
 import sys
 import argparse
-import lib.librv_idecoder_sim_top_dut as libdut
+import lib.libidecoder_rv_idecoder_sim_top_dut as libdut
 
 def main():
     

@@ -5,7 +5,7 @@
 
 #include "rv_idecoder.hpp"
 
-BOOST_PYTHON_MODULE(librv_idecoder_sim_top_dut)
+BOOST_PYTHON_MODULE(libidecoder_rv_idecoder_sim_top_dut)
 {
     using namespace boost::python;
 
