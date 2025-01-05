@@ -1,15 +1,6 @@
-`define DEFAULT_CPU_RESET_ADDRESS 'h2000
+`define DEFAULT_CPU_RESET_ADDRESS 'h0
 `define DEFAULT_RAM_SIZE_BITS 16
 ///////////////////////////////////////////////////////////////////////////////
-`define DEFAULT_RV_XLEN 32
-`define DEFAULT_RV_DEBUG_LEVEL 0
-///////////////////////////////////////////////////////////////////////////////
-`define DEFAULT_RV_HAS_M_EXT 0
-`define DEFAULT_RV_HAS_A_EXT 0
-`define DEFAULT_RV_HAS_F_EXT 0
-`define DEFAULT_RV_HAS_D_EXT 0
-`define DEFAULT_RV_HAS_ZICSR_EXT 0
-`define DEFAULT_RV_HAS_ZIFENCEI_EXT 0
 ///////////////////////////////////////////////////////////////////////////////
 
 `ifndef CPU_RESET_ADDRESS
@@ -24,30 +15,10 @@
     `define RV_XLEN `DEFAULT_RV_XLEN
 `endif
 
-`ifndef RV_DEBUG_LEVEL
-    `define RV_DEBUG_LEVEL `DEFAULT_RV_DEBUG_LEVEL
-`endif
+`define REPEAT_MACRO(n,d,arg) `_REPEAT_MACRO_``n(d,arg)
+`define _REPEAT_MACRO_0(d,arg) d(0,arg)
+`define _REPEAT_MACRO_1(d,arg) `_REPEAT_MACRO_0(d,arg)d(1,arg)
+`define _REPEAT_MACRO_2(d,arg) `_REPEAT_MACRO_1(d,arg)d(2,arg)
+`define _REPEAT_MACRO_3(d,arg) `_REPEAT_MACRO_2(d,arg)d(3,arg)
 
-`ifndef RV_HAS_M_EXT
-    `define RV_HAS_M_EXT `DEFAULT_RV_HAS_M_EXT
-`endif
-
-`ifndef RV_HAS_A_EXT
-    `define RV_HAS_A_EXT `DEFAULT_RV_HAS_A_EXT
-`endif
-
-`ifndef RV_HAS_F_EXT
-    `define RV_HAS_F_EXT `DEFAULT_RV_HAS_F_EXT
-`endif
-
-`ifndef RV_HAS_D_EXT
-    `define RV_HAS_D_EXT `DEFAULT_RV_HAS_D_EXT
-`endif
-
-`ifndef RV_HAS_ZICSR_EXT
-    `define RV_HAS_ZICSR_EXT `DEFAULT_RV_HAS_ZICSR_EXT
-`endif
-
-`ifndef RV_HAS_ZIFENCEI_EXT
-    `define RV_HAS_ZIFENCEI_EXT `DEFAULT_RV_HAS_ZIFENCEI_EXT
-`endif
+`define CASE_READ_REGISTER(n,addr) n: val = core_i[n].cpu_read_register(addr);

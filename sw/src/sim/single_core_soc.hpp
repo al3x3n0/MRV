@@ -6,7 +6,7 @@
 
 #include <cstdint>
 
-class Vxrv1_sim_top;
+class Vrv_soc_sim_top;
 class VerilatedContext;
 class VerilatedVcdC;
 
@@ -25,6 +25,9 @@ public:
     uint32_t get_ram_size_bits() const;
 
     uint32_t get_reg_val_u32(uint32_t addr) const;
+
+    uint64_t read_arch_reg(uint32_t addr) const;
+    void write_arch_reg(uint32_t addr, uint64_t val);
 
     // release reset for design
     void release_reset();
@@ -47,7 +50,7 @@ protected:
     virtual void on_simulation_step(int verbose_lvl) = 0;
 
 public:
-    Vxrv1_sim_top* m_rtl = nullptr;
+    Vrv_soc_sim_top* m_rtl = nullptr;
     VerilatedContext* m_ctx = nullptr;
     VerilatedVcdC* m_vcd = nullptr;
 

@@ -5,8 +5,10 @@
 `include "pkg/mrv1_pkg.sv"
 
 
-module xrv1_sim_top #(
-    parameter NUM_THREADS_P = 8,
+module rv_soc_sim_top #(
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter CPU_NUM_CORES_P = 1,
+    parameter NUM_THREADS_P   = 8,
     ////////////////////////////////////////////////////////////////////////////////
     parameter MEM_TAG_WIDTH_P = `XM_CLOG2(NUM_THREADS_P)
 ) (
@@ -41,7 +43,9 @@ module xrv1_sim_top #(
     ////////////////////////////////////////////////////////////////////////////////
     // XRV1 core instance
     ////////////////////////////////////////////////////////////////////////////////
-    xrv1_core #(.CORE_RESET_ADDR(`CPU_RESET_ADDRESS)) core_i (
+    xrv1_core #(
+        .CORE_RESET_ADDR(`CPU_RESET_ADDRESS)
+    ) core_i [CPU_NUM_CORES_P-1:0] (
         ////////////////////////////////////////////////////////////////////////////////
         .clk_i                      (clk_i),
         .rst_i                      (rst_i),
@@ -76,7 +80,7 @@ module xrv1_sim_top #(
     mrv1_core #(
         .CORE_RESET_ADDR    (`CPU_RESET_ADDRESS),
         .NUM_THREADS_P      (NUM_THREADS_P)
-    ) core_i (
+    ) core_i [CPU_NUM_CORES_P-1:0] (
         ////////////////////////////////////////////////////////////////////////////////
         .clk_i                      (clk_i),
         .rst_i                      (rst_i),
@@ -105,10 +109,16 @@ module xrv1_sim_top #(
     );
 `endif
 
+    // TODO: support more complicated RAM model with caches and AXI bus under ifdef
+    // along with existing 
+
     ////////////////////////////////////////////////////////////////////////////////
     // TCM simulation model
     ////////////////////////////////////////////////////////////////////////////////
-    xrv1_sim_tcm #(.itcm_size_p(1 << `CPU_RAM_SIZE_BITS), .dtcm_size_p(1 << `CPU_RAM_SIZE_BITS)) tcm_i (
+    xrv1_sim_tcm #(
+        .itcm_size_p(1 << `CPU_RAM_SIZE_BITS),
+        .dtcm_size_p(1 << `CPU_RAM_SIZE_BITS)
+    ) tcm_i (
         ////////////////////////////////////////////////////////////////////////////////
         .clk_i                      (clk_i),
         ////////////////////////////////////////////////////////////////////////////////
@@ -139,7 +149,7 @@ task get_ram_size_bits
 (
     output int bits
 );
-    bits = xrv1_sim_top.tcm_i.itcm_size_p;
+    bits = rv_soc_sim_top.tcm_i.itcm_size_p;
 endtask
 
 export "DPI-C" task write_u8;
@@ -148,7 +158,7 @@ task write_u8
     input int addr,
     input byte data
 );
-    xrv1_sim_top.tcm_i.itcm_i.write_u8(addr, data);
+    rv_soc_sim_top.tcm_i.itcm_i.write_u8(addr, data);
 endtask
 
 export "DPI-C" task read_u8;
@@ -157,13 +167,40 @@ task read_u8
     input int addr,
     output byte data
 );
-    data = xrv1_sim_top.tcm_i.itcm_i.read_u8(addr);
+    data = rv_soc_sim_top.tcm_i.itcm_i.read_u8(addr);
 endtask
 
+
 `ifdef TB_CORE_TYPE_XRV1
-`include "tb/ucore_dpi.svh"
+    `include "ucore/ucore_dpi.svh"
 `elsif TB_CORE_TYPE_MRV1
-`include "tb/mtcore_dpi.svh"
+    `include "mtcore/mtcore_dpi.svh"
 `endif
+
+export "DPI-C" task soc_read_arch_register;
+task soc_read_arch_register
+(
+    input int core_id,
+    input int hart_id,
+    input int reg_addr,
+    output longint val
+);
+    case (core_id)
+        0: val = core_i[0].read_arch_register(hart_id, reg_addr);
+    endcase
+endtask
+
+export "DPI-C" task soc_write_arch_register;
+task soc_write_arch_register
+(
+    input int core_id,
+    input int hart_id,
+    input int reg_addr,
+    input longint val
+);
+    case (core_id)
+        0: core_i[0].write_arch_register(hart_id, reg_addr, val);
+    endcase
+endtask
 
 endmodule
