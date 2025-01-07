@@ -2,8 +2,8 @@
 #define __RV_IDECODER_HPP__
 
 //#include "xrv1_soc.hpp"
-#include "sim/elf_loader.hpp"
-#include "sim/memory_base.hpp"
+// #include "sim/elf_loader.hpp"
+// #include "sim/memory_base.hpp"
 
 #include <cstdint>
 
@@ -22,6 +22,9 @@ public:
 
     void tick();
     bool check_m_ext_enabled() const;
+
+    //
+    bool decode(uint32_t inst);
 
 public:
     Vrv_idecoder_sim_top* m_rtl = nullptr;

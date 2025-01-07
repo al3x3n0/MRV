@@ -31,3 +31,11 @@
 *.out
 *.app
 
+# vscode stuff
+.vscode
+
+# vim ignore
+*.swp
+*.swo
+*~
+

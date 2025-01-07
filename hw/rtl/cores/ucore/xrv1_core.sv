@@ -870,4 +870,18 @@ module xrv1_core
     logic                           ifetch_insn_illegal_lo;
 */
 
+    function longint read_arch_register;
+        input integer hart_id;
+        input integer reg_addr;
+        read_arch_register = {{64 - DATA_WIDTH_P{1'b0}}, rf.read_register(reg_addr)};
+    endfunction
+
+    task write_arch_register (
+        input integer hart_id,
+        input integer reg_addr,
+        input longint data
+    );
+        rf.write_register(reg_addr, data[DATA_WIDTH_P - 1:0]);
+    endtask
+
 endmodule

@@ -2,7 +2,7 @@
 
 import sys
 import argparse
-import lib.libxrv1_sim_top_dut as libdut
+import lib.libxrv1_rv_soc_sim_top_dut as libdut
 
 def main():
     
