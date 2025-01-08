@@ -86,7 +86,7 @@ module mrv1_issue #(
     ;
     ////////////////////////////////////////////////////////////////////////////////
     logic [dec_buf_width_lp-1:0] issue_insn_data_lo;
-    wire [dec_buf_width_lp-1:0] decode_buf_data_li = {
+    logic [dec_buf_width_lp-1:0] decode_buf_data_li = {
         dec_pc_i,
         dec_fu_req_i,
         dec_fu_opc_i,
@@ -108,16 +108,17 @@ module mrv1_issue #(
     // Issue queues
     ////////////////////////////////////////////////////////////////////////////////
     logic [NUM_THREADS_P-1:0] iq_rdy_lo;
+    logic [NUM_THREADS_P-1:0] issue_th_rdy_li;
     logic [NUM_THREADS_P-1:0][ITAG_WIDTH_P-1:0] iq_issue_itag_lo;
     logic [NUM_THREADS_P-1:0][dec_buf_width_lp-1:0] ths_dec_buf_data_lo;
     logic issue_any_w = (|issue_fu_req_o);
     generate
     for (genvar i = 0; i < NUM_THREADS_P; i++) begin
         ////////////////////////////////////////////////////////////////////////////////
-        wire dec_buf_full_lo, dec_buf_empty_lo;
-        wire wid_match_w = dec_tid_i == TID_WIDTH_LP'(i);
+        logic dec_buf_full_lo, dec_buf_empty_lo;
+        logic wid_match_w = dec_tid_i == TID_WIDTH_LP'(i);
         /*FIXME*/
-        wire enq_w = wid_match_w & dec_vld_i & ~dec_buf_full_lo;
+        logic enq_w = wid_match_w & dec_vld_i & ~dec_buf_full_lo;
         ////////////////////////////////////////////////////////////////////////////////
         logic                           dec_buf_data_vld_lo;
         logic [dec_buf_width_lp-1:0]    dec_buf_data_lo;
@@ -170,7 +171,7 @@ module mrv1_issue #(
             .rst_i          (rst_i),
             ////////////////////////////////////////////////////////////////////////////////
             .enq_i          (enq_w),
-            .deq_i          (/*FIXME*/),
+            .deq_i          (issue_vld_w),
             ////////////////////////////////////////////////////////////////////////////////
             .data_i         (decode_buf_data_li),
             ////////////////////////////////////////////////////////////////////////////////
@@ -183,10 +184,14 @@ module mrv1_issue #(
             ////////////////////////////////////////////////////////////////////////////////
         );
         ////////////////////////////////////////////////////////////////////////////////
-        wire issue_tid_match_w = issue_tid_o == TID_WIDTH_LP'(i);
-        wire ret_tid_match_w = retire_tid_i == TID_WIDTH_LP'(i);
-        wire issue_vld_w = issue_any_w & issue_tid_match_w & issue_tid_vld_lo;
-        wire [ITAG_WIDTH_P-1:0] retire_cnt_w = ret_tid_match_w ? retire_cnt_i[i] : 0;
+        logic fu_rdy_w = (exec_fu_rdy_i & dec_buf_fu_req_lo) == exec_fu_rdy_i;
+        assign issue_th_rdy_li[i] = fu_rdy_w & iq_rdy_lo[i];
+        ////////////////////////////////////////////////////////////////////////////////
+        logic issue_tid_match_w = issue_tid_o == TID_WIDTH_LP'(i);
+        logic ret_tid_match_w = retire_tid_i == TID_WIDTH_LP'(i);
+        logic issue_vld_w = issue_any_w & issue_tid_match_w & issue_tid_vld_lo;
+        logic [ITAG_WIDTH_P-1:0] retire_cnt_w = ret_tid_match_w ? retire_cnt_i[i] : 0;
+        
         ////////////////////////////////////////////////////////////////////////////////
         // Instruction Track Queue
         ////////////////////////////////////////////////////////////////////////////////
@@ -232,7 +237,7 @@ module mrv1_issue #(
     ) issue_tw_sched_i (
         .clk_i(clk_i),
         .rst_i(rst_i),
-        .issue_rdy_i(iq_rdy_lo),
+        .issue_rdy_i(issue_th_rdy_li),
         .issue_vld_o(issue_tid_vld_lo),
         .issue_tid_o(issue_tid_lo)
     );
@@ -275,14 +280,14 @@ module mrv1_issue #(
     ////////////////////////////////////////////////////////////////////////////////
     // WB Stage bypass
     ////////////////////////////////////////////////////////////////////////////////
-    wire rs0_x0_w = rs0_addr_o == '0;
-    wire rs1_x0_w = rs1_addr_o == '0;
-    wire [DATA_WIDTH_P-1:0] rs0_byp_data_w = rs_byp_data_i[issue_tid_lo][0];
-    wire [DATA_WIDTH_P-1:0] rs1_byp_data_w = rs_byp_data_i[issue_tid_lo][1];
-    wire rs0_byp_en_w = rs_byp_en_i[issue_tid_lo][0];
-    wire rs1_byp_en_w = rs_byp_en_i[issue_tid_lo][1];
-    wire [DATA_WIDTH_P-1:0] rs0_data_w = (rs0_byp_en_w & ~rs0_x0_w) ? rs0_byp_data_w : rs0_data_i;
-    wire [DATA_WIDTH_P-1:0] rs1_data_w = (rs1_byp_en_w & ~rs1_x0_w) ? rs1_byp_data_w : rs1_data_i;
+    logic rs0_x0_w = rs0_addr_o == '0;
+    logic rs1_x0_w = rs1_addr_o == '0;
+    logic [DATA_WIDTH_P-1:0] rs0_byp_data_w = rs_byp_data_i[issue_tid_lo][0];
+    logic [DATA_WIDTH_P-1:0] rs1_byp_data_w = rs_byp_data_i[issue_tid_lo][1];
+    logic rs0_byp_en_w = rs_byp_en_i[issue_tid_lo][0];
+    logic rs1_byp_en_w = rs_byp_en_i[issue_tid_lo][1];
+    logic [DATA_WIDTH_P-1:0] rs0_data_w = (rs0_byp_en_w & ~rs0_x0_w) ? rs0_byp_data_w : rs0_data_i;
+    logic [DATA_WIDTH_P-1:0] rs1_data_w = (rs1_byp_en_w & ~rs1_x0_w) ? rs1_byp_data_w : rs1_data_i;
 
     mrv1_src_mux #(
         .PC_WIDTH_P     (PC_WIDTH_P),

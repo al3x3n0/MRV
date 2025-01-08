@@ -1,6 +1,7 @@
 module mrv1_ifetch
 #(
     ////////////////////////////////////////////////////////////////////////////////
+    parameter CORE_RESET_ADDR = 'h2000,
     parameter PC_WIDTH_P = 32,
     parameter DATA_WIDTH_P = 32,
     parameter NUM_THREADS_P = 8,
@@ -9,7 +10,7 @@ module mrv1_ifetch
     ////////////////////////////////////////////////////////////////////////////////
     parameter ifq_addr_width_lp = $clog2(ifq_size_p),
     parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P),
-    parameter IMEM_TAG_WIDTH_P = TID_WIDTH_LP,
+    parameter IMEM_TAG_WIDTH_P = PC_WIDTH_P + TID_WIDTH_LP,
     parameter BARR_ID_WIDTH_LP = $clog2(NUM_BARR_P)
     ////////////////////////////////////////////////////////////////////////////////
 ) (
@@ -57,16 +58,24 @@ module mrv1_ifetch
     logic [PC_WIDTH_P-1:0]                      sched_pc_lo;
     logic [TID_WIDTH_LP-1:0]                    sched_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
+    logic                                       fetch_req_vld_q;
     logic [PC_WIDTH_P-1:0]                      fetch_pc_q;
     logic [TID_WIDTH_LP-1:0]                    fetch_tid_q;
     ////////////////////////////////////////////////////////////////////////////////
     always_ff @(posedge clk_i) begin
         if (rst_i) begin
+            fetch_req_vld_q     <= '0;
+            fetch_pc_q          <= '0;
+            fetch_tid_q         <= '0;
         end else begin
+            fetch_req_vld_q     <= sched_fetch_req_lo;
             fetch_pc_q          <= sched_pc_lo;
             fetch_tid_q         <= sched_tid_lo;
         end
     end
+    assign imem_req_vld_o = fetch_req_vld_q;
+    assign imem_req_addr_o = fetch_pc_q;
+    assign imem_req_tag_o = {fetch_pc_q, fetch_tid_q};
     ////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -82,6 +91,9 @@ module mrv1_ifetch
     logic ifq_empty_lo;
     logic ifq_full_lo;
     ////////////////////////////////////////////////////////////////////////////////
+    logic [TID_WIDTH_LP-1:0]    fetch_tid_li;
+    logic [PC_WIDTH_P-1:0]      fetch_pc_li;
+    assign {fetch_pc_li, fetch_tid_li} = imem_resp_tag_i;
     mrv1_ifbuf #(
         .NUM_THREADS_P              (NUM_THREADS_P),
         .PC_WIDTH_P                 (PC_WIDTH_P)
@@ -95,8 +107,8 @@ module mrv1_ifetch
         ////////////////////////////////////////////////////////////////////////////////
         .fetch_data_vld_i           (imem_resp_vld_i),
         .fetch_data_i               (imem_resp_data_i),
-        .fetch_pc_i                 (fetch_pc_q /* FIXME */),
-        .fetch_tid_i                (imem_resp_tag_i),
+        .fetch_pc_i                 (fetch_pc_li),
+        .fetch_tid_i                (fetch_tid_li),
         ////////////////////////////////////////////////////////////////////////////////
         .fetch_data_vld_o           (ifetch_insn_vld_o),
         .fetch_data_o               (ifetch_insn_data_o),
@@ -111,7 +123,9 @@ module mrv1_ifetch
     ////////////////////////////////////////////////////////////////////////////////
     // Thread Scheduler
     ////////////////////////////////////////////////////////////////////////////////
+
     mrv1_th_sched #(
+        .CORE_RESET_ADDR            (CORE_RESET_ADDR),
         .NUM_THREADS_P              (NUM_THREADS_P),
         .PC_WIDTH_P                 (PC_WIDTH_P)
     ) th_sched_i (
@@ -121,9 +135,9 @@ module mrv1_ifetch
         ////////////////////////////////////////////////////////////////////////////////
         .simt_en_i                  (simt_en_i),
         ////////////////////////////////////////////////////////////////////////////////
-        .fetch_done_i               (/* FIXME */),
-        .fetch_tid_i                (/* FIXME */),
-        .fetch_pc_i                 (/* FIXME */),
+        .fetch_done_i               (imem_resp_vld_i),
+        .fetch_tid_i                (fetch_tid_li),
+        .fetch_pc_i                 (fetch_pc_li),
         ////////////////////////////////////////////////////////////////////////////////
         .exec_tid_i                 (exec_tid_i),
         .exec_b_pc_vld_i            (exec_b_pc_vld_i),

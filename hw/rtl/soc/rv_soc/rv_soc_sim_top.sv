@@ -9,8 +9,12 @@ module rv_soc_sim_top #(
     ////////////////////////////////////////////////////////////////////////////////
     parameter CPU_NUM_CORES_P = 1,
     parameter NUM_THREADS_P   = 8,
+    parameter XLEN_P = 32,
+    parameter PC_WIDTH_P = XLEN_P,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter MEM_TAG_WIDTH_P = `XM_CLOG2(NUM_THREADS_P)
+    parameter TID_WIDTH_LP = `XM_CLOG2(NUM_THREADS_P),
+    parameter IMEM_TAG_WIDTH_P = PC_WIDTH_P + TID_WIDTH_LP,
+    parameter DMEM_TAG_WIDTH_P = 3 + TID_WIDTH_LP
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input logic                                 clk_i,
@@ -71,11 +75,14 @@ module rv_soc_sim_top #(
     ////////////////////////////////////////////////////////////////////////////////
     // MRV1 core instance
     ////////////////////////////////////////////////////////////////////////////////
-    logic [MEM_TAG_WIDTH_P-1:0] imem_tag_q, imem_req_tag_lo, imem_resp_tag_li;
+    logic [DMEM_TAG_WIDTH_P-1:0] dmem_tag_q, dmem_req_tag_lo, dmem_resp_tag_li;
+    logic [IMEM_TAG_WIDTH_P-1:0] imem_tag_q, imem_req_tag_lo, imem_resp_tag_li;
     always_ff @(posedge clk_i) begin
+        dmem_tag_q <= dmem_req_tag_lo;
         imem_tag_q <= imem_req_tag_lo;
     end
     assign imem_resp_tag_li = imem_tag_q;
+    assign dmem_resp_tag_li = dmem_tag_q;
 
     mrv1_core #(
         .CORE_RESET_ADDR    (`CPU_RESET_ADDRESS),
@@ -102,8 +109,10 @@ module rv_soc_sim_top #(
         .dmem_req_addr_o            (dmem_req_addr),
         .dmem_req_w_en_o            (dmem_req_w_en),
         .dmem_req_w_be_o            (dmem_req_w_be),
+        .dmem_req_tag_o             (dmem_req_tag_lo),
         .dmem_req_w_data_o          (dmem_req_w_data),
         .dmem_resp_vld_i            (dmem_resp_vld),
+        .dmem_resp_tag_i            (dmem_resp_tag_li),
         .dmem_resp_r_data_i         (dmem_resp_r_data)
         ////////////////////////////////////////////////////////////////////////////////
     );
