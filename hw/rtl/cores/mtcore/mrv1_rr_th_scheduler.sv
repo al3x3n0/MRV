@@ -1,0 +1,47 @@
+
+module mrv1_rr_th_scheduler
+#(
+    parameter NUM_THREADS_P = 8,
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P)
+    ////////////////////////////////////////////////////////////////////////////////
+) (
+    ////////////////////////////////////////////////////////////////////////////////
+    input  logic                            clk_i,
+    input  logic                            rst_i,
+    ////////////////////////////////////////////////////////////////////////////////
+    input logic [NUM_THREADS_P-1:0]         sched_rdy_i,
+    output logic                            sched_vld_o,
+    output logic [TID_WIDTH_LP-1:0]         sched_tid_o
+    ////////////////////////////////////////////////////////////////////////////////
+);
+
+    ////////////////////////////////////////////////////////////////////////////////
+    logic [NUM_THREADS_P-1:0] sched_tbl_q, sched_tbl_q_n;
+    ////////////////////////////////////////////////////////////////////////////////
+    always_ff @(posedge clk_i) begin
+        if (rst_i)  begin
+            sched_tbl_q <= 0;
+        end else begin
+            sched_tbl_q <= sched_tbl_q_n;
+        end
+    end
+    ////////////////////////////////////////////////////////////////////////////////
+    wire sched_any_w = (|sched_tbl_q);
+    ////////////////////////////////////////////////////////////////////////////////
+    always_comb begin
+        sched_vld_o = 'b0;
+        sched_tid_o = 'b0;
+        sched_tbl_q_n = sched_any_w ? sched_tbl_q : sched_rdy_i;
+        for (int i = 0; i < NUM_THREADS_P; i++) begin
+            if (sched_tbl_q_n[i]) begin
+                sched_vld_o = 'b1;
+                sched_tid_o = TID_WIDTH_LP'(i);
+                sched_tbl_q_n[i] = 0;
+                break;
+            end
+        end
+    end
+    ////////////////////////////////////////////////////////////////////////////////
+
+endmodule

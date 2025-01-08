@@ -5,6 +5,7 @@
 module mrv1_th_sched
 #(
     ////////////////////////////////////////////////////////////////////////////////
+    parameter CORE_RESET_ADDR = 'h2000,
     parameter is_simt_master_p = 0,
     parameter PC_WIDTH_P = 32,
     parameter NUM_THREADS_P = 8,
@@ -48,13 +49,14 @@ module mrv1_th_sched
     output logic [PC_WIDTH_P-1:0]               sched_pc_o
 );
     ////////////////////////////////////////////////////////////////////////////////
-    logic [NUM_THREADS_P-1:0]                                    active_threads_q, active_threads_n_q;
-    logic [NUM_THREADS_P-1:0]                                    sched_tbl_q, sched_tbl_n_q;
-    logic [NUM_THREADS_P-1:0]                                    stalled_threads_q, stalled_threads_n_q;
-    logic [NUM_THREADS_P-1:0][PC_WIDTH_P-1:0]                    thread_pcs_q;
-    logic [NUM_THREADS_P-1:0]                                    use_tspawn_r;
+    logic [NUM_THREADS_P-1:0]                                   fetch_lock_q;
+    logic [NUM_THREADS_P-1:0]                                   active_threads_q, active_threads_n_q;
+    logic [NUM_THREADS_P-1:0]                                   sched_tbl_q, sched_tbl_n_q;
+    logic [NUM_THREADS_P-1:0]                                   stalled_threads_q, stalled_threads_n_q;
+    logic [NUM_THREADS_P-1:0][PC_WIDTH_P-1:0]                   thread_pcs_q;
+    logic [NUM_THREADS_P-1:0]                                   use_tspawn_r;
     ////////////////////////////////////////////////////////////////////////////////
-    logic [NUM_BARR_P-1:0][NUM_THREADS_P-1:0]                barrier_stall_mask_q;
+    logic [NUM_BARR_P-1:0][NUM_THREADS_P-1:0]                   barrier_stall_mask_q;
 
     ////////////////////////////////////////////////////////////////////////////////
     // Thread Spawn/Stall
@@ -78,7 +80,7 @@ module mrv1_th_sched
         end
         ////////////////////////////////////////////////////////////////////////////////
     end
-    logic [NUM_THREADS_P-1:0] ready_threads_w = active_threads_n_q & ~stalled_threads_n_q;
+    logic [NUM_THREADS_P-1:0] ready_threads_w = active_threads_n_q & ~stalled_threads_n_q & ~fetch_lock_q;
 
     ////////////////////////////////////////////////////////////////////////////////
     // Scheduler Logic
@@ -102,7 +104,7 @@ module mrv1_th_sched
     always_ff @(posedge clk_i) begin
         if (rst_i) begin
             ////////////////////////////////////////////////////////////////////////////////
-            thread_pcs_q[0]             <= 0;   //`STARTUP_ADDR;
+            thread_pcs_q[0]             <= PC_WIDTH_P'(CORE_RESET_ADDR);   //`STARTUP_ADDR;
             active_threads_q[0]         <= 1;   // Activating first thread
             sched_tbl_q[0]              <= 1;   // set first thread as ready
             stalled_threads_q           <= 0;
@@ -126,7 +128,7 @@ module mrv1_th_sched
                 stalled_threads_q[exec_tid_i]  <= 1'b0;
             end
             ////////////////////////////////////////////////////////////////////////////////
-            active_threads_q    <= active_threads_n_q;
+            active_threads_q  <= active_threads_n_q;
 	        sched_tbl_q       <= (|sched_tbl_n_q) ? sched_tbl_n_q : active_threads_n_q;
         end
     end
@@ -134,16 +136,15 @@ module mrv1_th_sched
     ////////////////////////////////////////////////////////////////////////////////
     // Lock TW until instruction decode to resolve branches
     ////////////////////////////////////////////////////////////////////////////////
-    //always_ff @(posedge clk_i) begin
-    //    if (scheduled_warp) begin
-    //        fetch_lock_q[warp_to_schedule] <= 1;
-    //    end
-    //    if (ifetch_rsp_fire) begin
-    //        fetch_lock_q[ifetch_rsp_if.wid] <= 0;
-    //        thread_pcs_q[ifetch_rsp_if.wid] <= ifetch_rsp_if.PC + 4;
-    //   end
-    //end
+    always_ff @(posedge clk_i) begin
+        if (sched_vld_o) begin
+            fetch_lock_q[sched_tid_o] <= 1;
+        end
+        if (fetch_done_i) begin
+            fetch_lock_q[fetch_tid_i] <= 0;
+            thread_pcs_q[fetch_tid_i] <= thread_pcs_q[fetch_tid_i] + 4;
+       end
+    end
     ////////////////////////////////////////////////////////////////////////////////
-
 
 endmodule

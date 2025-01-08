@@ -8,7 +8,8 @@ module mrv1_exec
     parameter NUM_FU_P = "inv",
     parameter FU_OPC_WIDTH_P = "inv",
     ////////////////////////////////////////////////////////////////////////////////
-    parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P)
+    parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P),
+    parameter DMEM_TAG_WIDTH_P = ITAG_WIDTH_P + TID_WIDTH_LP
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input logic                                         clk_i,
@@ -47,8 +48,10 @@ module mrv1_exec
     output logic [DATA_WIDTH_P-1:0]                     dmem_req_addr_o,
     output logic                                        dmem_req_w_en_o,
     output logic [3:0]                                  dmem_req_w_be_o,
+    output logic [DMEM_TAG_WIDTH_P-1:0]                 dmem_req_tag_o,
     output logic [DATA_WIDTH_P-1:0]                     dmem_req_w_data_o,
     input  logic                                        dmem_resp_vld_i,
+    input  logic [DMEM_TAG_WIDTH_P-1:0]                 dmem_resp_tag_i,
     input  logic [DATA_WIDTH_P-1:0]                     dmem_resp_r_data_i,
     ////////////////////////////////////////////////////////////////////////////////
     // EXE -> Sched
@@ -162,8 +165,10 @@ module mrv1_exec
         .dmem_req_addr_o                (dmem_req_addr_o),
         .dmem_req_w_en_o                (dmem_req_w_en_o),
         .dmem_req_w_be_o                (dmem_req_w_be_o),
+        .dmem_req_tag_o                 (dmem_req_tag_o),
         .dmem_req_w_data_o              (dmem_req_w_data_o),
         .dmem_resp_vld_i                (dmem_resp_vld_i),
+        .dmem_resp_tag_i                (dmem_resp_tag_i),
         .dmem_resp_r_data_i             (dmem_resp_r_data_i),
         ////////////////////////////////////////////////////////////////////////////////
         // Write back interface

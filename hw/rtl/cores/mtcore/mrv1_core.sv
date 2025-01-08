@@ -18,7 +18,8 @@ module mrv1_core
     parameter NUM_RS_LP = 2,
     parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P),
     parameter IQ_SZ_LP = (1 << ITAG_WIDTH_P),
-    parameter IMEM_TAG_WIDTH_P = TID_WIDTH_LP
+    parameter IMEM_TAG_WIDTH_P = PC_WIDTH_P + TID_WIDTH_LP,
+    parameter DMEM_TAG_WIDTH_P = ITAG_WIDTH_P + TID_WIDTH_LP
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                        clk_i,
@@ -42,8 +43,10 @@ module mrv1_core
     output logic [DATA_WIDTH_P-1:0]                     dmem_req_addr_o,
     output logic                                        dmem_req_w_en_o,
     output logic [3:0]                                  dmem_req_w_be_o,
+    output logic [DMEM_TAG_WIDTH_P-1:0]                 dmem_req_tag_o,
     output logic [DATA_WIDTH_P-1:0]                     dmem_req_w_data_o,
     input  logic                                        dmem_resp_vld_i,
+    input  logic [DMEM_TAG_WIDTH_P-1:0]                 dmem_resp_tag_i,
     input  logic [DATA_WIDTH_P-1:0]                     dmem_resp_r_data_i,
     ////////////////////////////////////////////////////////////////////////////////
     // SIMT Fetching
@@ -79,6 +82,7 @@ module mrv1_core
     logic [PC_WIDTH_P-1:0]          exec_th_ctl_tspawn_pc_lo;
     ////////////////////////////////////////////////////////////////////////////////
     mrv1_ifetch #(
+        .CORE_RESET_ADDR            (CORE_RESET_ADDR),
         .NUM_THREADS_P              (NUM_THREADS_P),
         .PC_WIDTH_P                 (PC_WIDTH_P)
     ) if_i (
@@ -475,8 +479,10 @@ module mrv1_core
         .dmem_req_addr_o        (dmem_req_addr_o),
         .dmem_req_w_en_o        (dmem_req_w_en_o),
         .dmem_req_w_be_o        (dmem_req_w_be_o),
+        .dmem_req_tag_o         (dmem_req_tag_o),
         .dmem_req_w_data_o      (dmem_req_w_data_o),
         .dmem_resp_vld_i        (dmem_resp_vld_i),
+        .dmem_resp_tag_i        (dmem_resp_tag_i),
         .dmem_resp_r_data_i     (dmem_resp_r_data_i)
     );
 
