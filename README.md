@@ -23,9 +23,16 @@ cmake -DPROJECTS_TO_BUILD="rv_idecoder;xrv_soc" -DRV_IDECODER_DEBUG_LEVEL=7 ../M
 ```
 
 ## Existing cmake options
-- -DCPU_RESET_ADDRESS=<val>, default is **OFF**
-- -DCPU_RAM_SIZE_BITS=<val>, default is **OFF**
 - -DPROJECTS_TO_BUILD=<val>, default is **ALL**
+
+- -DXRV_SOC_CPU_RESET_ADDRESS=\<val\>, default is **OFF**
+- -DXRV_SOC_RAM_BITS_SIZE=\<val\>, default is **OFF**
+- -DXRV_SOC_DEBUG_LEVEL=\<val\>, default is **OFF**
+
+- -DMRV_SOC_CPU_RESET_ADDRESS=<val>, default is **OFF**
+- -DMRV_SOC_RAM_BITS_SIZE=<val>, default is **OFF**
+- -DMRV_SOC_DEBUG_LEVEL=\<val\>, default is **OFF**
+
 - -DRV_IDECODER_DEBUG_LEVEL=<val>, default is **0**
 - -DRV_IDECODER_RV_XLEN=<val>, default is **32**
 - -DRV_IDECODER_RV_HAS_M_EXT=<val>, default is **0**
@@ -36,17 +43,31 @@ cmake -DPROJECTS_TO_BUILD="rv_idecoder;xrv_soc" -DRV_IDECODER_DEBUG_LEVEL=7 ../M
 - -DRV_IDECODER_RV_HAS_ZICSR_EXT=<val>, default is **0**
 - -DRV_IDECODER_RV_HAS_ZIFENCEI_EXT=<val>, default is **0**
 
-## SoC related options
+## XRV_SoC related options
 
-### CPU_RESET_ADDRESS
+### XRV_SOC_CPU_RESET_ADDRESS
 This option if set allows you to override the default reset address of the CPU. The proper value is a hex one without any leading modifiers.
 I.e. -DCPU_RESET_ADDRESS=3000 would set reset addres of the core to 0x3000.
 
-
-### CPU_RAM_SIZE_BITS
+### XRV_SOC_RAM_BITS_BITS
 This option allows you to override the default RAM size. The proper value is number of available bits for RAM address.
 I.e. -DCPU_RAM_SIZE_BITS=22 would configure ram to (1<<22) bytes of size.
 
+### XRV_SOC_DEBUG_LEVEL
+This option allows you to specify debug level for the xrv_soc.
+
+## MRV_SoC related options
+
+### MRV_SOC_CPU_RESET_ADDRESS
+This option if set allows you to override the default reset address of the CPU. The proper value is a hex one without any leading modifiers.
+I.e. -DCPU_RESET_ADDRESS=3000 would set reset addres of the core to 0x3000.
+
+### MRV_SOC_RAM_BITS_BITS
+This option allows you to override the default RAM size. The proper value is number of available bits for RAM address.
+I.e. -DCPU_RAM_SIZE_BITS=22 would configure ram to (1<<22) bytes of size.
+
+### MRV_SOC_DEBUG_LEVEL
+This option allows you to specify debug level for the mrv_soc.
 
 ## RV instruction decoder related options
 

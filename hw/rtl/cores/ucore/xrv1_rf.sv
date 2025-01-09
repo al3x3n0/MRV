@@ -26,7 +26,7 @@ module xrv1_rf
     ////////////////////////////////////////////////////////////////////////////////
 );
     ////////////////////////////////////////////////////////////////////////////////
-    logic [rf_size_lp-1:0][DATA_WIDTH_P-1:0] rf_mem;
+    logic [DATA_WIDTH_P-1:0] rf_mem [0:rf_size_lp-1];
     ////////////////////////////////////////////////////////////////////////////////
     assign rs0_data_o = rs0_addr_i == 'b0 ? 'b0 : rf_mem[rs0_addr_i];
     assign rs1_data_o = rs1_addr_i == 'b0 ? 'b0 : rf_mem[rs1_addr_i];
@@ -41,12 +41,10 @@ module xrv1_rf
         read_register = rf_mem[reg_addr];
     endfunction
 
-    task write_register
-    (
-        input integer reg_addr,
-        input [DATA_WIDTH_P - 1:0] data
-    );
-        //rf_mem[reg_addr] <= data;
-    endtask
+    function void write_register;
+        input integer reg_addr;
+        input [DATA_WIDTH_P - 1:0] data;
+        rf_mem[reg_addr] = data;
+    endfunction
     ////////////////////////////////////////////////////////////////////////////////
 endmodule

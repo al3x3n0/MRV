@@ -83,6 +83,10 @@ bool single_core_soc::get_reset_status() const {
 void single_core_soc::tick() {
     m_rtl->clk_i = !m_rtl->clk_i;
     m_rtl->eval();
+    if (m_vcd)
+        m_vcd->dump(static_cast<uint64_t>(m_ticks_passed_));
+    m_ticks_passed_++;
+
     m_rtl->clk_i = !m_rtl->clk_i;
     m_rtl->eval();
     if (m_vcd)

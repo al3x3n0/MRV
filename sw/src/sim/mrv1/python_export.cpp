@@ -5,7 +5,7 @@
 
 #include "mrv1_soc.hpp"
 
-BOOST_PYTHON_MODULE(libmrv1_sim_top_dut)
+BOOST_PYTHON_MODULE(libmrv1_rv_soc_sim_top_dut)
 {
     using namespace boost::python;
 
@@ -14,6 +14,8 @@ BOOST_PYTHON_MODULE(libmrv1_sim_top_dut)
         .def("get_reset_status", &mrv1_soc::get_reset_status)
         .def("tick", &mrv1_soc::tick)
         .def("get_ticks_number", &mrv1_soc::get_ticks_number)
+        .def("read_arch_register", &mrv1_soc::read_arch_reg)
+        .def("write_arch_register", &mrv1_soc::write_arch_reg)
         .def("load_elf", &mrv1_soc::load_elf)
         .def("run_simulation", &mrv1_soc::run_simulation)
         .def("read_byte", &mrv1_soc::read_u8)
