@@ -6,10 +6,13 @@
 
 
 module rv_soc_sim_top #(
+    parameter DEBUG_LEVEL_P = 0,
     ////////////////////////////////////////////////////////////////////////////////
     parameter CPU_NUM_CORES_P = 1,
     parameter NUM_THREADS_P   = 8,
     parameter XLEN_P = 32,
+    parameter CPU_RESET_ADDRESS_P = 'h2000,
+    parameter RAM_BITS_SIZE_P = 16,
     parameter PC_WIDTH_P = XLEN_P,
     ////////////////////////////////////////////////////////////////////////////////
     parameter TID_WIDTH_LP = `XM_CLOG2(NUM_THREADS_P),
@@ -43,12 +46,30 @@ module rv_soc_sim_top #(
     logic [31:0]                dmem_resp_r_data;
     ////////////////////////////////////////////////////////////////////////////////
 
+    generate
+        if (DEBUG_LEVEL_P > 0) initial begin
+            $display("Current parameters: \
+                      DEBUG_LEVEL_P       %8d \
+                      CPU_NUM_CORES_P     %8d \
+                      NUM_THREADS_P       %8d \
+                      XLEN_P              %8d \
+                      CPU_RESET_ADDRESS_P %8h \
+                      RAM_BITS_SIZE_P     %8d \
+                      PC_WIDTH_P          %8d \
+                      TID_WIDTH_LP        %8d \
+                      IMEM_TAG_WIDTH_P    %8d \
+                      DMEM_TAG_WIDTH_P    %8d\n", DEBUG_LEVEL_P, CPU_NUM_CORES_P,
+                      NUM_THREADS_P, XLEN_P, CPU_RESET_ADDRESS_P, RAM_BITS_SIZE_P,
+                      PC_WIDTH_P, TID_WIDTH_LP, IMEM_TAG_WIDTH_P, DMEM_TAG_WIDTH_P);
+        end
+    endgenerate
+
 `ifdef TB_CORE_TYPE_XRV1
     ////////////////////////////////////////////////////////////////////////////////
     // XRV1 core instance
     ////////////////////////////////////////////////////////////////////////////////
     xrv1_core #(
-        .CORE_RESET_ADDR(`CPU_RESET_ADDRESS)
+        .CORE_RESET_ADDR(CPU_RESET_ADDRESS_P)
     ) core_i [CPU_NUM_CORES_P-1:0] (
         ////////////////////////////////////////////////////////////////////////////////
         .clk_i                      (clk_i),
@@ -85,7 +106,7 @@ module rv_soc_sim_top #(
     assign dmem_resp_tag_li = dmem_tag_q;
 
     mrv1_core #(
-        .CORE_RESET_ADDR    (`CPU_RESET_ADDRESS),
+        .CORE_RESET_ADDR    (CPU_RESET_ADDRESS_P),
         .NUM_THREADS_P      (NUM_THREADS_P)
     ) core_i [CPU_NUM_CORES_P-1:0] (
         ////////////////////////////////////////////////////////////////////////////////
@@ -125,8 +146,8 @@ module rv_soc_sim_top #(
     // TCM simulation model
     ////////////////////////////////////////////////////////////////////////////////
     xrv1_sim_tcm #(
-        .itcm_size_p(1 << `CPU_RAM_SIZE_BITS),
-        .dtcm_size_p(1 << `CPU_RAM_SIZE_BITS)
+        .itcm_size_p(1 << RAM_BITS_SIZE_P),
+        .dtcm_size_p(1 << RAM_BITS_SIZE_P)
     ) tcm_i (
         ////////////////////////////////////////////////////////////////////////////////
         .clk_i                      (clk_i),

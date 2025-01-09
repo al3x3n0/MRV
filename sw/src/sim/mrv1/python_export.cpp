@@ -5,7 +5,7 @@
 
 #include "mrv1_soc.hpp"
 
-BOOST_PYTHON_MODULE(libmrv1_sim_top_dut)
+BOOST_PYTHON_MODULE(libmrv1_rv_soc_sim_top_dut)
 {
     using namespace boost::python;
 

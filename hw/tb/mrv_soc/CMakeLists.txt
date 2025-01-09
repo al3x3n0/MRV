@@ -12,13 +12,18 @@ list(APPEND MRV_SOC_VERILATOR_EXTRA_ARGS "-DSIM_ENABLED=1")
 list(APPEND MRV_SOC_VERILATOR_EXTRA_ARGS "-DTB_CORE_TYPE_MRV1=1")
 
 # if cpu reset address option is set, add such define for verilator
-if (CPU_RESET_ADDRESS)
-    list(APPEND MRV_SOC_VERILATOR_EXTRA_ARGS "-DCPU_RESET_ADDRESS='h${CPU_RESET_ADDRESS}")
+if (MRV_SOC_CPU_RESET_ADDRESS)
+    list(APPEND MRV_SOC_VERILATOR_EXTRA_ARGS "-GCPU_RESET_ADDRESS_P=${MRV_SOC_CPU_RESET_ADDRESS}")
 endif ()
 
 # if cpu ram size bits option is set, add such define for verilator
-if (CPU_RAM_SIZE_BITS)
-    list(APPEND MRV_SOC_VERILATOR_EXTRA_ARGS "-DCPU_RAM_SIZE_BITS=${CPU_RAM_SIZE_BITS}")
+if (MRV_SOC_RAM_BITS_SIZE)
+    list(APPEND XRV_SOC_VERILATOR_EXTRA_ARGS "-GRAM_BITS_SIZE_P=${MRV_SOC_RAM_BITS_SIZE}")
+endif ()
+
+# set debug level for xrv_soc
+if (MRV_SOC_DEBUG_LEVEL)
+    list(APPEND MRV_SOC_VERILATOR_EXTRA_ARGS "-GDEBUG_LEVEL_P=${MRV_SOC_DEBUG_LEVEL}")
 endif ()
 
 ###############################################################################
@@ -59,8 +64,8 @@ ADD_VERILATED_TARGET(
     "${SW_SRC_DIR}/src/;${SW_SRC_DIR}/external/"
     )
 
-# install(FILES "${SW_SRC_DIR}/dut/xrv1"
-#     PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-#     DESTINATION "lib/.."
-#     )
+install(FILES "${SW_SRC_DIR}/dut/mrv1"
+    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    DESTINATION "lib/.."
+    )
 ###############################################################################

@@ -1,18 +1,9 @@
 `define DEFAULT_CPU_RESET_ADDRESS 'h0
-`define DEFAULT_RAM_SIZE_BITS 16
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 `ifndef CPU_RESET_ADDRESS
     `define CPU_RESET_ADDRESS `DEFAULT_CPU_RESET_ADDRESS
-`endif
-
-`ifndef CPU_RAM_SIZE_BITS
-    `define CPU_RAM_SIZE_BITS `DEFAULT_RAM_SIZE_BITS
-`endif
-
-`ifndef RV_XLEN
-    `define RV_XLEN `DEFAULT_RV_XLEN
 `endif
 
 `define REPEAT_MACRO(n,d,arg) `_REPEAT_MACRO_``n(d,arg)

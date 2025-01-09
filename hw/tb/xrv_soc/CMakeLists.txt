@@ -12,13 +12,18 @@ list(APPEND XRV_SOC_VERILATOR_EXTRA_ARGS "-DSIM_ENABLED=1")
 list(APPEND XRV_SOC_VERILATOR_EXTRA_ARGS "-DTB_CORE_TYPE_XRV1=1")
 
 # if cpu reset address option is set, add such define for verilator
-if (CPU_RESET_ADDRESS)
-    list(APPEND XRV_SOC_VERILATOR_EXTRA_ARGS "-DCPU_RESET_ADDRESS='h${CPU_RESET_ADDRESS}")
+if (XRV_SOC_CPU_RESET_ADDRESS)
+    list(APPEND XRV_SOC_VERILATOR_EXTRA_ARGS "-GCPU_RESET_ADDRESS_P=${XRV_SOC_CPU_RESET_ADDRESS}")
 endif ()
 
 # if cpu ram size bits option is set, add such define for verilator
-if (CPU_RAM_SIZE_BITS)
-    list(APPEND XRV_SOC_VERILATOR_EXTRA_ARGS "-DCPU_RAM_SIZE_BITS=${CPU_RAM_SIZE_BITS}")
+if (XRV_SOC_RAM_BITS_SIZE)
+    list(APPEND XRV_SOC_VERILATOR_EXTRA_ARGS "-GRAM_BITS_SIZE_P=${XRV_SOC_RAM_BITS_SIZE}")
+endif ()
+
+# set debug level for xrv_soc
+if (XRV_SOC_DEBUG_LEVEL)
+    list(APPEND XRV_SOC_VERILATOR_EXTRA_ARGS "-GDEBUG_LEVEL_P=${XRV_SOC_DEBUG_LEVEL}")
 endif ()
 
 ###############################################################################
