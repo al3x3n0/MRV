@@ -35,7 +35,7 @@ module mrv1_rf
     ////////////////////////////////////////////////////////////////////////////////
 );
     ////////////////////////////////////////////////////////////////////////////////
-    logic [rf_size_lp-1:0][DATA_WIDTH_P-1:0]    rf_mem_q;
+    logic [DATA_WIDTH_P-1:0] rf_mem_q [0:rf_size_lp-1];
     ////////////////////////////////////////////////////////////////////////////////
     wire [rf_addr_width_lp-1:0] rs0_addr_w = {tid_i, rs0_addr_i};
     wire [rf_addr_width_lp-1:0] rs1_addr_w = {tid_i, rs1_addr_i};
@@ -50,11 +50,17 @@ module mrv1_rf
         end
     end
     ////////////////////////////////////////////////////////////////////////////////
-    function [DATA_WIDTH_P-1:0] read_reg;
-        /* verilator public */
+    function [DATA_WIDTH_P-1:0] read_register;
         input integer tid;
         input integer reg_addr;
-        read_reg = rf_mem_q[{TID_WIDTH_LP'(tid), rf_addr_width_p'(reg_addr)}];
+        read_register = rf_mem_q[{TID_WIDTH_LP'(tid), rf_addr_width_p'(reg_addr)}];
+    endfunction
+
+    function void write_register;
+        input integer              tid;
+        input integer              reg_addr;
+        input [DATA_WIDTH_P - 1:0] data;
+        rf_mem_q[{TID_WIDTH_LP'(tid), rf_addr_width_p'(reg_addr)}] = data;
     endfunction
     ////////////////////////////////////////////////////////////////////////////////
 endmodule
