@@ -158,4 +158,10 @@ module mrv1_th_sched
     end
     ////////////////////////////////////////////////////////////////////////////////
 
+    always_comb begin
+        if (exec_b_pc_vld_i) begin
+            $display("exec_b_pc_i=%h", exec_b_pc_i);
+        end
+    end
+
 endmodule

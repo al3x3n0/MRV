@@ -42,6 +42,7 @@ module mrv1_issue #(
     input  logic                                        dec_rd_vld_i,
     input  logic [rf_addr_width_p-1:0]                  dec_rd_addr_i,
     ////////////////////////////////////////////////////////////////////////////////
+    input  logic [TID_WIDTH_LP-1:0]                     exec_b_tid_i,
     input  logic                                        exec_b_flush_i,
     ////////////////////////////////////////////////////////////////////////////////
     output logic [TID_WIDTH_LP-1:0]                     rf_tid_o,
@@ -165,7 +166,7 @@ module mrv1_issue #(
         ) dec_buf_i (
             ////////////////////////////////////////////////////////////////////////////////
             .clk_i          (clk_i),
-            .rst_i          (rst_i),
+            .rst_i          (rst_i | exec_b_flush_i),
             ////////////////////////////////////////////////////////////////////////////////
             .enq_i          (enq_w),
             .deq_i          (issue_vld_w),
