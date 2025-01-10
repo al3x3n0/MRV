@@ -28,7 +28,7 @@ module xrv_mem_1rw_sync  #(
         logic [ADDR_WIDTH_LP-1:0] addr_r;
         logic [DATA_WIDTH_P-1:0] mem [DEPTH_P-1:0];
         logic [DATA_WIDTH_P-1:0] data_out;
-        logic [ADDR_WIDTH_LP-1:0] addr_li = (DEPTH_P > 0) ? addr_i : '0;
+        wire [ADDR_WIDTH_LP-1:0] addr_li = (DEPTH_P > 0) ? addr_i : '0;
 
         always_ff @ (posedge clk_i) begin 
             if (do_rd_i) begin

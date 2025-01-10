@@ -37,6 +37,8 @@ module mrv1_ifetch
     output logic [PC_WIDTH_P-1:0]               ifetch_insn_pc_o,
     output logic [TID_WIDTH_LP-1:0]             ifetch_insn_tid_o,
     ////////////////////////////////////////////////////////////////////////////////
+    input logic                                 decode_rdy_i,
+    ////////////////////////////////////////////////////////////////////////////////
     input logic [TID_WIDTH_LP-1:0]              exec_tid_i,
     input logic                                 exec_b_pc_vld_i,
     input logic [PC_WIDTH_P-1:0]                exec_b_pc_i,
@@ -58,24 +60,9 @@ module mrv1_ifetch
     logic [PC_WIDTH_P-1:0]                      sched_pc_lo;
     logic [TID_WIDTH_LP-1:0]                    sched_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
-    logic                                       fetch_req_vld_q;
-    logic [PC_WIDTH_P-1:0]                      fetch_pc_q;
-    logic [TID_WIDTH_LP-1:0]                    fetch_tid_q;
-    ////////////////////////////////////////////////////////////////////////////////
-    always_ff @(posedge clk_i) begin
-        if (rst_i) begin
-            fetch_req_vld_q     <= '0;
-            fetch_pc_q          <= '0;
-            fetch_tid_q         <= '0;
-        end else begin
-            fetch_req_vld_q     <= sched_fetch_req_lo;
-            fetch_pc_q          <= sched_pc_lo;
-            fetch_tid_q         <= sched_tid_lo;
-        end
-    end
-    assign imem_req_vld_o = fetch_req_vld_q;
-    assign imem_req_addr_o = fetch_pc_q;
-    assign imem_req_tag_o = {fetch_pc_q, fetch_tid_q};
+    assign imem_req_vld_o = sched_fetch_req_lo;
+    assign imem_req_addr_o = sched_pc_lo;
+    assign imem_req_tag_o = {sched_pc_lo, sched_tid_lo};
     ////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -86,14 +73,14 @@ module mrv1_ifetch
     logic [PC_WIDTH_P-1:0]          ifq_pc_lo;
     logic [TID_WIDTH_LP-1:0]        ifq_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
-    logic ifq_enqueue_li; /* FIXME */
+    logic ifq_enqueue_li;
     logic ifq_dequeue_li;
     logic ifq_empty_lo;
     logic ifq_full_lo;
-    ////////////////////////////////////////////////////////////////////////////////
     logic [TID_WIDTH_LP-1:0]    fetch_tid_li;
     logic [PC_WIDTH_P-1:0]      fetch_pc_li;
     assign {fetch_pc_li, fetch_tid_li} = imem_resp_tag_i;
+
     mrv1_ifbuf #(
         .NUM_THREADS_P              (NUM_THREADS_P),
         .PC_WIDTH_P                 (PC_WIDTH_P)
@@ -119,6 +106,8 @@ module mrv1_ifetch
         .full_o                     (ifq_full_lo)
         ////////////////////////////////////////////////////////////////////////////////
     );
+    assign ifq_enqueue_li = imem_resp_vld_i /* & ~ifq_byp_en */ & ~ifq_full_lo;
+    assign ifq_dequeue_li = decode_rdy_i & ifetch_insn_vld_o;
 
     ////////////////////////////////////////////////////////////////////////////////
     // Thread Scheduler
@@ -149,8 +138,8 @@ module mrv1_ifetch
         ////////////////////////////////////////////////////////////////////////////////
         // IMT Control
         ////////////////////////////////////////////////////////////////////////////////
-        .th_stall_vld_i              (/*FIXME*/),
-        .th_stall_tid_i              (/*FIXME*/),
+        .th_stall_vld_i              ('0), // FIXME
+        .th_stall_tid_i              ('0), // FIXME
         ////////////////////////////////////////////////////////////////////////////////
         .th_ctl_vld_i                (th_ctl_vld_i),
         .th_ctl_tid_i                (th_ctl_tid_i),
@@ -162,5 +151,11 @@ module mrv1_ifetch
         .th_ctl_barrier_size_m1_i    (th_ctl_barrier_size_m1_i)
         ////////////////////////////////////////////////////////////////////////////////
     );
+
+    always_comb begin
+        $display("imem_req_vld_o=%h imem_req_addr_o=%h", imem_req_vld_o, imem_req_addr_o);
+        $display("imem_resp_data_i=%h", imem_resp_data_i);
+        $display("ifetch_insn_vld_o=%h ifetch_insn_data_o=%h", ifetch_insn_vld_o, ifetch_insn_data_o);
+    end 
 
 endmodule

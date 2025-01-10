@@ -20,6 +20,8 @@ module mrv1_idecode #(
     ////////////////////////////////////////////////////////////////////////////////
     output logic                                        insn_illegal_o,
     ////////////////////////////////////////////////////////////////////////////////
+    output logic                                        dec_rdy_o,
+    ////////////////////////////////////////////////////////////////////////////////
     output logic                                        dec_vld_o,
     output logic [PC_WIDTH_P-1:0]                       dec_pc_o,
     output logic [TID_WIDTH_LP-1:0]                     dec_tid_o,
@@ -95,6 +97,7 @@ module mrv1_idecode #(
         .dec_b_is_jump_o            (dec_b_is_jump_o)
     );
 
+    assign dec_rdy_o = 1'b1;
     assign dec_tid_o = insn_tid_i;
 
 endmodule

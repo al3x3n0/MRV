@@ -53,8 +53,8 @@ module xrv_stream_buffer #(
 		reg [DATA_WIDTH_P-1:0] data_o_q, buffer_q;
 		reg vld_o_q, vld_i_q;
 
-		logic fire_in = vld_i && rdy_i;
-		logic flow_out = rdy_o || ~vld_o;
+		wire fire_in = vld_i && rdy_i;
+		wire flow_out = rdy_o || ~vld_o;
 
 		always_ff @(posedge clk_i) begin
 			if (rst_i) begin

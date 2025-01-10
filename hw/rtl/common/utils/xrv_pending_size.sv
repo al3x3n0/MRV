@@ -72,7 +72,7 @@ module xrv_pending_size #(
 
             logic [SIZE_WIDTH_LP-1:0] size_n, size_r;
 
-            logic [DELTA_WIDTH_LP-1:0] delta = DELTA_WIDTH_LP'(incr) - DELTA_WIDTH_LP'(decr);
+            wire [DELTA_WIDTH_LP-1:0] delta = DELTA_WIDTH_LP'(incr) - DELTA_WIDTH_LP'(decr);
 
             assign size_n = $signed(size_r) + SIZE_WIDTH_LP'($signed(delta));
 
@@ -102,10 +102,10 @@ module xrv_pending_size #(
 
             reg [ADDR_WIDTH_LP-1:0] used_r;
 
-            logic is_alm_empty   = (used_r == ADDR_WIDTH_LP'(ALM_EMPTY_P));
-            logic is_alm_empty_n = (used_r == ADDR_WIDTH_LP'(ALM_EMPTY_P+1));
-            logic is_alm_full    = (used_r == ADDR_WIDTH_LP'(ALM_FULL_P));
-            logic is_alm_full_n  = (used_r == ADDR_WIDTH_LP'(ALM_FULL_P-1));
+            wire is_alm_empty   = (used_r == ADDR_WIDTH_LP'(ALM_EMPTY_P));
+            wire is_alm_empty_n = (used_r == ADDR_WIDTH_LP'(ALM_EMPTY_P+1));
+            wire is_alm_full    = (used_r == ADDR_WIDTH_LP'(ALM_FULL_P));
+            wire is_alm_full_n  = (used_r == ADDR_WIDTH_LP'(ALM_FULL_P-1));
 
             always_ff @(posedge clk_i) begin
                 if (rst_i) begin
@@ -130,10 +130,10 @@ module xrv_pending_size #(
 
             if (SIZE_P > 2) begin : g_size_gt2
 
-                logic is_empty_n = (used_r == ADDR_WIDTH_LP'(1));
-                logic is_full_n  = (used_r == ADDR_WIDTH_LP'(SIZE_P-1));
+                wire is_empty_n = (used_r == ADDR_WIDTH_LP'(1));
+                wire is_full_n  = (used_r == ADDR_WIDTH_LP'(SIZE_P-1));
 
-                logic [1:0] delta = {~incr & decr, incr ^ decr};
+                wire [1:0] delta = {~incr & decr, incr ^ decr};
 
                 always_ff @(posedge clk_i) begin
                     if (rst_i) begin

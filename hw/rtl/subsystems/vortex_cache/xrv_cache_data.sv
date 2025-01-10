@@ -62,7 +62,7 @@ module xrv_cache_data #(
 
     logic [CACHE_WORDS_PER_LINE_LP-1:0][WORD_SIZE_P-1:0] wr_mask;
     for (genvar i = 0; i < CACHE_WORDS_PER_LINE_LP; ++i) begin : g_wr_mask
-        logic word_en = (CACHE_WORDS_PER_LINE_LP == 1) || (word_idx_i == i);
+        wire word_en = (CACHE_WORDS_PER_LINE_LP == 1) || (word_idx_i == i);
         assign wr_mask[i] = wr_be_i & {WORD_SIZE_P{word_en}};
     end
 
@@ -71,12 +71,12 @@ module xrv_cache_data #(
         logic [NUM_WAYS_P-1:0][LINE_SIZE_P-1:0] be_rdata;
 
         for (genvar i = 0; i < NUM_WAYS_P; ++i) begin : g_be_store
-            logic [LINE_SIZE_P-1:0] be_wdata = {LINE_SIZE_P{do_wr_i}}; // only asserted on wrs
-            logic [LINE_SIZE_P-1:0] be_wren = {LINE_SIZE_P{init_i || do_fill_i || do_flush_i}} | wr_mask;
-            logic be_wr = ((do_fill_i || do_flush_i) && ((NUM_WAYS_P == 1) || (evict_way_i == i)))
+            wire [LINE_SIZE_P-1:0] be_wdata = {LINE_SIZE_P{do_wr_i}}; // only asserted on wrs
+            wire [LINE_SIZE_P-1:0] be_wren = {LINE_SIZE_P{init_i || do_fill_i || do_flush_i}} | wr_mask;
+            wire be_wr = ((do_fill_i || do_flush_i) && ((NUM_WAYS_P == 1) || (evict_way_i == i)))
                              || (do_wr_i && tag_matches_i[i])
                              || init_i;
-            logic be_rd  = do_fill_i || do_flush_i;
+            wire be_rd  = do_fill_i || do_flush_i;
 
             xrv_mem_1rw_wren_bitmask_sync #(
                 .DATA_WIDTH_P       (LINE_SIZE_P),
@@ -121,10 +121,10 @@ module xrv_cache_data #(
             assign line_wren  = 1'b1;
         end
 
-        logic line_wr = (do_fill_i && ((NUM_WAYS_P == 1) || (evict_way_i == i)))
+        wire line_wr = (do_fill_i && ((NUM_WAYS_P == 1) || (evict_way_i == i)))
                        || (do_wr_i && tag_matches_i[i] && IS_WRITEABLE_P);
 
-        logic line_rd = do_rd_i || ((do_fill_i || do_flush_i) && HAS_WRITEBACK_P);
+        wire line_rd = do_rd_i || ((do_fill_i || do_flush_i) && HAS_WRITEBACK_P);
 
         xrv_mem_1rw_wren_bytemask_sync #(
             .DATA_WIDTH_P       (CACHE_LINE_WIDTH_LP),

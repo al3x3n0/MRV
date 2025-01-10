@@ -219,8 +219,8 @@ module xrv_cache #(
     logic [NUM_MEM_PORTS_P-1:0][BANK_SEL_WIDTH-1:0] mem_resp_queue_sel;
 
     for (genvar i = 0; i < NUM_MEM_PORTS_P; ++i) begin : g_mem_resp_queue_data_s
-        logic [BANK_MEM_TAG_WIDTH_LP-1:0] mem_resp_tag_s = mem_resp_queue_data[i][MEM_TAG_WIDTH_LP-1:MEM_ARB_SEL_BITS];
-        logic [CACHE_LINE_WIDTH_LP-1:0] mem_resp_data_s = mem_resp_queue_data[i][MEM_RESP_DATA_WIDTH_LP-1:MEM_TAG_WIDTH_LP];
+        wire [BANK_MEM_TAG_WIDTH_LP-1:0] mem_resp_tag_s = mem_resp_queue_data[i][MEM_TAG_WIDTH_LP-1:MEM_ARB_SEL_BITS];
+        wire [CACHE_LINE_WIDTH_LP-1:0] mem_resp_data_s = mem_resp_queue_data[i][MEM_RESP_DATA_WIDTH_LP-1:MEM_TAG_WIDTH_LP];
         assign mem_resp_queue_data_s[i] = {mem_resp_data_s, mem_resp_tag_s};
     end
 

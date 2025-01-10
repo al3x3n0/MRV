@@ -137,8 +137,8 @@ module xrv_cache_mshr #(
 
     logic [MSHR_ADDR_WIDTH-1:0] prev_idx;
 
-    logic allocate_fire = allocate_vld && allocate_rdy;
-    logic dequeue_fire = dequeue_vld && dequeue_rdy;
+    wire allocate_fire = allocate_vld && allocate_rdy;
+    wire dequeue_fire = dequeue_vld && dequeue_rdy;
 
     logic [MSHR_SIZE_P-1:0] addr_matches;
     for (genvar i = 0; i < MSHR_SIZE_P; ++i) begin : g_addr_matches

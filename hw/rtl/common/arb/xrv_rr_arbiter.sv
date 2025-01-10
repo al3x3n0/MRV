@@ -417,7 +417,7 @@ module xrv_rr_arbiter #(
     `IGNORE_UNOPTFLAT_END
         logic [NUM_REQS-1:0] reqs_mask;
 
-        logic [NUM_REQS-1:0] masked_reqs = requests & reqs_mask;
+        wire [NUM_REQS-1:0] masked_reqs = requests & reqs_mask;
 
         assign masked_pri_reqs[0] = 1'b0;
         for (genvar i = 1; i < NUM_REQS; ++i) begin : g_masked_pri_reqs
@@ -429,11 +429,11 @@ module xrv_rr_arbiter #(
             assign unmasked_pri_reqs[i] = unmasked_pri_reqs[i-1] | requests[i-1];
         end
 
-        logic [NUM_REQS-1:0] grant_masked = masked_reqs & ~masked_pri_reqs;
-        logic [NUM_REQS-1:0] grant_unmasked = requests & ~unmasked_pri_reqs;
+        wire [NUM_REQS-1:0] grant_masked = masked_reqs & ~masked_pri_reqs;
+        wire [NUM_REQS-1:0] grant_unmasked = requests & ~unmasked_pri_reqs;
 
-        logic has_masked_reqs = (| masked_reqs);
-        logic has_unmasked_reqs = (| requests);
+        wire has_masked_reqs = (| masked_reqs);
+        wire has_unmasked_reqs = (| requests);
 
         assign grant_onehot = has_masked_reqs ? grant_masked : grant_unmasked;
 

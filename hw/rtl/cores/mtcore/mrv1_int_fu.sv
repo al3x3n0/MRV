@@ -72,7 +72,7 @@ module mrv1_int_fu
         end
     endgenerate
 
-    logic [DATA_WIDTH_P-1:0] exec_src1_data_neg = ~exec_src1_data_i;
+    wire [DATA_WIDTH_P-1:0] exec_src1_data_neg = ~exec_src1_data_i;
     logic [DATA_WIDTH_P-1:0] bmask;
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -261,7 +261,7 @@ module mrv1_int_fu
     ////////////////////////////////////////////////////////////////////////////////
     // right shifts, we let the synthesizer optimize this
     ////////////////////////////////////////////////////////////////////////////////
-    logic [DATA_WIDTH_P*2-1:0] shift_op_a_wide = (int_fu_opc_i == MRV_INT_FU_ROR) ? {
+    wire [DATA_WIDTH_P*2-1:0] shift_op_a_wide = (int_fu_opc_i == MRV_INT_FU_ROR) ? {
         shift_op_a, shift_op_a
     } : $signed({{DATA_WIDTH_P{shift_arithmetic & shift_op_a[DATA_WIDTH_P-1]}}, shift_op_a});
     logic [DATA_WIDTH_P/8-1:0] shift_right_result_unused;
@@ -319,8 +319,8 @@ module mrv1_int_fu
     //////////////////////////////////////////////////////////////////
     //second == comparator for CLIP instructions
     //////////////////////////////////////////////////////////////////
-    logic [DATA_WIDTH_P-1:0] exec_src1_data_eq = int_fu_opc_i == MRV_INT_FU_CLIPU ? '0 : exec_src1_data_neg;
-    logic is_equal_clip = exec_src0_data_i == exec_src1_data_eq;
+    wire [DATA_WIDTH_P-1:0] exec_src1_data_eq = int_fu_opc_i == MRV_INT_FU_CLIPU ? '0 : exec_src1_data_neg;
+    wire is_equal_clip = exec_src0_data_i == exec_src1_data_eq;
     //////////////////////////////////////////////////////////////////
     always_comb begin
         cmp_signed = 4'b0;

@@ -155,7 +155,7 @@ module xrv_cache_repl #(
             `XM_UNUSED_VAR (hit_way)
 
             logic [WAY_SEL_WIDTH-1:0] ctr_rdata;
-            logic [WAY_SEL_WIDTH-1:0] ctr_wdata = ctr_rdata + 1;
+            wire [WAY_SEL_WIDTH-1:0] ctr_wdata = ctr_rdata + 1;
 
             xrv_mem_1rw #(
                 .DATA_WIDTH_P       (WAY_SEL_WIDTH),

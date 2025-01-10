@@ -107,10 +107,10 @@ module mrv1_lsu #(
 
     generate
     for (genvar i = 0; i < NUM_THREADS_P; i++) begin;
-        logic lsu_req_vld_li = lsu_req_i && exec_tid_i == TID_WIDTH_LP'(i);
-        logic dmem_resp_vld_li = dmem_resp_vld_i && dmem_resp_tid_li == TID_WIDTH_LP'(i);
-        logic mem_commit_vld_li = mem_commit_vld_lo && mem_commit_tid_lo == TID_WIDTH_LP'(i);
-        logic sched_req_vld_li = sched_req_vld_lo && sched_req_tid_lo == TID_WIDTH_LP'(i);
+        wire lsu_req_vld_li = lsu_req_i && exec_tid_i == TID_WIDTH_LP'(i);
+        wire dmem_resp_vld_li = dmem_resp_vld_i && dmem_resp_tid_li == TID_WIDTH_LP'(i);
+        wire mem_commit_vld_li = mem_commit_vld_lo && mem_commit_tid_lo == TID_WIDTH_LP'(i);
+        wire sched_req_vld_li = sched_req_vld_lo && sched_req_tid_lo == TID_WIDTH_LP'(i);
         assign mem_req_rdy_li[i] = dmem_req_rdy_i && dmem_req_vld_lo[i];
 
         mrv1_mem_queue #(

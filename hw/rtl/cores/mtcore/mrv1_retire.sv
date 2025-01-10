@@ -111,6 +111,9 @@ module mrv1_retire #(
                 tmp_ret_buf_vld[tmp0_ptr[j]] = 1'b0;
             end
         end
+        ////////////////////////////////////////////////////////////////////////////////
+        wire retire_tid_match_w = ret_tid_r == TID_WIDTH_LP'(i);
+        assign retire_cnt_o[i] = retire_tid_match_w ? ret_cnt_r[i] : '0;
     end
     endgenerate
 
@@ -119,6 +122,7 @@ module mrv1_retire #(
     ////////////////////////////////////////////////////////////////////////////////
     logic [NUM_THREADS_P-1:0] sched_tbl_q, sched_tbl_q_n;
     wire sched_any_w = (|sched_tbl_q);
+    logic retire_vld_w;
     
     always_ff @(posedge clk_i) begin
         if (rst_i)  begin
@@ -130,11 +134,13 @@ module mrv1_retire #(
 
     always_comb begin
         ret_tid_r = '0;
+        retire_vld_w = '0;
         sched_tbl_q_n = sched_any_w ? sched_tbl_q : ret_rdy_r;
         for (int i = 0; i < NUM_THREADS_P; i++) begin
             if (sched_tbl_q_n[i]) begin
                 ret_tid_r = TID_WIDTH_LP'(i);
                 sched_tbl_q_n[i] = 0;
+                retire_vld_w = '1;
                 break;
             end
         end
@@ -142,9 +148,21 @@ module mrv1_retire #(
     ////////////////////////////////////////////////////////////////////////////////
     assign wb_tid_o         = ret_tid_r;
     assign wb_rd_addr_o     = wb_rd_addr_r[ret_tid_r];
-    assign wb_data_vld_o    = wb_data_vld_r[ret_tid_r];
+    assign wb_data_vld_o    = wb_data_vld_r[ret_tid_r] && retire_vld_w;
     assign wb_data_o        = wb_data_r[ret_tid_r];
     assign retire_tid_o     = ret_tid_r;
     ////////////////////////////////////////////////////////////////////////////////
+
+    always_comb begin
+        for (int i = 0; i < NUM_FU_P; i++) begin
+            if (fu_done_i[i]) begin
+                $display("[RETIRE] T%d: FU[%d] itag=%h data=%h", fu_tid_i[i], i, fu_itag_i[i], fu_wb_data_i[i]);
+            end
+        end
+        $display("[RETIRE] ret_rdy_r=%b", ret_rdy_r);
+        if (wb_data_vld_o) begin
+            $display("[WRITEBACK] T%d: r[%d] <- %h iq_rd_addr_i=%h", wb_tid_o, wb_rd_addr_o, wb_data_o, iq_rd_addr_i[ret_tid_r]);
+        end
+    end
 
 endmodule

@@ -21,7 +21,7 @@ module xrv_mem_1rw_wren_bitmask_sync
 
     logic [ADDR_WIDTH_LP-1:0] addr_r;
     logic [DATA_WIDTH_P-1:0] mem [DEPTH_P-1:0];   
-    logic [ADDR_WIDTH_LP-1:0] addr_li = (DEPTH_P>1) ? addr_i:'0;
+    wire [ADDR_WIDTH_LP-1:0] addr_li = (DEPTH_P>1) ? addr_i:'0;
     
     logic [DATA_WIDTH_P-1:0] data_n;
     for (genvar i = 0; i < DATA_WIDTH_P; i++) begin : rof1

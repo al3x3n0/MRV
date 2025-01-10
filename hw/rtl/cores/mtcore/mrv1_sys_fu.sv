@@ -51,12 +51,12 @@ module mrv1_sys_fu
         endcase
     end
     ////////////////////////////////////////////////////////////////////////////////
-    logic csr_w_en_li = sys_fu_opc_i != MRV_SYS_FU_CSR_READ;
+    wire csr_w_en_li = sys_fu_opc_i != MRV_SYS_FU_CSR_READ;
 
     ////////////////////////////////////////////////////////////////////////////////
     // CSR File
     ////////////////////////////////////////////////////////////////////////////////
-    logic [11:0] csr_addr_w     = exec_src1_data_i[11:0];
+    wire [11:0] csr_addr_w     = exec_src1_data_i[11:0];
     mrv1_csrf #(
         .DATA_WIDTH_P           (DATA_WIDTH_P),
         .NUM_THREADS_P          (NUM_THREADS_P)

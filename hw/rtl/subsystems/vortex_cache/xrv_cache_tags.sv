@@ -87,15 +87,15 @@ module xrv_cache_tags #(
     end
 
     for (genvar i = 0; i < NUM_WAYS_P; ++i) begin : g_tag_store
-        logic way_en   = (NUM_WAYS_P == 1) || (evict_way_i == i);
-        logic do_init  = do_init_i; // init all ways
-        logic do_fill  = do_fill_i && way_en;
-        logic do_flush = do_flush_i && (!HAS_WRITEBACK_P || way_en); // flush the whole line in writethrough mode
-        logic do_write = HAS_WRITEBACK_P && do_wr_i && tag_matches_o[i]; // only write on tag hit
+        wire way_en   = (NUM_WAYS_P == 1) || (evict_way_i == i);
+        wire do_init  = do_init_i; // init all ways
+        wire do_fill  = do_fill_i && way_en;
+        wire do_flush = do_flush_i && (!HAS_WRITEBACK_P || way_en); // flush the whole line in writethrough mode
+        wire do_write = HAS_WRITEBACK_P && do_wr_i && tag_matches_o[i]; // only write on tag hit
 
-        logic line_read  = do_rd_i || do_wr_i || (HAS_WRITEBACK_P && (do_fill_i || do_flush_i));
-        logic line_write = do_init || do_fill || do_flush_i || do_write;
-        logic line_valid = do_fill_i || do_wr_i;
+        wire line_read  = do_rd_i || do_wr_i || (HAS_WRITEBACK_P && (do_fill_i || do_flush_i));
+        wire line_write = do_init || do_fill || do_flush_i || do_write;
+        wire line_valid = do_fill_i || do_wr_i;
 
         logic [TAG_WIDTH_LP-1:0] line_wdata;
         logic [TAG_WIDTH_LP-1:0] line_rdata;

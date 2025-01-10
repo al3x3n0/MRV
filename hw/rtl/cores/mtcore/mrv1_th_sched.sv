@@ -49,7 +49,7 @@ module mrv1_th_sched
     output logic [PC_WIDTH_P-1:0]               sched_pc_o
 );
     ////////////////////////////////////////////////////////////////////////////////
-    logic [NUM_THREADS_P-1:0]                                   fetch_lock_q;
+    logic [NUM_THREADS_P-1:0]                                   fetch_lock_q, fetch_lock_n_q;
     logic [NUM_THREADS_P-1:0]                                   active_threads_q, active_threads_n_q;
     logic [NUM_THREADS_P-1:0]                                   sched_tbl_q, sched_tbl_n_q;
     logic [NUM_THREADS_P-1:0]                                   stalled_threads_q, stalled_threads_n_q;
@@ -80,7 +80,8 @@ module mrv1_th_sched
         end
         ////////////////////////////////////////////////////////////////////////////////
     end
-    logic [NUM_THREADS_P-1:0] ready_threads_w = active_threads_n_q & ~stalled_threads_n_q & ~fetch_lock_q;
+    logic [NUM_THREADS_P-1:0] ready_threads_w;
+    assign ready_threads_w = active_threads_n_q & ~stalled_threads_n_q & ~fetch_lock_q;
 
     ////////////////////////////////////////////////////////////////////////////////
     // Scheduler Logic
@@ -98,6 +99,15 @@ module mrv1_th_sched
                 sched_tbl_n_q[i] = 1'b0;
                 break;
             end
+        end
+    end
+    always_comb begin
+        fetch_lock_n_q = fetch_lock_q;
+        if (sched_vld_o) begin
+            fetch_lock_n_q[sched_tid_o] = 1;
+        end
+        if (fetch_done_i) begin
+            fetch_lock_n_q[fetch_tid_i] = 0;
         end
     end
     ////////////////////////////////////////////////////////////////////////////////
@@ -137,13 +147,14 @@ module mrv1_th_sched
     // Lock TW until instruction decode to resolve branches
     ////////////////////////////////////////////////////////////////////////////////
     always_ff @(posedge clk_i) begin
-        if (sched_vld_o) begin
-            fetch_lock_q[sched_tid_o] <= 1;
+        if (rst_i) begin
+            fetch_lock_q <= '0;
+        end else begin
+            fetch_lock_q <= fetch_lock_n_q;
+            if (sched_vld_o) begin
+                thread_pcs_q[sched_tid_o] <= thread_pcs_q[sched_tid_o] + 4;
+            end
         end
-        if (fetch_done_i) begin
-            fetch_lock_q[fetch_tid_i] <= 0;
-            thread_pcs_q[fetch_tid_i] <= thread_pcs_q[fetch_tid_i] + 4;
-       end
     end
     ////////////////////////////////////////////////////////////////////////////////
 
