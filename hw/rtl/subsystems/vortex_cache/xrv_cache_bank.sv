@@ -98,7 +98,7 @@ module xrv_cache_bank #(
     input logic                                     core_req_vld_i,
     input logic [CACHE_LINE_ADDR_WIDTH_LP-1:0]      core_req_addr_i,
     input logic                                     core_req_rw_i,         // write enable
-    input logic [WORD_SEL_WIDTH_LP-1:0]             core_req_wsel_i,       // select the word in a cacheline, e.g. word size = 4 bytes, cacheline size = 64 bytes, it should have log(64/4)= 4 bits
+    input wire [WORD_SEL_WIDTH_LP-1:0]             core_req_wsel_i,       // select the word in a cacheline, e.g. word size = 4 bytes, cacheline size = 64 bytes, it should have log(64/4)= 4 bits
     input logic [WORD_SIZE_P-1:0]                   core_req_be_i,     // which bytes in data to write
     input logic [CACHE_WORD_WIDTH_LP-1:0]           core_req_data_i,       // data to be written
     input logic [TAG_WIDTH_P-1:0]                   core_req_tag_i,        // identifier of the request (request id)
@@ -200,7 +200,7 @@ module xrv_cache_bank #(
     logic flush_rdy;
 
     // ensure we have no pending memory request in the bank
-    logic no_pending_req = ~vld_st0 && ~vld_st1 && mreq_queue_empty;
+    wire no_pending_req = ~vld_st0 && ~vld_st1 && mreq_queue_empty;
 
     xrv_bank_flush #(
         .BANK_ID_P              (BANK_ID_P),
@@ -222,23 +222,23 @@ module xrv_cache_bank #(
         .bank_empty             (no_pending_req)
     );
 
-    logic pipe_stall = cresp_queue_stall;
+    wire pipe_stall = cresp_queue_stall;
 
     // inputs arbitration:
     // mshr replay has highest priority to maximize utilization since there is no miss.
     // handle memory responses next to prevent deadlock with potential memory request from a miss.
     // flush has precedence over core requests to ensure that the cache is in a consistent state.
-    logic replay_grant = ~init_vld;
-    logic replay_enable = replay_grant && replay_vld;
+    wire replay_grant = ~init_vld;
+    wire replay_enable = replay_grant && replay_vld;
 
-    logic fill_grant  = ~init_vld && ~replay_enable;
-    logic fill_enable = fill_grant && mem_resp_vld_i;
+    wire fill_grant  = ~init_vld && ~replay_enable;
+    wire fill_enable = fill_grant && mem_resp_vld_i;
 
-    logic flush_grant  = ~init_vld && ~replay_enable && ~fill_enable;
-    logic flush_enable = flush_grant && flush_vld;
+    wire flush_grant  = ~init_vld && ~replay_enable && ~fill_enable;
+    wire flush_enable = flush_grant && flush_vld;
 
-    logic creq_grant  = ~init_vld && ~replay_enable && ~fill_enable && ~flush_enable;
-    logic creq_enable = creq_grant && core_req_vld_i;
+    wire creq_grant  = ~init_vld && ~replay_enable && ~fill_enable && ~flush_enable;
+    wire creq_enable = creq_grant && core_req_vld_i;
 
     assign replay_rdy = replay_grant
                        && ~(!HAS_WRITEBACK_P && replay_rw && mreq_queue_alm_full) // needed for writethrough
@@ -257,13 +257,13 @@ module xrv_cache_bank #(
                          && ~mshr_alm_full // needed for mshr allocation
                          && ~pipe_stall;
 
-    logic init_fire     = init_vld;
-    logic replay_fire   = replay_vld && replay_rdy;
-    logic mem_resp_fire  = mem_resp_vld_i && mem_resp_rdy_o;
-    logic flush_fire    = flush_vld && flush_rdy;
-    logic core_req_fire = core_req_vld_i && core_req_rdy_o;
+    wire init_fire     = init_vld;
+    wire replay_fire   = replay_vld && replay_rdy;
+    wire mem_resp_fire  = mem_resp_vld_i && mem_resp_rdy_o;
+    wire flush_fire    = flush_vld && flush_rdy;
+    wire core_req_fire = core_req_vld_i && core_req_rdy_o;
 
-    logic [MSHR_ADDR_WIDTH_LP-1:0] mem_resp_id = mem_resp_tag_i[MSHR_ADDR_WIDTH_LP-1:0];
+    wire [MSHR_ADDR_WIDTH_LP-1:0] mem_resp_id = mem_resp_tag_i[MSHR_ADDR_WIDTH_LP-1:0];
 
     logic [TAG_WIDTH_P-1:0] mem_resp_tag_s;
     if (TAG_WIDTH_P > MEM_TAG_WIDTH_LP) begin : g_mem_resp_tag_s_pad
@@ -312,11 +312,11 @@ module xrv_cache_bank #(
         assign req_uuid_sel = '0;
     end
 
-    logic is_init_sel   = init_vld;
-    logic is_creq_sel   = creq_enable || replay_enable;
-    logic is_fill_sel   = fill_enable;
-    logic is_flush_sel  = flush_enable;
-    logic is_replay_sel = replay_enable;
+    wire is_init_sel   = init_vld;
+    wire is_creq_sel   = creq_enable || replay_enable;
+    wire is_fill_sel   = fill_enable;
+    wire is_flush_sel  = flush_enable;
+    wire is_replay_sel = replay_enable;
 
     xrv_pipe_register #(
         .DATA_WIDTH_P   (1 + 1 + 1 + 1 + 1 + 1 + `XM_UP(FLAGS_WIDTH_P) + CACHE_WAY_SEL_WIDTH_LP + CACHE_LINE_ADDR_WIDTH_LP + CACHE_LINE_WIDTH_LP + 1 + WORD_SIZE_P + WORD_SEL_WIDTH_LP + REQ_SEL_WIDTH_LP + TAG_WIDTH_P + MSHR_ADDR_WIDTH_LP),
@@ -335,28 +335,28 @@ module xrv_cache_bank #(
         assign req_uuid_st0 = '0;
     end
 
-    logic is_read_st0  = is_creq_st0 && ~rw_st0;
-    logic is_write_st0 = is_creq_st0 && rw_st0;
+    wire is_read_st0  = is_creq_st0 && ~rw_st0;
+    wire is_write_st0 = is_creq_st0 && rw_st0;
 
-    logic do_init_st0  = vld_st0 && is_init_st0;
-    logic do_flush_st0 = vld_st0 && is_flush_st0;
-    logic do_read_st0  = vld_st0 && is_read_st0;
-    logic do_write_st0 = vld_st0 && is_write_st0;
-    logic do_fill_st0  = vld_st0 && is_fill_st0;
+    wire do_init_st0  = vld_st0 && is_init_st0;
+    wire do_flush_st0 = vld_st0 && is_flush_st0;
+    wire do_read_st0  = vld_st0 && is_read_st0;
+    wire do_write_st0 = vld_st0 && is_write_st0;
+    wire do_fill_st0  = vld_st0 && is_fill_st0;
 
-    logic is_read_st1  = is_creq_st1 && ~rw_st1;
-    logic is_write_st1 = is_creq_st1 && rw_st1;
+    wire is_read_st1  = is_creq_st1 && ~rw_st1;
+    wire is_write_st1 = is_creq_st1 && rw_st1;
 
-    logic do_read_st1  = vld_st1 && is_read_st1;
-    logic do_write_st1 = vld_st1 && is_write_st1;
+    wire do_read_st1  = vld_st1 && is_read_st1;
+    wire do_write_st1 = vld_st1 && is_write_st1;
 
     assign line_idx_st0 = addr_st0[CACHE_LINE_SEL_BITS_LP-1:0];
     assign line_tag_st0 = `CACHE_LINE_ADDR_TAG(addr_st0);
 
     assign write_word_st0 = data_st0[CACHE_WORD_WIDTH_LP-1:0];
 
-    logic do_lookup_st0 = do_read_st0 || do_write_st0;
-    logic do_lookup_st1 = do_read_st1 || do_write_st1;
+    wire do_lookup_st0 = do_read_st0 || do_write_st0;
+    wire do_lookup_st1 = do_read_st1 || do_write_st1;
 
     logic [CACHE_WAY_SEL_WIDTH_LP-1:0] victim_way_st0;
     logic [NUM_WAYS_P-1:0] tag_matches_st0;
@@ -489,8 +489,8 @@ module xrv_cache_bank #(
     ////////////////////////////////////////////////////////////////////////////////
     // only allocate MSHR entries for non-replay core requests
     ////////////////////////////////////////////////////////////////////////////////
-    logic mshr_allocate_st0 = vld_st0 && is_creq_st0 && ~is_replay_st0;
-    logic mshr_finalize_st1 = vld_st1 && is_creq_st1 && ~is_replay_st1;
+    wire mshr_allocate_st0 = vld_st0 && is_creq_st0 && ~is_replay_st0;
+    wire mshr_finalize_st1 = vld_st1 && is_creq_st1 && ~is_replay_st1;
 
     ////////////////////////////////////////////////////////////////////////////////
     // release allocated mshr entry if we had a hit
@@ -507,7 +507,7 @@ module xrv_cache_bank #(
         assign mshr_release_st1 = is_hit_st1 || (rw_st1 && ~mshr_pending_st1);
     end
 
-    logic mshr_release_fire = mshr_finalize_st1 && mshr_release_st1 && ~pipe_stall;
+    wire mshr_release_fire = mshr_finalize_st1 && mshr_release_st1 && ~pipe_stall;
 
     logic [1:0] mshr_dequeue;
     `POP_COUNT(mshr_dequeue, {replay_fire, mshr_release_fire});
@@ -619,16 +619,16 @@ module xrv_cache_bank #(
     logic mreq_queue_rw;
     logic [`XM_UP(FLAGS_WIDTH_P)-1:0] mreq_queue_flags;
 
-    logic is_fill_or_flush_st1 = is_fill_st1 || (is_flush_st1 && HAS_WRITEBACK_P);
-    logic do_fill_or_flush_st1 = vld_st1 && is_fill_or_flush_st1;
-    logic do_writeback_st1 = do_fill_or_flush_st1 && is_dirty_st1;
-    logic [CACHE_LINE_ADDR_WIDTH_LP-1:0] evict_addr_st1 = {evict_tag_st1, line_idx_st1};
+    wire is_fill_or_flush_st1 = is_fill_st1 || (is_flush_st1 && HAS_WRITEBACK_P);
+    wire do_fill_or_flush_st1 = vld_st1 && is_fill_or_flush_st1;
+    wire do_writeback_st1 = do_fill_or_flush_st1 && is_dirty_st1;
+    wire [CACHE_LINE_ADDR_WIDTH_LP-1:0] evict_addr_st1 = {evict_tag_st1, line_idx_st1};
 
     if (IS_WRITEABLE_P) begin : g_mreq_queue
         if (HAS_WRITEBACK_P) begin : g_wb
             if (HAS_DIRTY_BYTES_P) begin : g_dirty_bytes
                 // ensure dirty bytes match the tag info
-                logic has_dirty_bytes = (| evict_be_st1);
+                wire has_dirty_bytes = (| evict_be_st1);
                 `RUNTIME_ASSERT (~do_fill_or_flush_st1 || (is_dirty_st1 == has_dirty_bytes), ("%t: missmatch dirty bytes: dirty_line=%b, dirty_bytes=%b, addr=0x%0h", $time, is_dirty_st1, has_dirty_bytes, `CACHE_BANK_TO_FULL_ADDR(addr_st1, BANK_ID_P)))
             end
             // issue a fill request on a read/write miss
@@ -722,16 +722,16 @@ module xrv_cache_bank #(
 `endif
 
 `ifdef DBG_TRACE_CACHE
-    logic cresp_queue_fire = cresp_queue_vld && cresp_queue_rdy;
-    logic input_stall = (replay_vld || mem_resp_vld || core_req_vld || flush_vld)
+    wire cresp_queue_fire = cresp_queue_vld && cresp_queue_rdy;
+    wire input_stall = (replay_vld || mem_resp_vld || core_req_vld || flush_vld)
                    && ~(replay_fire || mem_resp_fire || core_req_fire || flush_fire);
 
-    logic [XLEN_P-1:0] mem_resp_full_addr = `CACHE_BANK_TO_FULL_ADDR(mem_resp_addr, BANK_ID_P);
-    logic [XLEN_P-1:0] replay_full_addr = `CACHE_BANK_TO_FULL_ADDR(replay_addr, BANK_ID_P);
-    logic [XLEN_P-1:0] core_req_full_addr = `CACHE_BANK_TO_FULL_ADDR(core_req_addr_i, BANK_ID_P);
-    logic [XLEN_P-1:0] full_addr_st0 = `CACHE_BANK_TO_FULL_ADDR(addr_st0, BANK_ID_P);
-    logic [XLEN_P-1:0] full_addr_st1 = `CACHE_BANK_TO_FULL_ADDR(addr_st1, BANK_ID_P);
-    logic [XLEN_P-1:0] mreq_queue_full_addr = `CACHE_BANK_TO_FULL_ADDR(mreq_queue_addr, BANK_ID_P);
+    wire [XLEN_P-1:0] mem_resp_full_addr = `CACHE_BANK_TO_FULL_ADDR(mem_resp_addr, BANK_ID_P);
+    wire [XLEN_P-1:0] replay_full_addr = `CACHE_BANK_TO_FULL_ADDR(replay_addr, BANK_ID_P);
+    wire [XLEN_P-1:0] core_req_full_addr = `CACHE_BANK_TO_FULL_ADDR(core_req_addr_i, BANK_ID_P);
+    wire [XLEN_P-1:0] full_addr_st0 = `CACHE_BANK_TO_FULL_ADDR(addr_st0, BANK_ID_P);
+    wire [XLEN_P-1:0] full_addr_st1 = `CACHE_BANK_TO_FULL_ADDR(addr_st1, BANK_ID_P);
+    wire [XLEN_P-1:0] mreq_queue_full_addr = `CACHE_BANK_TO_FULL_ADDR(mreq_queue_addr, BANK_ID_P);
 
     always @(posedge clk_i) begin
         if (input_stall || pipe_stall) begin

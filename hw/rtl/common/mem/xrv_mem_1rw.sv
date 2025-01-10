@@ -24,7 +24,7 @@ module xrv_mem_1rw  #(
     else begin: nz
 
         logic [DATA_WIDTH_P-1:0] mem [DEPTH_P-1:0];
-        logic [ADDR_WIDTH_LP-1:0] addr_li = (DEPTH_P > 0) ? addr_i : '0;
+        wire [ADDR_WIDTH_LP-1:0] addr_li = (DEPTH_P > 0) ? addr_i : '0;
 
         always_ff @ (posedge clk_i) begin 
             if (do_wr_i) begin

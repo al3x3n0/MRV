@@ -52,7 +52,7 @@ module xrv_onehot_encoder #(
             localparam SI = M / SN;
             for (genvar s = 0; s < SN; ++s) begin : g_scan_s
             `IGNORE_UNOPTFLAT_BEGIN
-                logic [1:0] vs = {v[lvl-1][s*SI+(SI>>1)], v[lvl-1][s*SI]};
+                wire [1:0] vs = {v[lvl-1][s*SI+(SI>>1)], v[lvl-1][s*SI]};
             `IGNORE_UNOPTFLAT_END
                 assign v[lvl][s*SI] = (| vs);
                 if (lvl == 1) begin : g_lvl_1

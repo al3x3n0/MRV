@@ -109,8 +109,8 @@ module xrv_fifo_queue #(
 
         if (OUT_REG != 0) begin : g_out_reg
             reg [DATA_WIDTH_P-1:0] data_o_r;
-            logic going_empty = (ALM_EMPTY_P == 1) ? alm_empty : (size[ADDRW-1:0] == ADDRW'(1));
-            logic bypass = push && (empty || (going_empty && pop));
+            wire going_empty = (ALM_EMPTY_P == 1) ? alm_empty : (size[ADDRW-1:0] == ADDRW'(1));
+            wire bypass = push && (empty || (going_empty && pop));
             always @(posedge clk_i) begin
                 if (bypass) begin
                     data_o_r <= data_i;

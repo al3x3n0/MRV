@@ -83,21 +83,21 @@ module mrv1_mem_queue
     ////////////////////////////////////////////////////////////////////////////////
     // Queue management
     ////////////////////////////////////////////////////////////////////////////////
-    logic                       req_p0_sent_w       = req_p0_sent_q[req_ptr_r]; 
-    logic                       req_unalgn_w        = req_unalgn_q[req_ptr_r];
-    logic [1:0]                 req_offset_w        = req_offset_q[req_ptr_r];
-    logic [1:0]                 req_size_w          = req_size_q[req_ptr_r];
-    logic [ADDR_WIDTH_P-1:0]    req_addr_w          = req_addr_q[req_ptr_r];
-    logic [DATA_WIDTH_P-1:0]    req_w_data_w        = req_w_data_q[req_ptr_r];
+    wire                       req_p0_sent_w       = req_p0_sent_q[req_ptr_r]; 
+    wire                       req_unalgn_w        = req_unalgn_q[req_ptr_r];
+    wire [1:0]                 req_offset_w        = req_offset_q[req_ptr_r];
+    wire [1:0]                 req_size_w          = req_size_q[req_ptr_r];
+    wire [ADDR_WIDTH_P-1:0]    req_addr_w          = req_addr_q[req_ptr_r];
+    wire [DATA_WIDTH_P-1:0]    req_w_data_w        = req_w_data_q[req_ptr_r];
     ////////////////////////////////////////////////////////////////////////////////
-    logic [1:0]                 resp_size_w         = req_size_q[resp_ptr_r];
-    logic                       resp_signed_w       = req_signed_q[resp_ptr_r];
-    logic [1:0]                 resp_offset_w       = req_offset_q[resp_ptr_r];
-    logic                       resp_unalgn_w       = req_unalgn_q[resp_ptr_r];
-    logic [DATA_WIDTH_P-1:0]    resp_data0_w        = resp_data0_q[resp_ptr_r];
-    logic [DATA_WIDTH_P-1:0]    resp_data1_w        = resp_data1_q[resp_ptr_r];
+    wire [1:0]                 resp_size_w         = req_size_q[resp_ptr_r];
+    wire                       resp_signed_w       = req_signed_q[resp_ptr_r];
+    wire [1:0]                 resp_offset_w       = req_offset_q[resp_ptr_r];
+    wire                       resp_unalgn_w       = req_unalgn_q[resp_ptr_r];
+    wire [DATA_WIDTH_P-1:0]    resp_data0_w        = resp_data0_q[resp_ptr_r];
+    wire [DATA_WIDTH_P-1:0]    resp_data1_w        = resp_data1_q[resp_ptr_r];
     ////////////////////////////////////////////////////////////////////////////////
-    logic dmem_req_accept_w = dmem_req_rdy_i && dmem_req_vld_o && mem_sched_req_vld_i;
+    wire dmem_req_accept_w = dmem_req_rdy_i && dmem_req_vld_o && mem_sched_req_vld_i;
     always_comb begin
         mq_sz_n_r           = mq_sz_r;
         req_ptr_n           = req_ptr_r;
@@ -179,13 +179,13 @@ module mrv1_mem_queue
         end
     end
 
-    logic mem_commit_rdy_2 = ~resp_unalgn_w || (resp_unalgn_w && resp_data1_vld_q[resp_ptr_n]);
-    assign mem_commit_rdy_o = req_vld_q[resp_ptr_n] && resp_data0_vld_q[resp_ptr_n] && mem_commit_rdy_2;
+    wire mem_commit_rdy_2 = ~resp_unalgn_w || (resp_unalgn_w && resp_data1_vld_q[resp_ptr_r]);
+    assign mem_commit_rdy_o = req_vld_q[resp_ptr_r] && resp_data0_vld_q[resp_ptr_r] && mem_commit_rdy_2;
 
     ////////////////////////////////////////////////////////////////////////////////
     // Read data alignment
     ////////////////////////////////////////////////////////////////////////////////
-    logic [DATA_WIDTH_P*2-1:0] dmem_unalgn_resp_data_w = {resp_data0_w, resp_data1_w};
+    wire [DATA_WIDTH_P*2-1:0] dmem_unalgn_resp_data_w = {resp_data0_w, resp_data1_w};
     logic [DATA_WIDTH_P-1:0] dmem_resp_data_r;
     always_comb begin
         if (resp_unalgn_w) begin

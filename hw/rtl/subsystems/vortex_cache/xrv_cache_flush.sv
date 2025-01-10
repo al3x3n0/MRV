@@ -111,13 +111,13 @@ module xrv_cache_flush #(
     for (genvar i = 0; i < NUM_REQS_P; ++i) begin : g_flush_req_mask
         assign flush_req_mask[i] = core_bus_in_if[i].req_vld && core_bus_in_if[i].req_data.flags[`MEM_REQ_FLAG_FLUSH];
     end
-    logic flush_req_enable = (| flush_req_mask);
+    wire flush_req_enable = (| flush_req_mask);
 
     logic [NUM_REQS_P-1:0] lock_released, lock_released_n;
     logic [`XM_UP(UUID_WIDTH_P)-1:0] flush_uuid_r, flush_uuid_n;
 
     for (genvar i = 0; i < NUM_REQS_P; ++i) begin : g_core_bus_out_req
-        logic input_enable = ~flush_req_enable || lock_released[i];
+        wire input_enable = ~flush_req_enable || lock_released[i];
         assign core_bus_out_if[i].req_vld = core_bus_in_if[i].req_vld && input_enable;
         assign core_bus_out_if[i].req_data  = core_bus_in_if[i].req_data;
         assign core_bus_in_if[i].req_rdy  = core_bus_out_if[i].req_rdy && input_enable;

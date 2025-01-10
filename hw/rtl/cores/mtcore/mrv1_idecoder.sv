@@ -43,12 +43,12 @@ module mrv1_idecoder
     wire [2:0]  func3_w     = insn_i[14:12];
     wire [4:0]  opcode_w    = insn_i[6:2];
     ////////////////////////////////////////////////////////////////////////////////
-    wire [rf_addr_width_p-1:0] dec_rs0_addr       = insn_i[19:15];
-    wire [rf_addr_width_p-1:0] dec_rs1_addr       = insn_i[24:20];
-    wire [rf_addr_width_p-1:0] dec_rd_addr        = insn_i[11:7];
+    assign dec_rs0_addr_o   = insn_i[19:15];
+    assign dec_rs1_addr_o   = insn_i[24:20];
+    assign dec_rd_addr_o    = insn_i[11:7];
     ////////////////////////////////////////////////////////////////////////////////
-    wire rs0_x0_w = dec_rs0_addr == '0;
-    wire rs1_x0_w = dec_rs1_addr == '0;
+    wire rs0_x0_w = dec_rs0_addr_o == '0;
+    wire rs1_x0_w = dec_rs1_addr_o == '0;
     ////////////////////////////////////////////////////////////////////////////////
     // Immediate decoding
     ////////////////////////////////////////////////////////////////////////////////
@@ -277,5 +277,6 @@ module mrv1_idecoder
     end
 
     assign dec_vld_o = insn_vld_i;
+    assign dec_pc_o = insn_pc_i;
 
 endmodule

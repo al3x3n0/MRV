@@ -72,13 +72,15 @@ module mrv1_core
     logic [PC_WIDTH_P-1:0]          ifetch_pc_lo;
     logic [TID_WIDTH_LP-1:0]        ifetch_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
+    logic                           dec_rdy_lo;
+    ////////////////////////////////////////////////////////////////////////////////
     logic                           exec_b_pc_vld_lo;
     logic [PC_WIDTH_P-1:0]          exec_b_pc_lo;
     logic [TID_WIDTH_LP-1:0]        exec_b_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
-    logic                           exec_th_ctl_vld_lo;
+    wire                           exec_th_ctl_vld_lo = 'b0; // FIXME
     logic [TID_WIDTH_LP-1:0]        exec_th_ctl_tid_lo;
-    logic                           exec_th_ctl_tspawn_vld_lo;
+    wire                           exec_th_ctl_tspawn_vld_lo = 'b0; // FIXME
     logic [PC_WIDTH_P-1:0]          exec_th_ctl_tspawn_pc_lo;
     ////////////////////////////////////////////////////////////////////////////////
     mrv1_ifetch #(
@@ -97,6 +99,8 @@ module mrv1_core
         .ifetch_insn_data_o         (ifetch_data_lo),
         .ifetch_insn_pc_o           (ifetch_pc_lo),
         .ifetch_insn_tid_o          (ifetch_tid_lo),
+        ////////////////////////////////////////////////////////////////////////////////
+        .decode_rdy_i               (dec_rdy_lo),
         ////////////////////////////////////////////////////////////////////////////////
         .exec_tid_i                 (),
         .exec_b_pc_vld_i            (),
@@ -163,6 +167,8 @@ module mrv1_core
         .insn_pc_i                  (ifetch_pc_lo/*fa_ifetch_pc_w*/),
         .insn_tid_i                 (ifetch_tid_lo/*fa_ifetch_tid_w*/),
         .insn_illegal_o             (/*FIXME*/),
+        ////////////////////////////////////////////////////////////////////////////////
+        .dec_rdy_o                  (dec_rdy_lo),
         ////////////////////////////////////////////////////////////////////////////////
         .dec_vld_o                  (dec_vld_lo),
         .dec_pc_o                   (dec_pc_lo),
@@ -292,7 +298,7 @@ module mrv1_core
         // DECODE -> ISSUE interface
         ////////////////////////////////////////////////////////////////////////////////
         .issue_rdy_o                    (issue_rdy_lo),
-        .dec_vld_i                      (),
+        .dec_vld_i                      (dec_vld_q),
         .dec_pc_i                       (dec_pc_q),
         .dec_tid_i                      (dec_tid_q),
         .dec_fu_req_i                   (dec_fu_req_q),

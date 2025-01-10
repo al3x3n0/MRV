@@ -98,10 +98,10 @@ module xrv_elastic_buffer #(
         logic [DATA_WIDTH_P-1:0] data_lo;
         logic rdy_lo;
 
-        logic vld_lo = ~empty;
+        wire vld_lo = ~empty;
 
-        logic push = vld_i && rdy_i;
-        logic pop = vld_lo && rdy_lo;
+        wire push = vld_i && rdy_i;
+        wire pop = vld_lo && rdy_lo;
 
         xrv_fifo_queue #(
             .DATA_WIDTH_P   (DATA_WIDTH_P),
