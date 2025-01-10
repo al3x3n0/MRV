@@ -102,9 +102,9 @@ module mrv1_core
         ////////////////////////////////////////////////////////////////////////////////
         .decode_rdy_i               (dec_rdy_lo),
         ////////////////////////////////////////////////////////////////////////////////
-        .exec_tid_i                 (),
-        .exec_b_pc_vld_i            (),
-        .exec_b_pc_i                (),
+        .exec_tid_i                 (exec_b_tid_lo),
+        .exec_b_pc_vld_i            (exec_b_pc_vld_lo),
+        .exec_b_pc_i                (exec_b_pc_lo),
         ////////////////////////////////////////////////////////////////////////////////
         // IFETCH <-> IMEM interface
         ////////////////////////////////////////////////////////////////////////////////
@@ -319,6 +319,7 @@ module mrv1_core
         //.j_pc_vld_o                     (idecode_j_pc_vld_lo),
         //.j_pc_o                         (idecode_j_pc_lo),
         //.insn_next_pc_o                 (idecode_next_pc_lo),
+        .exec_b_tid_i                   (exec_b_tid_lo),
         .exec_b_flush_i                 (exec_b_pc_vld_lo),
         ////////////////////////////////////////////////////////////////////////////////
         .retire_vld_i                   (wb_data_vld_lo),
