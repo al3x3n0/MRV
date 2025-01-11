@@ -3,6 +3,8 @@
 #include "sim/single_core_soc.hpp"
 #include "isa_sim/riscv_inst_dump.h"
 
+char inst_decode_buffer [1024];
+
 // verilator includes
 #include "Vrv_soc_sim_top.h"
 #include "verilated.h"
@@ -185,4 +187,13 @@ bool single_core_soc::run_simulation(int num_cycles, int verbose_lvl) {
         m_vcd->close();
 
     return true;
+}
+
+const char* single_core_soc::riscv_decode_instruction(uint32_t pc, uint32_t inst) {
+    riscv_inst_decode(inst_decode_buffer, pc, inst);
+    return inst_decode_buffer;
+}
+
+extern const char* riscv_decode_instruction(uint32_t pc, uint32_t inst) {
+    return single_core_soc::riscv_decode_instruction(pc, inst);
 }

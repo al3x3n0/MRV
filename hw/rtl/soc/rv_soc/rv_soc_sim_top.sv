@@ -4,6 +4,8 @@
 `include "pkg/xrv1_pkg.sv"
 `include "pkg/mrv1_pkg.sv"
 
+// c++ function to decode risc-v instruction
+import "DPI-C" function string riscv_decode_instruction(input int pc, input int inst);
 
 module rv_soc_sim_top #(
     parameter DEBUG_LEVEL_P = 0,
