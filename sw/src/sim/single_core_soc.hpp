@@ -45,6 +45,8 @@ public:
     bool dump_signature(const std::string& path, int verbose_lvl);
     // check if simulation is really finished
     bool is_simulation_finished() const;
+    // decode riscv instruction
+    static const char* riscv_decode_instruction(uint32_t pc, uint32_t inst);
 
 protected:
     virtual void on_simulation_step(int verbose_lvl) = 0;
@@ -62,5 +64,9 @@ public:
 protected:
     uint64_t m_retired_icnt = 0;
 };
+
+extern "C" {
+    extern const char* riscv_decode_instruction(uint32_t pc, uint32_t inst);
+}
 
 #endif /* __SINGLE_CORE_SOC_HPP__ */
