@@ -157,7 +157,6 @@ module mrv1_retire #(
                 $display("[RETIRE] T%d: FU[%d] itag=%h data=%h", fu_tid_i[i], i, fu_itag_i[i], fu_wb_data_i[i]);
             end
         end
-        $display("[RETIRE] ret_rdy_r=%b", ret_rdy_r);
         if (wb_data_vld_o) begin
             $display("[WRITEBACK] T%d: r[%d] <- %h iq_rd_addr_i=%h", wb_tid_o, wb_rd_addr_o, wb_data_o, iq_rd_addr_i[ret_tid_r]);
         end

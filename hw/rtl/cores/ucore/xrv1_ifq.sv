@@ -1,6 +1,6 @@
 module xrv1_ifq
 #(
-    parameter ifq_size_p = 3,
+    parameter ifq_size_p = 'd3,
     parameter ifq_addr_width_lp = $clog2(ifq_size_p)
 ) (
     ////////////////////////////////////////////////////////////////////////////////
@@ -36,6 +36,7 @@ module xrv1_ifq
     wire [ifq_addr_width_lp:0] ifq_w_ptr_p1_w = ifq_w_ptr_q + 1'b1;
     wire [ifq_addr_width_lp:0] ifq_r_ptr_p1_w = ifq_r_ptr_q + 1'b1;
     ////////////////////////////////////////////////////////////////////////////////
+    wire [ifq_addr_width_lp:0]                  max_size_w = ifq_size_p;
 
     ////////////////////////////////////////////////////////////////////////////////
     wire [ifq_addr_width_lp-1:0] ifq_w_ptr_n_wrp_w = (ifq_w_ptr_p1_w == ifq_size_p ? '0 : ifq_addr_width_lp'(ifq_w_ptr_p1_w));
@@ -102,11 +103,13 @@ module xrv1_ifq
     ////////////////////////////////////////////////////////////////////////////////
 
     always_comb begin
+        /*
         $display("ifq_size_q=%d r_ptr=%d w_ptr=%d e=%d d=%d af=%d pc_i=%h",
             ifq_size_q, ifq_r_ptr_q, ifq_w_ptr_q, enqueue_i, dequeue_i, almost_full_o, fetch_pc_i);
         $display("ifq[0]=%h v=%b", ifq_insn_pc_q[0], ifq_insn_vld_q[0]);
         $display("ifq[1]=%h v=%b", ifq_insn_pc_q[1], ifq_insn_vld_q[1]);
         $display("ifq[2]=%h v=%b", ifq_insn_pc_q[2], ifq_insn_vld_q[2]);
+        */
     end
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -125,9 +128,9 @@ module xrv1_ifq
     ////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////
-    assign empty_o       = ifq_size_q == '0;
-    assign full_o        = ifq_size_q == (ifq_addr_width_lp + 1)'(ifq_size_p);
-    assign almost_full_o = ifq_size_q == (ifq_addr_width_lp + 1)'(ifq_size_p) - '1;
+    assign empty_o       = ifq_size_q == 'd0;
+    assign full_o        = ifq_size_q == max_size_w;
+    assign almost_full_o = ifq_size_q == (max_size_w - 'd1);
     ////////////////////////////////////////////////////////////////////////////////
 
 endmodule

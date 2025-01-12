@@ -45,6 +45,7 @@ file(GLOB MRV1_SV_SRC
     "${MRV1_SOC_SRC_DIR}/*.sv"
     "${HW_SRC_DIR}/rtl/common/comm/*.sv"
     "${HW_SRC_DIR}/rtl/common/mem/*.sv"
+    "${HW_SRC_DIR}/rtl/common/utils/*.sv"
     "${HW_SRC_DIR}/rtl/common/*.sv"
     "${XRV1_RTL_SRC_DIR}/xrv1_ialigner.sv"
     "${XRV1_RTL_SRC_DIR}/xrv1_ifq.sv"
