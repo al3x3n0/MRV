@@ -102,7 +102,7 @@ module mrv1_core
         ////////////////////////////////////////////////////////////////////////////////
         .decode_rdy_i               (dec_rdy_lo),
         .decode_tid_i               (dec_tid_lo),
-        .decode_is_branch_i         (dec_b_is_branch_lo | dec_b_is_jump_lo),
+        .decode_is_branch_i         ((dec_b_is_branch_lo | dec_b_is_jump_lo) & dec_vld_lo),
         ////////////////////////////////////////////////////////////////////////////////
         .exec_tid_i                 (exec_b_tid_lo),
         .exec_b_pc_vld_i            (exec_b_pc_vld_lo),

@@ -116,11 +116,11 @@ module mrv1_issue #(
     for (genvar i = 0; i < NUM_THREADS_P; i++) begin
         ////////////////////////////////////////////////////////////////////////////////
         logic dec_buf_full_lo, dec_buf_empty_lo;
+        logic dec_buf_alm_full_lo, dec_buf_alm_empty_lo;
         wire wid_match_w = dec_tid_i == TID_WIDTH_LP'(i);
         /*FIXME*/
         wire enq_w = wid_match_w & dec_vld_i & ~dec_buf_full_lo;
         ////////////////////////////////////////////////////////////////////////////////
-        logic                           dec_buf_data_vld_lo;
         logic [dec_buf_width_lp-1:0]    dec_buf_data_lo;
         logic [PC_WIDTH_P-1:0]          dec_buf_pc_lo;
         logic [NUM_FU_P-1:0]            dec_buf_fu_req_lo;
@@ -160,7 +160,7 @@ module mrv1_issue #(
         ////////////////////////////////////////////////////////////////////////////////
         // Decode buffer
         ////////////////////////////////////////////////////////////////////////////////
-        assign issue_rdy_o[i] = ~dec_buf_full_lo;
+        assign issue_rdy_o[i] = ~dec_buf_full_lo & ~dec_buf_alm_full_lo;
         logic [DEC_BUF_ADDR_WIDTH_LP:0] dec_buf_size_lo;
         always_comb begin
             if (i == '0) begin
@@ -169,30 +169,31 @@ module mrv1_issue #(
             end
         end
 
-        xrv_queue #(
-            .q_size_p       (DEC_BUF_SZ_P),
-            .data_width_p   (dec_buf_width_lp)
+        xrv_fifo_queue #(
+            .DEPTH_P        (DEC_BUF_SZ_P),
+            .DATA_WIDTH_P   (dec_buf_width_lp)
         ) dec_buf_i (
             ////////////////////////////////////////////////////////////////////////////////
             .clk_i          (clk_i),
             .rst_i          (rst_i | exec_b_flush_i),
             ////////////////////////////////////////////////////////////////////////////////
-            .enq_i          (enq_w),
-            .deq_i          (issue_vld_w),
+            .push           (enq_w),
+            .pop            (issue_vld_w),
             ////////////////////////////////////////////////////////////////////////////////
             .data_i         (decode_buf_data_li),
             ////////////////////////////////////////////////////////////////////////////////
-            .data_vld_o     (dec_buf_data_vld_lo),
             .data_o         (dec_buf_data_lo),
             ////////////////////////////////////////////////////////////////////////////////
-            .full_o         (dec_buf_full_lo),
-            .empty_o        (dec_buf_empty_lo),
-            .size_o         (dec_buf_size_lo)
+            .alm_empty      (),
+            .alm_full       (dec_buf_alm_full_lo),
+            .full           (dec_buf_full_lo),
+            .empty          (dec_buf_empty_lo),
+            .size           (dec_buf_size_lo)
             ////////////////////////////////////////////////////////////////////////////////
         );
         ////////////////////////////////////////////////////////////////////////////////
         wire fu_rdy_w = (exec_fu_rdy_i & dec_buf_fu_req_lo) == dec_buf_fu_req_lo;
-        assign issue_th_rdy_li[i] = fu_rdy_w & iq_rdy_lo[i] & dec_buf_data_vld_lo & ~(|iq_rs_conflict_o[i]);
+        assign issue_th_rdy_li[i] = fu_rdy_w & iq_rdy_lo[i] & ~dec_buf_empty_lo & ~(|iq_rs_conflict_o[i]);
         ////////////////////////////////////////////////////////////////////////////////
         wire issue_tid_match_w = issue_tid_o == TID_WIDTH_LP'(i);
         wire ret_tid_match_w = retire_tid_i == TID_WIDTH_LP'(i);

@@ -64,7 +64,7 @@ module mrv1_ifetch
     logic [PC_WIDTH_P-1:0]                      sched_pc_lo;
     logic [TID_WIDTH_LP-1:0]                    sched_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
-    assign imem_req_vld_o = sched_fetch_req_lo;
+    assign imem_req_vld_o = sched_fetch_req_lo & fetch_req_rdy_li[sched_tid_lo];
     assign imem_req_addr_o = sched_pc_lo;
     assign imem_req_tag_o = {sched_pc_lo, sched_tid_lo};
     ////////////////////////////////////////////////////////////////////////////////
@@ -92,6 +92,8 @@ module mrv1_ifetch
     logic [NUM_THREADS_P-1:0][31:0]             ifq_i_data_lo;
     logic [NUM_THREADS_P-1:0][PC_WIDTH_P-1:0]   ifq_pc_lo;
     logic [NUM_THREADS_P-1:0]                   decode_th_rdy_li;
+    logic [NUM_THREADS_P-1:0]                   fetch_req_rdy_li;
+    logic [NUM_THREADS_P-1:0]                   fetch_done_li;
     ////////////////////////////////////////////////////////////////////////////////
     generate
     for (genvar i = 0; i < NUM_THREADS_P; i++) begin
@@ -102,14 +104,19 @@ module mrv1_ifetch
         ////////////////////////////////////////////////////////////////////////////////
         wire tid_match_w = ifetch_insn_tid_o == TID_WIDTH_LP'(i);
         wire fetch_tid_match_w = fetch_tid_li == TID_WIDTH_LP'(i);
-        assign sched_rdy_li[i] = ~ifq_full_lo;
         assign decode_th_rdy_li[i] = ifq_i_data_vld_lo[i] & decode_rdy_i[i];
         wire ifq_enqueue_li = imem_resp_vld_i & ~ifq_full_lo & fetch_tid_match_w;
+        wire ifq_dequeue_li = tid_match_w & ifetch_insn_vld_o & decode_rdy_i[i];
+        assign fetch_req_rdy_li[i] = ~ifq_full_lo & ~ifq_almost_full_lo;
+        assign fetch_done_li[i] = ifq_enqueue_li;
+        /*
         always_comb begin
-            $display("[IFQ] imem_resp_vld_i=%b ifq_enqueue_li=%b fetch_tid_match_w=%b ifq_full_lo=%b data=%h pc=%h",
-                imem_resp_vld_i, ifq_enqueue_li, fetch_tid_match_w, ifq_full_lo, imem_resp_data_i, fetch_pc_li);
+            $display("[IQ] full=%b", ifq_full_lo);
+            if (ifq_enqueue_li) begin
+                $display("[IQ] -> pc=%h", fetch_pc_li);
+            end
         end
-        wire ifq_dequeue_li = tid_match_w & ifetch_insn_vld_o;
+        */
         ////////////////////////////////////////////////////////////////////////////////
         xrv1_ifq ifq_i (
             .clk_i                  (clk_i),
@@ -164,7 +171,9 @@ module mrv1_ifetch
         ////////////////////////////////////////////////////////////////////////////////
         .simt_en_i                  (simt_en_i),
         ////////////////////////////////////////////////////////////////////////////////
-        .fetch_done_i               (imem_resp_vld_i),
+        .fetch_req_vld_i            (fetch_req_rdy_li),
+        ////////////////////////////////////////////////////////////////////////////////
+        .fetch_done_i               (fetch_done_li),
         .fetch_tid_i                (fetch_tid_li),
         .fetch_pc_i                 (fetch_pc_li),
         ////////////////////////////////////////////////////////////////////////////////
@@ -175,7 +184,6 @@ module mrv1_ifetch
         .exec_b_pc_vld_i            (exec_b_pc_vld_i),
         .exec_b_pc_i                (exec_b_pc_i),
         ////////////////////////////////////////////////////////////////////////////////
-        .sched_rdy_i                (sched_rdy_li),
         .sched_vld_o                (sched_fetch_req_lo),
         .sched_tid_o                (sched_tid_lo),
         .sched_pc_o                 (sched_pc_lo),
@@ -203,8 +211,6 @@ module mrv1_ifetch
         if (imem_resp_vld_i) begin
             $display("[IMEM_RESP] pc=%h data=%h", fetch_pc_li, imem_resp_data_i);
         end
-        $display("[IMEM] decode_rdy_i=%b insn_vld=%h pc=%h insn_data=%h",
-            decode_rdy_i, ifetch_insn_vld_o, ifetch_insn_pc_o, ifetch_insn_data_o);
     end 
 
 endmodule
