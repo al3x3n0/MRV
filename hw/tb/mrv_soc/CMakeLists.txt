@@ -18,12 +18,17 @@ endif ()
 
 # if cpu ram size bits option is set, add such define for verilator
 if (MRV_SOC_RAM_BITS_SIZE)
-    list(APPEND XRV_SOC_VERILATOR_EXTRA_ARGS "-GRAM_BITS_SIZE_P=${MRV_SOC_RAM_BITS_SIZE}")
+    list(APPEND MRV_SOC_VERILATOR_EXTRA_ARGS "-GRAM_BITS_SIZE_P=${MRV_SOC_RAM_BITS_SIZE}")
 endif ()
 
-# set debug level for xrv_soc
+# set debug level for mrv_soc
 if (MRV_SOC_DEBUG_LEVEL)
     list(APPEND MRV_SOC_VERILATOR_EXTRA_ARGS "-GDEBUG_LEVEL_P=${MRV_SOC_DEBUG_LEVEL}")
+endif ()
+
+# set number of threads
+if (MRV_SOC_THREAD_NUM)
+    list(APPEND MRV_SOC_VERILATOR_EXTRA_ARGS "-GNUM_THREADS_P=${MRV_SOC_THREAD_NUM}")
 endif ()
 
 ###############################################################################

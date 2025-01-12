@@ -47,6 +47,8 @@ public:
     bool is_simulation_finished() const;
     // decode riscv instruction
     static const char* riscv_decode_instruction(uint32_t pc, uint32_t inst);
+    // print soc top module parameters
+    void soc_print_parameters() const;
 
 protected:
     virtual void on_simulation_step(int verbose_lvl) = 0;
