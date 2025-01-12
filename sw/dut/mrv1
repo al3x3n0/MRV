@@ -17,6 +17,7 @@ def main():
     print("Sig path: {}".format(args.signature))
 
     dut = libdut.MRV1()
+    dut.soc_print_params()
     elf_loaded = dut.load_elf(args.elf, args.verbose)
     if not elf_loaded:
         print("Failed to load elf {}".format(args.elf))

@@ -23,25 +23,26 @@ cmake -DPROJECTS_TO_BUILD="rv_idecoder;xrv_soc" -DRV_IDECODER_DEBUG_LEVEL=7 ../M
 ```
 
 ## Existing cmake options
-- -DPROJECTS_TO_BUILD=<val>, default is **ALL**
+- -DPROJECTS_TO_BUILD=\<val\>, default is **ALL**
 
 - -DXRV_SOC_CPU_RESET_ADDRESS=\<val\>, default is **OFF**
 - -DXRV_SOC_RAM_BITS_SIZE=\<val\>, default is **OFF**
 - -DXRV_SOC_DEBUG_LEVEL=\<val\>, default is **OFF**
 
-- -DMRV_SOC_CPU_RESET_ADDRESS=<val>, default is **OFF**
-- -DMRV_SOC_RAM_BITS_SIZE=<val>, default is **OFF**
-- -DMRV_SOC_DEBUG_LEVEL=\<val\>, default is **OFF**
+- -DMRV_SOC_CPU_RESET_ADDRESS=\<val\>, default is **0x2000**
+- -DMRV_SOC_RAM_BITS_SIZE=\<val\>, default is **16**
+- -DMRV_SOC_DEBUG_LEVEL=\<val\>, default is **0**
+- -DMRV_SOC_THREAD_NUM=\<val\>, default is **8**
 
-- -DRV_IDECODER_DEBUG_LEVEL=<val>, default is **0**
-- -DRV_IDECODER_RV_XLEN=<val>, default is **32**
-- -DRV_IDECODER_RV_HAS_M_EXT=<val>, default is **0**
-- -DRV_IDECODER_RV_HAS_A_EXT=<val>, default is **0**
-- -DRV_IDECODER_RV_HAS_A_EXT=<val>, default is **0**
-- -DRV_IDECODER_RV_HAS_F_EXT=<val>, default is **0**
-- -DRV_IDECODER_RV_HAS_D_EXT=<val>, default is **0**
-- -DRV_IDECODER_RV_HAS_ZICSR_EXT=<val>, default is **0**
-- -DRV_IDECODER_RV_HAS_ZIFENCEI_EXT=<val>, default is **0**
+- -DRV_IDECODER_DEBUG_LEVEL=\<val\>, default is **0**
+- -DRV_IDECODER_RV_XLEN=\<val\>, default is **32**
+- -DRV_IDECODER_RV_HAS_M_EXT=\<val\>, default is **0**
+- -DRV_IDECODER_RV_HAS_A_EXT=\<val\>, default is **0**
+- -DRV_IDECODER_RV_HAS_A_EXT=\<val\>, default is **0**
+- -DRV_IDECODER_RV_HAS_F_EXT=\<val\>, default is **0**
+- -DRV_IDECODER_RV_HAS_D_EXT=\<val\>, default is **0**
+- -DRV_IDECODER_RV_HAS_ZICSR_EXT=\<val\>, default is **0**
+- -DRV_IDECODER_RV_HAS_ZIFENCEI_EXT=\<val\>, default is **0**
 
 ## XRV_SoC related options
 
@@ -68,6 +69,9 @@ I.e. -DCPU_RAM_SIZE_BITS=22 would configure ram to (1<<22) bytes of size.
 
 ### MRV_SOC_DEBUG_LEVEL
 This option allows you to specify debug level for the mrv_soc.
+
+### MRV_SOC_THREAD_NUM
+This option sets number of threads for MRV soc.
 
 ## RV instruction decoder related options
 
