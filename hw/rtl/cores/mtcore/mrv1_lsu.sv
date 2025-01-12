@@ -199,4 +199,10 @@ module mrv1_lsu #(
         .sched_tid_o                (mem_commit_tid_lo)
     );
 
+    always_comb begin
+        if (dmem_req_vld_o) begin
+            $display("[DMEM] vld=%b addr=%h wnr=%b", dmem_req_vld_o, dmem_req_addr_o, dmem_req_w_en_o);
+        end
+    end
+
 endmodule

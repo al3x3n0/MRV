@@ -26,6 +26,9 @@ module mrv1_th_sched
     input  logic [TID_WIDTH_LP-1:0]             fetch_tid_i,
     input  logic [PC_WIDTH_P-1:0]               fetch_pc_i,
     ////////////////////////////////////////////////////////////////////////////////
+    input  logic [TID_WIDTH_LP-1:0]             decode_tid_i,
+    input  logic                                decode_is_branch_i,
+    ////////////////////////////////////////////////////////////////////////////////
     // B from EXEC stage
     ////////////////////////////////////////////////////////////////////////////////
     input  logic [TID_WIDTH_LP-1:0]             exec_tid_i,
@@ -44,6 +47,7 @@ module mrv1_th_sched
     input logic [BARR_ID_WIDTH_LP-1:0]          th_ctl_barrier_id_i,
     input logic [TID_WIDTH_LP-1:0]              th_ctl_barrier_size_m1_i,
     ////////////////////////////////////////////////////////////////////////////////
+    input  logic [NUM_THREADS_P-1:0]            sched_rdy_i,
     output logic                                sched_vld_o,
     output logic [TID_WIDTH_LP-1:0]             sched_tid_o,
     output logic [PC_WIDTH_P-1:0]               sched_pc_o
@@ -78,10 +82,16 @@ module mrv1_th_sched
         if (th_stall_vld_i) begin
             stalled_threads_n_q[th_stall_tid_i] = 1'b1;
         end
+        if (decode_is_branch_i) begin
+            //stalled_threads_n_q[decode_tid_i] = 1'b1;
+        end
+        if (exec_b_pc_vld_i) begin
+            stalled_threads_n_q[exec_tid_i] = 1'b0;
+        end
         ////////////////////////////////////////////////////////////////////////////////
     end
     logic [NUM_THREADS_P-1:0] ready_threads_w;
-    assign ready_threads_w = active_threads_n_q & ~stalled_threads_n_q & ~fetch_lock_q;
+    assign ready_threads_w = active_threads_n_q & ~stalled_threads_n_q & ~fetch_lock_q & sched_rdy_i;
 
     ////////////////////////////////////////////////////////////////////////////////
     // Scheduler Logic
@@ -127,15 +137,18 @@ module mrv1_th_sched
             ////////////////////////////////////////////////////////////////////////////////
         end else begin
             ////////////////////////////////////////////////////////////////////////////////
+            stalled_threads_q <= stalled_threads_n_q;
             if (th_stall_vld_i) begin
                 stalled_threads_q[th_stall_tid_i] <= 1'b1;
             end
             ////////////////////////////////////////////////////////////////////////////////
             // Branch
             ////////////////////////////////////////////////////////////////////////////////
+            if (sched_vld_o) begin
+                thread_pcs_q[sched_tid_o] <= thread_pcs_q[sched_tid_o] + 4;
+            end
             if (exec_b_pc_vld_i) begin
-                thread_pcs_q[exec_tid_i]       <= exec_b_pc_i;
-                stalled_threads_q[exec_tid_i]  <= 1'b0;
+                thread_pcs_q[exec_tid_i] <= exec_b_pc_i;
             end
             ////////////////////////////////////////////////////////////////////////////////
             active_threads_q  <= active_threads_n_q;
@@ -144,24 +157,13 @@ module mrv1_th_sched
     end
 
     ////////////////////////////////////////////////////////////////////////////////
-    // Lock TW until instruction decode to resolve branches
-    ////////////////////////////////////////////////////////////////////////////////
     always_ff @(posedge clk_i) begin
         if (rst_i) begin
             fetch_lock_q <= '0;
         end else begin
             fetch_lock_q <= fetch_lock_n_q;
-            if (sched_vld_o) begin
-                thread_pcs_q[sched_tid_o] <= thread_pcs_q[sched_tid_o] + 4;
-            end
         end
     end
     ////////////////////////////////////////////////////////////////////////////////
-
-    always_comb begin
-        if (exec_b_pc_vld_i) begin
-            $display("exec_b_pc_i=%h", exec_b_pc_i);
-        end
-    end
 
 endmodule

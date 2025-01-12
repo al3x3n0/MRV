@@ -212,9 +212,11 @@ module mrv1_exec
     ////////////////////////////////////////////////////////////////////////////////
 
     always_comb begin
-        $display("[EXEC] T%d: pc=%h itag=%h fu_req=%b opc=%b src0=%h src1=%h",
-            exec_tid_i, exec_pc_i, exec_itag_i,
-            issue_fu_req_i, issue_fu_opc_i, exec_src0_data_i, exec_src1_data_i);
+        if ((|issue_fu_req_i)) begin
+            $display("[EXEC] T%d: pc=%h itag=%h fu_req=%b opc=%b src0=%h src1=%h",
+                exec_tid_i, exec_pc_i, exec_itag_i,
+                issue_fu_req_i, issue_fu_opc_i, exec_src0_data_i, exec_src1_data_i);
+        end
     end 
 
 endmodule

@@ -69,13 +69,11 @@ module mrv1_retire #(
         // Calculate retire count
         ////////////////////////////////////////////////////////////////////////////////
         logic [IQ_SZ_LP-1:0][ITAG_WIDTH_P-1:0] tmp0_ptr;
-        logic [IQ_SZ_LP-1:0] tmp_ret_buf_vld;
-        logic [IQ_SZ_LP-1:0][DATA_WIDTH_P-1:0] tmp_ret_buf_data;
         logic [NUM_FU_P-1:0] fu_tid_match;
         ////////////////////////////////////////////////////////////////////////////////
         always_comb begin
-            tmp_ret_buf_vld = ret_buf_vld_q;
-            tmp_ret_buf_data = ret_buf_data_q;
+            ret_buf_vld_n = ret_buf_vld_q;
+            ret_buf_data_n = ret_buf_data_q;
             wb_data_vld_r[i] = 1'b0;
             wb_rd_addr_r[i] = '0;
             wb_data_r[i] = '0;
@@ -86,8 +84,8 @@ module mrv1_retire #(
             for (int j = 0; j < NUM_FU_P; j++) begin
                 fu_tid_match[j] = fu_tid_i[j] == TID_WIDTH_LP'(i);
                 if (fu_done_i[j] & fu_tid_match[j]) begin
-                    tmp_ret_buf_vld[fu_itag_i[j]]  = 1'b1;
-                    tmp_ret_buf_data[fu_itag_i[j]] = fu_wb_data_i[j];
+                    ret_buf_vld_n[fu_itag_i[j]]  = 1'b1;
+                    ret_buf_data_n[fu_itag_i[j]] = fu_wb_data_i[j];
                 end
             end
             ////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +93,7 @@ module mrv1_retire #(
             ////////////////////////////////////////////////////////////////////////////////
             for (int j = 0; j < IQ_SZ_LP; j++) begin
                 tmp0_ptr[j] = iq_retire_itag_i[i] + ITAG_WIDTH_P'(j);
-                if (~tmp_ret_buf_vld[tmp0_ptr[j]]) begin
+                if (~ret_buf_vld_n[tmp0_ptr[j]]) begin
                     break;
                 end
                 if (iq_rd_vld_i[i][tmp0_ptr[j]]) begin
@@ -104,11 +102,11 @@ module mrv1_retire #(
                     end
                     wb_data_vld_r[i] = 1'b1;
                     wb_rd_addr_r[i] = iq_rd_addr_i[i][tmp0_ptr[j]];
-                    wb_data_r[i] = tmp_ret_buf_data[tmp0_ptr[j]];
+                    wb_data_r[i] = ret_buf_data_n[tmp0_ptr[j]];
                 end
                 ret_rdy_r[i] = 1'b1;
                 ret_cnt_r[i] = ret_cnt_r[i] + 1'b1;
-                tmp_ret_buf_vld[tmp0_ptr[j]] = 1'b0;
+                ret_buf_vld_n[tmp0_ptr[j]] = 1'b0;
             end
         end
         ////////////////////////////////////////////////////////////////////////////////

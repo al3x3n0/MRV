@@ -9,6 +9,7 @@ module mrv1_src_mux #(
     input logic [DATA_WIDTH_P-1:0]      insn_imm0_i,
     input logic [DATA_WIDTH_P-1:0]      insn_imm1_i,
     input logic [PC_WIDTH_P-1:0]        insn_pc_i,
+    input logic                         insn_is_br_i,
     ////////////////////////////////////////////////////////////////////////////////
     output logic [DATA_WIDTH_P-1:0]     src0_data_o,
     output logic [DATA_WIDTH_P-1:0]     src1_data_o,
@@ -38,7 +39,7 @@ module mrv1_src_mux #(
         ////////////////////////////////////////////////////////////////////////////////
         // SRC2
         ////////////////////////////////////////////////////////////////////////////////
-        assign src2_data_o = rs1_data_i;
+        assign src2_data_o = insn_is_br_i ? insn_imm1_i : rs1_data_i;
     end
 
 endmodule   

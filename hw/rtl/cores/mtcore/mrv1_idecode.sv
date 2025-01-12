@@ -20,7 +20,8 @@ module mrv1_idecode #(
     ////////////////////////////////////////////////////////////////////////////////
     output logic                                        insn_illegal_o,
     ////////////////////////////////////////////////////////////////////////////////
-    output logic                                        dec_rdy_o,
+    input  logic [NUM_THREADS_P-1:0]                    issue_rdy_i,
+    output logic [NUM_THREADS_P-1:0]                    dec_rdy_o,
     ////////////////////////////////////////////////////////////////////////////////
     output logic                                        dec_vld_o,
     output logic [PC_WIDTH_P-1:0]                       dec_pc_o,
@@ -97,7 +98,13 @@ module mrv1_idecode #(
         .dec_b_is_jump_o            (dec_b_is_jump_o)
     );
 
-    assign dec_rdy_o = 1'b1;
+    assign dec_rdy_o = issue_rdy_i;
     assign dec_tid_o = insn_tid_i;
+
+    always_comb begin
+        if (insn_vld_i) begin
+            $display("[DECODE] %s", riscv_decode_instruction(insn_pc_i, insn_li));
+        end
+    end
 
 endmodule

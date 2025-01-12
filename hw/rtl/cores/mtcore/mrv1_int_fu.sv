@@ -972,7 +972,7 @@ module mrv1_int_fu
     // Conditional branch handling
     ////////////////////////////////////////////////////////////////////////////////
     assign b_pc_vld_o = int_fu_req_i & ((b_is_branch_i & ~comparison_result_w) | b_is_jump_i);
-    assign b_pc_o = exec_pc_i + exec_src0_data_i;
+    assign b_pc_o = b_is_jump_i ? adder_result : (exec_pc_i + exec_src2_data_i);
     ////////////////////////////////////////////////////////////////////////////////
     always_comb begin
         if (int_fu_req_i & b_is_branch_i) begin
