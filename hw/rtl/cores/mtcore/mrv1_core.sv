@@ -72,15 +72,15 @@ module mrv1_core
     logic [PC_WIDTH_P-1:0]          ifetch_pc_lo;
     logic [TID_WIDTH_LP-1:0]        ifetch_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
-    logic                           dec_rdy_lo;
+    logic [NUM_THREADS_P-1:0]       dec_rdy_lo;
     ////////////////////////////////////////////////////////////////////////////////
     logic                           exec_b_pc_vld_lo;
     logic [PC_WIDTH_P-1:0]          exec_b_pc_lo;
     logic [TID_WIDTH_LP-1:0]        exec_b_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
-    wire                           exec_th_ctl_vld_lo = 'b0; // FIXME
+    wire                            exec_th_ctl_vld_lo = 'b0; // FIXME
     logic [TID_WIDTH_LP-1:0]        exec_th_ctl_tid_lo;
-    wire                           exec_th_ctl_tspawn_vld_lo = 'b0; // FIXME
+    wire                            exec_th_ctl_tspawn_vld_lo = 'b0; // FIXME
     logic [PC_WIDTH_P-1:0]          exec_th_ctl_tspawn_pc_lo;
     ////////////////////////////////////////////////////////////////////////////////
     mrv1_ifetch #(
@@ -101,6 +101,8 @@ module mrv1_core
         .ifetch_insn_tid_o          (ifetch_tid_lo),
         ////////////////////////////////////////////////////////////////////////////////
         .decode_rdy_i               (dec_rdy_lo),
+        .decode_tid_i               (dec_tid_lo),
+        .decode_is_branch_i         (dec_b_is_branch_lo | dec_b_is_jump_lo),
         ////////////////////////////////////////////////////////////////////////////////
         .exec_tid_i                 (exec_b_tid_lo),
         .exec_b_pc_vld_i            (exec_b_pc_vld_lo),
@@ -135,7 +137,8 @@ module mrv1_core
     ////////////////////////////////////////////////////////////////////////////////
     // IDecode Stage
     ////////////////////////////////////////////////////////////////////////////////
-    logic [NUM_THREADS_P-1:0]                   issue_rdy_lo; /* XXX ??? */
+    logic [NUM_THREADS_P-1:0]                   issue_rdy_lo;
+    ////////////////////////////////////////////////////////////////////////////////
     logic                                       dec_vld_lo;
     logic [PC_WIDTH_P-1:0]                      dec_pc_lo;
     logic [TID_WIDTH_LP-1:0]                    dec_tid_lo;
@@ -168,6 +171,7 @@ module mrv1_core
         .insn_tid_i                 (ifetch_tid_lo/*fa_ifetch_tid_w*/),
         .insn_illegal_o             (/*FIXME*/),
         ////////////////////////////////////////////////////////////////////////////////
+        .issue_rdy_i                (issue_rdy_lo),
         .dec_rdy_o                  (dec_rdy_lo),
         ////////////////////////////////////////////////////////////////////////////////
         .dec_vld_o                  (dec_vld_lo),
@@ -188,65 +192,6 @@ module mrv1_core
         .dec_b_is_branch_o          (dec_b_is_branch_lo),
         .dec_b_is_jump_o            (dec_b_is_jump_lo)
     );
-    ////////////////////////////////////////////////////////////////////////////////
-    logic                           dec_vld_q;
-    logic [PC_WIDTH_P-1:0]          dec_pc_q;
-    logic [TID_WIDTH_LP-1:0]        dec_tid_q;
-    logic [MRV_NUM_FU-1:0]          dec_fu_req_q;
-    logic [MRV_OPC_WIDTH_P-1:0]     dec_fu_opc_q;
-    xrv_exe_src0_sel_e              dec_src0_sel_q;
-    xrv_exe_src1_sel_e              dec_src1_sel_q;
-    logic [DATA_WIDTH_P-1:0]        dec_imm0_q;
-    logic [DATA_WIDTH_P-1:0]        dec_imm1_q;
-    logic                           dec_rs0_vld_q;
-    logic [rf_addr_width_p-1:0]     dec_rs0_addr_q;
-    logic                           dec_rs1_vld_q;
-    logic [rf_addr_width_p-1:0]     dec_rs1_addr_q;
-    logic                           dec_rd_vld_q;
-    logic [rf_addr_width_p-1:0]     dec_rd_addr_q;
-    logic                           dec_b_is_branch_q;
-    logic                           dec_b_is_jump_q;
-    ////////////////////////////////////////////////////////////////////////////////
-    always_ff @(posedge clk_i) begin
-        if (rst_i) begin
-            dec_vld_q           <= 'b0;
-            dec_pc_q            <= 'b0;
-            dec_tid_q           <= 'b0;
-            dec_fu_req_q        <= 'b0;
-            dec_fu_opc_q        <= 'b0;
-            dec_src0_sel_q      <= XRV_SRC0_RS0;
-            dec_src1_sel_q      <= XRV_SRC1_RS0;
-            dec_imm0_q          <= 'b0;
-            dec_imm1_q          <= 'b0;
-            dec_rs0_vld_q       <= 'b0;
-            dec_rs0_addr_q      <= 'b0;
-            dec_rs1_vld_q       <= 'b0;
-            dec_rs1_addr_q      <= 'b0;
-            dec_rd_vld_q        <= 'b0;
-            dec_rd_addr_q       <= 'b0;
-            dec_b_is_branch_q   <= 'b0;
-            dec_b_is_jump_q     <= 'b0;
-        end
-        else begin
-            dec_vld_q           <= dec_vld_lo;
-            dec_pc_q            <= dec_pc_lo;
-            dec_tid_q           <= dec_tid_lo;
-            dec_fu_req_q        <= dec_fu_req_lo;
-            dec_fu_opc_q        <= dec_fu_opc_lo;
-            dec_src0_sel_q      <= dec_src0_sel_lo;
-            dec_src1_sel_q      <= dec_src1_sel_lo;
-            dec_imm0_q          <= dec_imm0_lo;
-            dec_imm1_q          <= dec_imm1_lo;
-            dec_rs0_vld_q       <= dec_rs0_vld_lo;
-            dec_rs0_addr_q      <= dec_rs0_addr_lo;
-            dec_rs1_vld_q       <= dec_rs1_vld_lo;
-            dec_rs1_addr_q      <= dec_rs1_addr_lo;
-            dec_rd_vld_q        <= dec_rd_vld_lo;
-            dec_rd_addr_q       <= dec_rd_addr_lo;
-            dec_b_is_branch_q   <= dec_b_is_branch_lo;
-            dec_b_is_jump_q     <= dec_b_is_jump_lo;
-        end
-    end
     ////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -298,27 +243,25 @@ module mrv1_core
         // DECODE -> ISSUE interface
         ////////////////////////////////////////////////////////////////////////////////
         .issue_rdy_o                    (issue_rdy_lo),
-        .dec_vld_i                      (dec_vld_q),
-        .dec_pc_i                       (dec_pc_q),
-        .dec_tid_i                      (dec_tid_q),
-        .dec_fu_req_i                   (dec_fu_req_q),
-        .dec_fu_opc_i                   (dec_fu_opc_q),
-        .dec_b_is_branch_i              (dec_b_is_branch_q),
-        .dec_b_is_jump_i                (dec_b_is_jump_q),
-        .dec_src0_sel_i                 (dec_src0_sel_q),
-        .dec_src1_sel_i                 (dec_src1_sel_q),
-        .dec_imm0_i                     (dec_imm0_q),
-        .dec_imm1_i                     (dec_imm1_q),
-        .dec_rs0_vld_i                  (dec_rs0_vld_q),
-        .dec_rs0_addr_i                 (dec_rs0_addr_q),
-        .dec_rs1_vld_i                  (dec_rs1_vld_q),
-        .dec_rs1_addr_i                 (dec_rs1_addr_q),
-        .dec_rd_vld_i                   (dec_rd_vld_q),
-        .dec_rd_addr_i                  (dec_rd_addr_q),      
         ////////////////////////////////////////////////////////////////////////////////
-        //.j_pc_vld_o                     (idecode_j_pc_vld_lo),
-        //.j_pc_o                         (idecode_j_pc_lo),
-        //.insn_next_pc_o                 (idecode_next_pc_lo),
+        .dec_vld_i                      (dec_vld_lo),
+        .dec_pc_i                       (dec_pc_lo),
+        .dec_tid_i                      (dec_tid_lo),
+        .dec_fu_req_i                   (dec_fu_req_lo),
+        .dec_fu_opc_i                   (dec_fu_opc_lo),
+        .dec_b_is_branch_i              (dec_b_is_branch_lo),
+        .dec_b_is_jump_i                (dec_b_is_jump_lo),
+        .dec_src0_sel_i                 (dec_src0_sel_lo),
+        .dec_src1_sel_i                 (dec_src1_sel_lo),
+        .dec_imm0_i                     (dec_imm0_lo),
+        .dec_imm1_i                     (dec_imm1_lo),
+        .dec_rs0_vld_i                  (dec_rs0_vld_lo),
+        .dec_rs0_addr_i                 (dec_rs0_addr_lo),
+        .dec_rs1_vld_i                  (dec_rs1_vld_lo),
+        .dec_rs1_addr_i                 (dec_rs1_addr_lo),
+        .dec_rd_vld_i                   (dec_rd_vld_lo),
+        .dec_rd_addr_i                  (dec_rd_addr_lo),      
+        ////////////////////////////////////////////////////////////////////////////////
         .exec_b_tid_i                   (exec_b_tid_lo),
         .exec_b_flush_i                 (exec_b_pc_vld_lo),
         ////////////////////////////////////////////////////////////////////////////////

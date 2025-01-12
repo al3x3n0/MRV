@@ -22,7 +22,7 @@ module xrv1_branch_spec
     wire [6:0] opcode_w = insn_i[6:0];
     ////////////////////////////////////////////////////////////////////////////////
     wire rv16_is_branch_w = rv16_beqz_w | rv16_bnez_w;
-    wire rv16_is_jump_w   = rv16_jal_w | rv16_j_w;
+    wire rv16_is_jump_w   = rv16_jal_w  | rv16_j_w;
     wire rv32_is_branch_w = opcode_w == {XRV_BRANCH, 2'b11};
     wire rv32_is_jump_w   = opcode_w == {XRV_JAL,    2'b11};
     ////////////////////////////////////////////////////////////////////////////////

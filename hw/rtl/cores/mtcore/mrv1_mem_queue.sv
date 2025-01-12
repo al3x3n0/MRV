@@ -46,8 +46,9 @@ module mrv1_mem_queue
 );
     //////////////////////////////////////////////////////////
     logic [ITAG_WIDTH_P:0]      mq_sz_r, mq_sz_n_r;
+    logic [ITAG_WIDTH_P-1:0]    head_ptr_r, head_ptr_n;
+    logic [ITAG_WIDTH_P-1:0]    commit_ptr_r, commit_ptr_n;
     logic [ITAG_WIDTH_P-1:0]    req_ptr_r, req_ptr_n;
-    logic [ITAG_WIDTH_P-1:0]    resp_ptr_r, resp_ptr_n;
     //////////////////////////////////////////////////////////
     // Mem queue data
     //////////////////////////////////////////////////////////
@@ -60,6 +61,7 @@ module mrv1_mem_queue
     logic [QUEUE_SIZE_LP-1:0][1:0]                  req_size_q;
     logic [QUEUE_SIZE_LP-1:0][ADDR_WIDTH_P-1:0]     req_addr_q;
     logic [QUEUE_SIZE_LP-1:0][DATA_WIDTH_P-1:0]     req_w_data_q;
+    logic [QUEUE_SIZE_LP-1:0][ITAG_WIDTH_P-1:0]     req_itag_q;
     //////////////////////////////////////////////////////////
     logic [QUEUE_SIZE_LP-1:0]                       resp_data0_vld_q, resp_data0_vld_n;
     logic [QUEUE_SIZE_LP-1:0]                       resp_data1_vld_q, resp_data1_vld_n;
@@ -68,15 +70,23 @@ module mrv1_mem_queue
 
     always_ff @(posedge clk_i) begin
         if (rst_i) begin
-            req_ptr_r           <= 'b0;
-            resp_ptr_r          <= 'b0;
-            mq_sz_r             <= 'b0;
+            head_ptr_r          <= '0;
+            commit_ptr_r          <= '0;
+            req_ptr_r           <= '0;
+            mq_sz_r             <= '0;
+            req_vld_q           <= '0;
+            resp_data0_vld_q    <= '0;
+            resp_data1_vld_q    <= '0;
         end
         else begin
+            head_ptr_r          <= head_ptr_n;
+            commit_ptr_r          <= commit_ptr_n;
             req_ptr_r           <= req_ptr_n;
-            resp_ptr_r          <= resp_ptr_n;
             mq_sz_r             <= mq_sz_n_r;
             req_p0_sent_q       <= req_p0_sent_n;
+            req_vld_q           <= req_vld_n;
+            resp_data0_vld_q    <= resp_data0_vld_n;
+            resp_data1_vld_q    <= resp_data1_vld_n;
         end
     end
 
@@ -90,36 +100,39 @@ module mrv1_mem_queue
     wire [ADDR_WIDTH_P-1:0]    req_addr_w          = req_addr_q[req_ptr_r];
     wire [DATA_WIDTH_P-1:0]    req_w_data_w        = req_w_data_q[req_ptr_r];
     ////////////////////////////////////////////////////////////////////////////////
-    wire [1:0]                 resp_size_w         = req_size_q[resp_ptr_r];
-    wire                       resp_signed_w       = req_signed_q[resp_ptr_r];
-    wire [1:0]                 resp_offset_w       = req_offset_q[resp_ptr_r];
-    wire                       resp_unalgn_w       = req_unalgn_q[resp_ptr_r];
-    wire [DATA_WIDTH_P-1:0]    resp_data0_w        = resp_data0_q[resp_ptr_r];
-    wire [DATA_WIDTH_P-1:0]    resp_data1_w        = resp_data1_q[resp_ptr_r];
+    wire [1:0]                 resp_size_w         = req_size_q[commit_ptr_r];
+    wire                       resp_signed_w       = req_signed_q[commit_ptr_r];
+    wire [1:0]                 resp_offset_w       = req_offset_q[commit_ptr_r];
+    wire                       resp_unalgn_w       = req_unalgn_q[commit_ptr_r];
+    wire [DATA_WIDTH_P-1:0]    resp_data0_w        = resp_data0_q[commit_ptr_r];
+    wire [DATA_WIDTH_P-1:0]    resp_data1_w        = resp_data1_q[commit_ptr_r];
     ////////////////////////////////////////////////////////////////////////////////
     wire dmem_req_accept_w = dmem_req_rdy_i && dmem_req_vld_o && mem_sched_req_vld_i;
     always_comb begin
         mq_sz_n_r           = mq_sz_r;
-        req_ptr_n           = req_ptr_r;
-        resp_ptr_n          = resp_ptr_r;
+        head_ptr_n          = head_ptr_r;
+        commit_ptr_n          = commit_ptr_r;
+        req_ptr_n          = req_ptr_r;
         ////////////////////////////////////////////////////////////////////////////////
         req_vld_n           = req_vld_q;
         resp_data0_vld_n    = resp_data0_vld_q;
         resp_data1_vld_n    = resp_data1_vld_q;
         req_p0_sent_n       = req_p0_sent_q;
         if (mem_commit_vld_i) begin
-            req_vld_n[resp_ptr_n] = 1'b0;
-            resp_data0_vld_n[resp_ptr_n] = 1'b0;
-            resp_data1_vld_n[resp_ptr_n] = 1'b0;
-            resp_ptr_n = resp_ptr_n + 1'b1;
+            req_vld_n[commit_ptr_n] = 1'b0;
+            resp_data0_vld_n[commit_ptr_n] = 1'b0;
+            resp_data1_vld_n[commit_ptr_n] = 1'b0;
+            commit_ptr_n = commit_ptr_n + 1'b1;
             mq_sz_n_r = mq_sz_n_r - 1'b1;
         end
         ////////////////////////////////////////////////////////////////////////////////
         if (lsu_req_vld_i) begin
-            req_vld_n[lsu_req_itag_i]           = 1'b1;
-            req_p0_sent_n[lsu_req_itag_i]       = 1'b0;
-            resp_data0_vld_n[lsu_req_itag_i]    = 1'b0;
-            resp_data1_vld_n[lsu_req_itag_i]    = 1'b0;
+            req_vld_n[head_ptr_n]           = 1'b1;
+            req_p0_sent_n[head_ptr_n]       = 1'b0;
+            resp_data0_vld_n[head_ptr_n]    = 1'b0;
+            resp_data1_vld_n[head_ptr_n]    = 1'b0;
+            head_ptr_n = head_ptr_n + 1'b1;
+            mq_sz_n_r = mq_sz_n_r + 1'b1;
         end
         ////////////////////////////////////////////////////////////////////////////////
         if (dmem_resp_vld_i) begin
@@ -137,15 +150,25 @@ module mrv1_mem_queue
         if (dmem_req_accept_w) begin
             if (req_unalgn_w) begin
                 if (req_p0_sent_w) begin
+                    if (req_wnr_q[req_ptr_n]) begin
+                        resp_data1_vld_n[req_ptr_n] = 1'b1;
+                    end
                     req_ptr_n = req_ptr_n + 1'b1;
-                    mq_sz_n_r = mq_sz_n_r + 1'b1;
                 end else begin
-                    req_p0_sent_n[resp_ptr_n] = 1'b1;
+                    if (req_wnr_q[req_ptr_n]) begin
+                        resp_data0_vld_n[req_ptr_n] = 1'b1;
+                    end
+                    req_p0_sent_n[req_ptr_n] = 1'b1;
                 end
             end else begin
+                if (req_wnr_q[req_ptr_n]) begin
+                    resp_data0_vld_n[req_ptr_n] = 1'b1;
+                end
                 req_ptr_n = req_ptr_n + 1'b1;
-                mq_sz_n_r = mq_sz_n_r + 1'b1;
             end
+        end
+        if (dmem_req_accept_w) begin
+            $display("[MREQ] req_ptr=%h resp_ptr=%h send_ptr=%h", head_ptr_r, commit_ptr_r, req_ptr_r);
         end
     end
     ////////////////////////////////////////////////////////////////////////////////
@@ -153,13 +176,14 @@ module mrv1_mem_queue
     ////////////////////////////////////////////////////////////////////////////////
     always_ff @(posedge clk_i) begin
         if (lsu_req_vld_i) begin
-            req_wnr_q[lsu_req_itag_i]       <= lsu_req_w_en_i;
-            req_signed_q[lsu_req_itag_i]    <= lsu_req_signed_i;
-            req_unalgn_q[lsu_req_itag_i]    <= lsu_req_unalgn_i;
-            req_offset_q[lsu_req_itag_i]    <= lsu_req_offset_i;
-            req_size_q[lsu_req_itag_i]      <= lsu_req_size_i;
-            req_addr_q[lsu_req_itag_i]      <= lsu_req_addr_i;
-            req_w_data_q[lsu_req_itag_i]    <= lsu_req_w_data_i;
+            req_itag_q[head_ptr_r]       <= lsu_req_itag_i;
+            req_wnr_q[head_ptr_r]        <= lsu_req_w_en_i;
+            req_signed_q[head_ptr_r]     <= lsu_req_signed_i;
+            req_unalgn_q[head_ptr_r]     <= lsu_req_unalgn_i;
+            req_offset_q[head_ptr_r]     <= lsu_req_offset_i;
+            req_size_q[head_ptr_r]       <= lsu_req_size_i;
+            req_addr_q[head_ptr_r]       <= lsu_req_addr_i;
+            req_w_data_q[head_ptr_r]     <= lsu_req_w_data_i;
         end
     end
     ////////////////////////////////////////////////////////////////////////////////
@@ -179,13 +203,13 @@ module mrv1_mem_queue
         end
     end
 
-    wire mem_commit_rdy_2 = ~resp_unalgn_w || (resp_unalgn_w && resp_data1_vld_q[resp_ptr_r]);
-    assign mem_commit_rdy_o = req_vld_q[resp_ptr_r] && resp_data0_vld_q[resp_ptr_r] && mem_commit_rdy_2;
+    wire mem_commit_rdy_2 = ~resp_unalgn_w || (resp_unalgn_w && resp_data1_vld_q[commit_ptr_r]);
+    assign mem_commit_rdy_o = req_vld_q[commit_ptr_r] && resp_data0_vld_q[commit_ptr_r] && mem_commit_rdy_2;
 
     ////////////////////////////////////////////////////////////////////////////////
     // Read data alignment
     ////////////////////////////////////////////////////////////////////////////////
-    wire [DATA_WIDTH_P*2-1:0] dmem_unalgn_resp_data_w = {resp_data0_w, resp_data1_w};
+    wire [DATA_WIDTH_P*2-1:0] dmem_unalgn_resp_data_w = {resp_data1_w, resp_data0_w};
     logic [DATA_WIDTH_P-1:0] dmem_resp_data_r;
     always_comb begin
         if (resp_unalgn_w) begin
@@ -230,7 +254,7 @@ module mrv1_mem_queue
         endcase
     end
     assign mem_commit_data_o = resp_signed_w ? wb_data_sext_r : wb_data_zext_r;
-    assign mem_commit_itag_o = resp_ptr_r;
+    assign mem_commit_itag_o = req_itag_q[commit_ptr_r];
     ////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -277,11 +301,22 @@ module mrv1_mem_queue
             default: dmem_req_be_1_r       = 4'b0000;
         endcase
     end
+    assign dmem_req_itag_o      = req_ptr_r;
     assign dmem_req_vld_o       = req_vld_q[req_ptr_r];
     assign dmem_req_wnr_o       = req_wnr_q[req_ptr_r];
     assign dmem_req_addr_o      = req_p0_sent_w ? (req_addr_w + 'd4) : req_addr_w; // FIXME
     assign dmem_req_w_be_o      = req_p0_sent_w ? dmem_req_be_1_r : dmem_req_be_0_r;
     assign dmem_req_w_data_o    = req_p0_sent_w ? req_full_w_data_r[DATA_WIDTH_P*2-1:DATA_WIDTH_P] : req_full_w_data_r[DATA_WIDTH_P-1:0];
     ////////////////////////////////////////////////////////////////////////////////
+
+    always_comb begin
+        if (dmem_resp_vld_i) begin
+            $display("[MRESP] id=%h data=%h", dmem_resp_itag_i, dmem_resp_r_data_i);
+        end
+        if (mem_commit_vld_i) begin
+            $display("[MEM->COMMIT] itag=%h id=%h data=%h buf=%h:%h tmp=%h",
+                mem_commit_itag_o, commit_ptr_r, mem_commit_data_o, resp_data1_w, resp_data0_w, dmem_resp_data_r);
+        end 
+    end
 
 endmodule

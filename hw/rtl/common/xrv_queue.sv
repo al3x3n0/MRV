@@ -41,6 +41,15 @@ module xrv_queue #(
     wire [q_addr_width_lp-1:0] q_w_ptr_n_w = enq_i ? q_w_ptr_n_wrp_w : q_w_ptr_q;
     wire [q_addr_width_lp-1:0] q_r_ptr_n_w = deq_i ? q_r_ptr_n_wrp_w : q_r_ptr_q;
     ////////////////////////////////////////////////////////////////////////////////
+    always_comb begin
+        q_size_n_r = q_size_q;
+        if (enq_i) begin
+            q_size_n_r = q_size_n_r + '1;
+        end
+        if (deq_i) begin
+            q_size_n_r = q_size_n_r - '1;
+        end
+    end
     always_ff @(posedge clk_i) begin
         if (rst_i) begin
             q_size_q     <= 'b0;

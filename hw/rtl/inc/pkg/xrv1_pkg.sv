@@ -124,7 +124,8 @@ package xrv1_pkg;
     typedef enum logic [1:0] {
         XRV_IMM1_I = 'd0,
         XRV_IMM1_S,
-        XRV_IMM1_U
+        XRV_IMM1_U,
+        XRV_IMM1_J
     } xrv_imm1_sel_e;
 
     typedef enum bit [11:0] {

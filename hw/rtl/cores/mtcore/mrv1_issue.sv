@@ -160,6 +160,15 @@ module mrv1_issue #(
         ////////////////////////////////////////////////////////////////////////////////
         // Decode buffer
         ////////////////////////////////////////////////////////////////////////////////
+        assign issue_rdy_o[i] = ~dec_buf_full_lo;
+        logic [DEC_BUF_ADDR_WIDTH_LP:0] dec_buf_size_lo;
+        always_comb begin
+            if (i == '0) begin
+                $display("ISSUE: issue_vld_w=%b enq_w=%b rdy=%b size=%h out_pc=%h",
+                    issue_vld_w, enq_w, issue_rdy_o[i], dec_buf_size_lo, dec_buf_pc_lo);
+            end
+        end
+
         xrv_queue #(
             .q_size_p       (DEC_BUF_SZ_P),
             .data_width_p   (dec_buf_width_lp)
@@ -178,24 +187,17 @@ module mrv1_issue #(
             ////////////////////////////////////////////////////////////////////////////////
             .full_o         (dec_buf_full_lo),
             .empty_o        (dec_buf_empty_lo),
-            .size_o         (/*FIXME*/)
+            .size_o         (dec_buf_size_lo)
             ////////////////////////////////////////////////////////////////////////////////
         );
         ////////////////////////////////////////////////////////////////////////////////
         wire fu_rdy_w = (exec_fu_rdy_i & dec_buf_fu_req_lo) == dec_buf_fu_req_lo;
-        assign issue_th_rdy_li[i] = fu_rdy_w & iq_rdy_lo[i] & dec_buf_data_vld_lo;
+        assign issue_th_rdy_li[i] = fu_rdy_w & iq_rdy_lo[i] & dec_buf_data_vld_lo & ~(|iq_rs_conflict_o[i]);
         ////////////////////////////////////////////////////////////////////////////////
         wire issue_tid_match_w = issue_tid_o == TID_WIDTH_LP'(i);
         wire ret_tid_match_w = retire_tid_i == TID_WIDTH_LP'(i);
         wire issue_vld_w = (|dec_buf_fu_req_lo) && issue_tid_match_w && issue_tid_vld_lo;
         wire [ITAG_WIDTH_P-1:0] retire_cnt_w = ret_tid_match_w ? retire_cnt_i[i] : 0;
-
-        always_comb begin
-            $display("[ISSUE] T%d  issue_tid_o=%h issue_th_rdy_li=%b issue_tid_match_w=%b issue_tid_vld_lo=%b",
-                i, issue_tid_o, issue_th_rdy_li, issue_tid_match_w, issue_tid_vld_lo);
-            $display("[ISSUE] T%d iq_rdy_lo=%b exec_fu_rdy_i=%b issue_vld=%b dec_buf_fu_req_lo=%b",
-                i, iq_rdy_lo[i], exec_fu_rdy_i, issue_vld_w, dec_buf_fu_req_lo);
-        end
         
         ////////////////////////////////////////////////////////////////////////////////
         // Instruction Track Queue
@@ -217,7 +219,7 @@ module mrv1_issue #(
             .issue_rs_vld_i             ({dec_buf_rs1_vld_lo, dec_buf_rs0_vld_lo}),
             ////////////////////////////////////////////////////////////////////////////////
             .issue_rd_addr_i            (dec_buf_rd_addr_lo),
-            .issue_rd_vld_i             (dec_buf_rd_vld_lo),
+            .issue_rd_vld_i             (dec_buf_rd_vld_lo & (|dec_buf_rd_addr_lo)),
             ////////////////////////////////////////////////////////////////////////////////
             .issue_itag_o               (iq_issue_itag_lo[i]),
             .retire_itag_o              (iq_retire_itag_o[i]),
@@ -236,20 +238,22 @@ module mrv1_issue #(
     // Thread selector
     ////////////////////////////////////////////////////////////////////////////////
     logic issue_tid_vld_lo;
-    mrv1_th_issue #(
+    mrv1_rr_th_scheduler #(
         .NUM_THREADS_P(NUM_THREADS_P)
     ) issue_tw_sched_i (
         .clk_i(clk_i),
         .rst_i(rst_i),
-        .issue_rdy_i(issue_th_rdy_li),
-        .issue_vld_o(issue_tid_vld_lo),
-        .issue_tid_o(issue_tid_o)
+        .sched_rdy_i(issue_th_rdy_li),
+        .sched_vld_o(issue_tid_vld_lo),
+        .sched_tid_o(issue_tid_o)
     );
     assign issue_insn_data_lo = ths_dec_buf_data_lo[issue_tid_o];
 
     ////////////////////////////////////////////////////////////////////////////////
     // SRC MUX
     ////////////////////////////////////////////////////////////////////////////////
+    logic [NUM_FU_P-1:0]            issue_fu_req_lo;
+    logic                           issue_b_is_branch_lo;
     logic [PC_WIDTH_P-1:0]          issue_insn_pc_lo;
     xrv_exe_src0_sel_e              issue_insn_src0_sel_lo;
     xrv_exe_src1_sel_e              issue_insn_src1_sel_lo;
@@ -262,9 +266,9 @@ module mrv1_issue #(
     
     assign {
         issue_insn_pc_lo,
-        issue_fu_req_o,
+        issue_fu_req_lo,
         issue_fu_opc_o,
-        issue_b_is_branch_o,
+        issue_b_is_branch_lo,
         issue_b_is_jump_o,
         issue_insn_src0_sel_lo,
         issue_insn_src1_sel_lo,
@@ -301,19 +305,27 @@ module mrv1_issue #(
         .insn_imm0_i    (issue_insn_imm0_lo),
         .insn_imm1_i    (issue_insn_imm1_lo),
         .insn_pc_i      (issue_insn_pc_lo),
+        .insn_is_br_i   (issue_b_is_branch_lo),
         .src0_data_o    (issue_src0_data_o),
         .src1_data_o    (issue_src1_data_o),
         .src2_data_o    (issue_src2_data_o)
     );
 
-    assign rf_tid_o         = '0; // FIXME
-    assign issue_itag_o     = iq_issue_itag_lo[issue_tid_o];
-    assign issue_pc_o       = issue_insn_pc_lo;
+    assign rf_tid_o             = '0; // FIXME
+    assign issue_itag_o         = iq_issue_itag_lo[issue_tid_o];
+    assign issue_pc_o           = issue_insn_pc_lo;
+    assign issue_b_is_branch_o  = issue_b_is_branch_lo;
+    assign issue_fu_req_o       = issue_tid_vld_lo ? issue_fu_req_lo : '0;
 
     always_comb begin
-        $display("[ISSUE] dec_vld_i=%h dec_fu_req_i=%b dec_pc_i=%h", dec_vld_i, dec_fu_req_i, dec_pc_i);
-        $display("[ISSUE->EXEC] fu_req=%b pc=%h itag=%h rd=%d b=%b j=%b",
-            issue_fu_req_o, issue_pc_o, issue_itag_o, issue_insn_rd_addr_lo, issue_b_is_branch_o, issue_b_is_jump_o);
+        if (dec_vld_i) begin
+            $display("[DECODE->ISSUE] fu_req=%b pc=%h", dec_fu_req_i, dec_pc_i);
+        end
+        if ((|issue_fu_req_o)) begin
+            $display("[ISSUE->EXEC] fu_req=%b pc=%h itag=%h rd=%d b=%b j=%b src0=%h src1=%h src2=%h",
+                issue_fu_req_o, issue_pc_o, issue_itag_o, issue_insn_rd_addr_lo, issue_b_is_branch_o, issue_b_is_jump_o,
+                issue_src0_data_o, issue_src1_data_o, issue_src2_data_o);
+        end
     end
 
 endmodule

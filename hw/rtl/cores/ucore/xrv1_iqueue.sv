@@ -100,8 +100,11 @@ module xrv1_iqueue
             issue_ptr_n = issue_ptr_r + 1'b1;
             iq_sz_n_r = iq_sz_n_r + 1'b1;
         end
+        /*
         $display("iq_sz_n_r: %d retire_cnt_i:%d retire_ptr_n:%d",
             iq_sz_n_r, retire_cnt_i, retire_ptr_n);
+        */
+
     end
     ////////////////////////////////////////////////////////////////////////////////
     genvar i, j;
@@ -111,7 +114,8 @@ module xrv1_iqueue
                 assign rs_conflict_o[j][i] = issue_rs_vld_i[j]
                     & iqueue_vld_r[i]
                     & iqueue_rd_vld_r[i]
-                    & issue_rs_addr_i[j] == iqueue_rd_addr_r[i];
+                    & issue_rs_addr_i[j] == iqueue_rd_addr_r[i]
+                    & (|iqueue_rd_addr_r[i]);
             end
         end
     endgenerate
