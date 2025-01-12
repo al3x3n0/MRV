@@ -261,6 +261,11 @@ module mrv1_idecoder
             ////////////////////////////////////////////////////////////////////////////////
             XRV_SYSTEM: begin
                 if (insn_i[14:12] == 3'b000) begin
+`ifdef SIM_ENABLED
+                    // For now we will finish simulation on any system instruction
+                    // with funct3 == 0
+                    $finish;
+`endif
                 end
                 else begin
                     dec_fu_req_o[MRV_FU_TYPE_SYS] = 1'b1;

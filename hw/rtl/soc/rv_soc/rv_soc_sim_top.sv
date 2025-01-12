@@ -50,19 +50,7 @@ module rv_soc_sim_top #(
 
     generate
         if (DEBUG_LEVEL_P > 0) initial begin
-            $display("Current parameters: \
-                      DEBUG_LEVEL_P       %8d \
-                      CPU_NUM_CORES_P     %8d \
-                      NUM_THREADS_P       %8d \
-                      XLEN_P              %8d \
-                      CPU_RESET_ADDRESS_P %8h \
-                      RAM_BITS_SIZE_P     %8d \
-                      PC_WIDTH_P          %8d \
-                      TID_WIDTH_LP        %8d \
-                      IMEM_TAG_WIDTH_P    %8d \
-                      DMEM_TAG_WIDTH_P    %8d\n", DEBUG_LEVEL_P, CPU_NUM_CORES_P,
-                      NUM_THREADS_P, XLEN_P, CPU_RESET_ADDRESS_P, RAM_BITS_SIZE_P,
-                      PC_WIDTH_P, TID_WIDTH_LP, IMEM_TAG_WIDTH_P, DMEM_TAG_WIDTH_P);
+            soc_print_parameters();
         end
     endgenerate
 
@@ -233,6 +221,24 @@ task soc_write_arch_register
     case (core_id)
         0: core_i[0].write_arch_register(hart_id, reg_addr, val);
     endcase
+endtask
+
+export "DPI-C" task soc_print_parameters;
+task soc_print_parameters
+();
+    $display("Current parameters: \
+                      DEBUG_LEVEL_P       %8d \
+                      CPU_NUM_CORES_P     %8d \
+                      NUM_THREADS_P       %8d \
+                      XLEN_P              %8d \
+                      CPU_RESET_ADDRESS_P %8h \
+                      RAM_BITS_SIZE_P     %8d \
+                      PC_WIDTH_P          %8d \
+                      TID_WIDTH_LP        %8d \
+                      IMEM_TAG_WIDTH_P    %8d \
+                      DMEM_TAG_WIDTH_P    %8d\n", DEBUG_LEVEL_P, CPU_NUM_CORES_P,
+                      NUM_THREADS_P, XLEN_P, CPU_RESET_ADDRESS_P, RAM_BITS_SIZE_P,
+                      PC_WIDTH_P, TID_WIDTH_LP, IMEM_TAG_WIDTH_P, DMEM_TAG_WIDTH_P);
 endtask
 
 endmodule

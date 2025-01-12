@@ -189,6 +189,10 @@ bool single_core_soc::run_simulation(int num_cycles, int verbose_lvl) {
     return true;
 }
 
+void single_core_soc::soc_print_parameters() const {
+    m_rtl->soc_print_parameters();
+}
+
 const char* single_core_soc::riscv_decode_instruction(uint32_t pc, uint32_t inst) {
     riscv_inst_decode(inst_decode_buffer, pc, inst);
     return inst_decode_buffer;
