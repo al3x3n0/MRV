@@ -210,7 +210,6 @@ module mrv1_idecoder
             ////////////////////////////////////////////////////////////////////////////////
             XRV_JALR: begin
                 dec_src1_sel_o = XRV_SRC1_IMM;
-                imm1_sel_r = XRV_IMM1_J;
                 dec_rs0_vld_o = 1'b1;
                 dec_b_is_jump_o = 1'b1;
                 dec_fu_req_o[MRV_FU_TYPE_INT] = 1'b1;
