@@ -38,6 +38,7 @@ module mrv1_int_fu
     input logic                         b_is_jump_i,
     output logic                        b_pc_vld_o,
     output logic [PC_WIDTH_P-1:0]       b_pc_o,
+    output logic                        b_taken_o,
     output logic [TID_WIDTH_LP-1:0]     b_tid_o
 );
     ////////////////////////////////////////////////////////////////////////////////
@@ -971,8 +972,9 @@ module mrv1_int_fu
     ////////////////////////////////////////////////////////////////////////////////
     // Conditional branch handling
     ////////////////////////////////////////////////////////////////////////////////
-    assign b_pc_vld_o = int_fu_req_i & ((b_is_branch_i & ~comparison_result_w) | b_is_jump_i);
+    assign b_pc_vld_o = int_fu_req_i & (b_is_branch_i | b_is_jump_i);
     assign b_pc_o = b_is_jump_i ? adder_result : (exec_pc_i + exec_src2_data_i);
+    assign b_taken_o = b_is_branch_i ? comparison_result_w : b_is_jump_i;
     ////////////////////////////////////////////////////////////////////////////////
     always_comb begin
         if (int_fu_req_i & b_is_branch_i) begin

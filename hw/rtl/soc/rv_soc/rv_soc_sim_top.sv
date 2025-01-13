@@ -14,7 +14,7 @@ module rv_soc_sim_top #(
     parameter NUM_THREADS_P   = 8,
     parameter XLEN_P = 32,
     parameter CPU_RESET_ADDRESS_P = 'h2000,
-    parameter RAM_BITS_SIZE_P = 16,
+    parameter RAM_BITS_SIZE_P = 20,
     parameter PC_WIDTH_P = XLEN_P,
     ////////////////////////////////////////////////////////////////////////////////
     parameter TID_WIDTH_LP = `XM_CLOG2(NUM_THREADS_P),

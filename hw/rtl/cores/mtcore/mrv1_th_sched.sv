@@ -34,6 +34,7 @@ module mrv1_th_sched
     ////////////////////////////////////////////////////////////////////////////////
     input  logic [TID_WIDTH_LP-1:0]             exec_tid_i,
     input  logic                                exec_b_pc_vld_i,
+    input  logic                                exec_b_taken_i,
     input  logic [PC_WIDTH_P-1:0]               exec_b_pc_i,
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                th_stall_vld_i,
@@ -48,6 +49,7 @@ module mrv1_th_sched
     input logic [BARR_ID_WIDTH_LP-1:0]          th_ctl_barrier_id_i,
     input logic [TID_WIDTH_LP-1:0]              th_ctl_barrier_size_m1_i,
     ////////////////////////////////////////////////////////////////////////////////
+    output logic [NUM_THREADS_P-1:0]            th_stalled_o,
     output logic                                sched_vld_o,
     output logic [TID_WIDTH_LP-1:0]             sched_tid_o,
     output logic [PC_WIDTH_P-1:0]               sched_pc_o
@@ -112,7 +114,7 @@ module mrv1_th_sched
             fetch_lock_q_n[fetch_tid_i] = '0;
             thread_pcs_q_n[fetch_tid_i] = fetch_pc_i + 4;
         end
-        if (exec_b_pc_vld_i) begin
+        if (exec_b_pc_vld_i && exec_b_taken_i) begin
             thread_pcs_q_n[exec_tid_i] = exec_b_pc_i;
         end
         for (int i = 0; i < NUM_THREADS_P; ++i) begin
@@ -156,5 +158,7 @@ module mrv1_th_sched
 	        sched_tbl_q       <= (|sched_tbl_q_n) ? sched_tbl_q_n : active_threads_q_n;
         end
     end
+
+    assign th_stalled_o = stalled_threads_q;
 
 endmodule

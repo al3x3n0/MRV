@@ -37,6 +37,7 @@ module mrv1_exec
     input logic                                         b_is_branch_i,
     input logic                                         b_is_jump_i,
     output logic                                        b_pc_vld_o,
+    output logic                                        b_taken_o,
     output logic [PC_WIDTH_P-1:0]                       b_pc_o,
     output logic [TID_WIDTH_LP-1:0]                     b_tid_o,
     ////////////////////////////////////////////////////////////////////////////////
@@ -96,6 +97,7 @@ module mrv1_exec
         .b_is_branch_i          (b_is_branch_i),
         .b_is_jump_i            (b_is_jump_i),
         .b_pc_vld_o             (b_pc_vld_o),
+        .b_taken_o              (b_taken_o),
         .b_pc_o                 (b_pc_o),
         .b_tid_o                (b_tid_o)
     );
