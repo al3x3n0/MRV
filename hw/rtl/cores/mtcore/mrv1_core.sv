@@ -75,6 +75,7 @@ module mrv1_core
     logic [NUM_THREADS_P-1:0]       dec_rdy_lo;
     ////////////////////////////////////////////////////////////////////////////////
     logic                           exec_b_pc_vld_lo;
+    logic                           exec_b_taken_lo;
     logic [PC_WIDTH_P-1:0]          exec_b_pc_lo;
     logic [TID_WIDTH_LP-1:0]        exec_b_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
@@ -106,6 +107,7 @@ module mrv1_core
         ////////////////////////////////////////////////////////////////////////////////
         .exec_tid_i                 (exec_b_tid_lo),
         .exec_b_pc_vld_i            (exec_b_pc_vld_lo),
+        .exec_b_taken_i             (exec_b_taken_lo),
         .exec_b_pc_i                (exec_b_pc_lo),
         ////////////////////////////////////////////////////////////////////////////////
         // IFETCH <-> IMEM interface
@@ -415,6 +417,7 @@ module mrv1_core
         .b_is_branch_i          (issue_b_is_branch_q),
         .b_is_jump_i            (issue_b_is_jump_q),
         .b_pc_vld_o             (exec_b_pc_vld_lo),
+        .b_taken_o              (exec_b_taken_lo),
         .b_pc_o                 (exec_b_pc_lo),
         .b_tid_o                (exec_b_tid_lo),
         ////////////////////////////////////////////////////////////////////////////////

@@ -44,6 +44,7 @@ module mrv1_ifetch
     ////////////////////////////////////////////////////////////////////////////////
     input logic [TID_WIDTH_LP-1:0]              exec_tid_i,
     input logic                                 exec_b_pc_vld_i,
+    input logic                                 exec_b_taken_i,
     input logic [PC_WIDTH_P-1:0]                exec_b_pc_i,
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                th_stall_vld_i,
@@ -63,6 +64,7 @@ module mrv1_ifetch
     logic                                       sched_fetch_req_lo;
     logic [PC_WIDTH_P-1:0]                      sched_pc_lo;
     logic [TID_WIDTH_LP-1:0]                    sched_tid_lo;
+    logic [NUM_THREADS_P-1:0]                   th_stalled_lo;
     ////////////////////////////////////////////////////////////////////////////////
     assign imem_req_vld_o = sched_fetch_req_lo & fetch_req_rdy_li[sched_tid_lo];
     assign imem_req_addr_o = sched_pc_lo;
@@ -77,15 +79,6 @@ module mrv1_ifetch
     logic [TID_WIDTH_LP-1:0]        fetch_tid_li;
     logic [PC_WIDTH_P-1:0]          fetch_pc_li;
     assign {fetch_pc_li, fetch_tid_li} = imem_resp_tag_i;
-
-    logic decode_is_branch_q;
-    always_ff @(posedge clk_i) begin
-        if (rst_i) begin
-            decode_is_branch_q <= 1'b0;
-        end else begin
-            decode_is_branch_q <= decode_is_branch_i;
-        end
-    end
 
     ////////////////////////////////////////////////////////////////////////////////
     logic [NUM_THREADS_P-1:0]                   ifq_i_data_vld_lo;
@@ -106,7 +99,7 @@ module mrv1_ifetch
         wire fetch_tid_match_w = fetch_tid_li == TID_WIDTH_LP'(i);
         assign decode_th_rdy_li[i] = ifq_i_data_vld_lo[i] & decode_rdy_i[i];
         wire ifq_enqueue_li = imem_resp_vld_i & ~ifq_full_lo & fetch_tid_match_w;
-        wire ifq_dequeue_li = tid_match_w & ifetch_insn_vld_o & decode_rdy_i[i];
+        wire ifq_dequeue_li = tid_match_w & ifetch_insn_vld_o & decode_rdy_i[i] & ~th_stalled_lo[i];
         assign fetch_req_rdy_li[i] = ~ifq_full_lo & ~ifq_almost_full_lo;
         assign fetch_done_li[i] = ifq_enqueue_li;
         /*
@@ -120,7 +113,7 @@ module mrv1_ifetch
         ////////////////////////////////////////////////////////////////////////////////
         xrv1_ifq ifq_i (
             .clk_i                  (clk_i),
-            .rst_i                  (rst_i | decode_is_branch_q),
+            .rst_i                  (rst_i | (exec_b_pc_vld_i & exec_b_taken_i)),
             ////////////////////////////////////////////////////////////////////////////////
             .enqueue_i              (ifq_enqueue_li),
             .dequeue_i              (ifq_dequeue_li),
@@ -140,22 +133,24 @@ module mrv1_ifetch
     end
     endgenerate
     ////////////////////////////////////////////////////////////////////////////////
-    assign ifetch_insn_data_o = ifq_i_data_lo[ifetch_insn_tid_o];
-    assign ifetch_insn_pc_o = ifq_pc_lo[ifetch_insn_tid_o];
 
     ////////////////////////////////////////////////////////////////////////////////
     // Thread scheduler
     ////////////////////////////////////////////////////////////////////////////////
-    logic issue_tid_vld_lo;
+    logic ifq_sel_vld_lo;
     mrv1_rr_th_scheduler #(
         .NUM_THREADS_P(NUM_THREADS_P)
     ) decode_th_sched_i (
         .clk_i          (clk_i),
         .rst_i          (rst_i),
         .sched_rdy_i    (decode_th_rdy_li),
-        .sched_vld_o    (ifetch_insn_vld_o),
+        .sched_vld_o    (ifq_sel_vld_lo),
         .sched_tid_o    (ifetch_insn_tid_o)
     );
+    ////////////////////////////////////////////////////////////////////////////////
+    assign ifetch_insn_vld_o = ifq_sel_vld_lo & ~th_stalled_lo[ifetch_insn_tid_o];
+    assign ifetch_insn_data_o = ifq_i_data_lo[ifetch_insn_tid_o];
+    assign ifetch_insn_pc_o = ifq_pc_lo[ifetch_insn_tid_o];
 
     ////////////////////////////////////////////////////////////////////////////////
     // Instruction Fetch Scheduler
@@ -182,8 +177,10 @@ module mrv1_ifetch
         ////////////////////////////////////////////////////////////////////////////////
         .exec_tid_i                 (exec_tid_i),
         .exec_b_pc_vld_i            (exec_b_pc_vld_i),
+        .exec_b_taken_i             (exec_b_taken_i),
         .exec_b_pc_i                (exec_b_pc_i),
         ////////////////////////////////////////////////////////////////////////////////
+        .th_stalled_o               (th_stalled_lo),
         .sched_vld_o                (sched_fetch_req_lo),
         .sched_tid_o                (sched_tid_lo),
         .sched_pc_o                 (sched_pc_lo),

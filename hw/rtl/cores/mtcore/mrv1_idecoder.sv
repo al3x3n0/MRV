@@ -77,6 +77,7 @@ module mrv1_idecoder
             XRV_IMM1_S:         dec_imm1_o = imm_s_type_w;
             XRV_IMM1_U:         dec_imm1_o = imm_u_type_w;
             XRV_IMM1_J:         dec_imm1_o = imm_j_type_w;
+            XRV_IMM1_B:         dec_imm1_o = imm_b_type_w;
             default:            dec_imm1_o = imm_i_type_w;
         endcase
         ////////////////////////////////////////////////////////////////////////////////
@@ -219,7 +220,7 @@ module mrv1_idecoder
                 dec_rs0_vld_o = 1'b1;
                 dec_rs1_vld_o = 1'b1;
                 dec_rd_vld_o = 1'b0;
-                imm1_sel_r = XRV_IMM1_J;
+                imm1_sel_r = XRV_IMM1_B;
                 dec_b_is_branch_o = 1'b1;
                 dec_fu_req_o[MRV_FU_TYPE_INT] = 1'b1;
                 case (func3_w)
