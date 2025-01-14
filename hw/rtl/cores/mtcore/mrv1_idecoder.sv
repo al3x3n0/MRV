@@ -257,6 +257,15 @@ module mrv1_idecoder
             end
             ////////////////////////////////////////////////////////////////////////////////
             XRV_FENCE: begin
+                dec_rs0_vld_o = 1'b1;
+                dec_rs1_vld_o = 1'b1;
+                dec_rd_vld_o  = 1'b0;
+                dec_fu_opc_o = MRV_INT_FU_ADD;
+                dec_fu_req_o[MRV_FU_TYPE_INT] = 1'b1;
+                dec_src0_sel_o = XRV_SRC0_RS0;
+                imm0_sel_r = XRV_IMM0_ZERO;
+                dec_src1_sel_o = XRV_SRC1_RS1;
+                imm1_sel_r = XRV_IMM1_I;
             end
             ////////////////////////////////////////////////////////////////////////////////
             XRV_SYSTEM: begin

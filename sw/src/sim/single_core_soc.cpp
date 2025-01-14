@@ -110,11 +110,15 @@ bool single_core_soc::load_elf(const std::string& elf_path, int verbose_lvl) {
 }
 
 bool single_core_soc::dump_signature(const std::string& path, int verbose_lvl) {
+    auto* fp = fopen(path.c_str(), "w");
+    assert(fp);
+
     auto sig_begin_addr = m_elf_loader.get_address_sig_begin();
     auto sig_end_addr = m_elf_loader.get_address_sig_end();
     if (sig_begin_addr == -1 || sig_end_addr == -1) {
         printf("Signature begin(%p) or signature end(%p) offset in elf is wrong.\n",
                sig_begin_addr, sig_end_addr);
+        fclose(fp);
         return false;
     }
 
@@ -133,12 +137,11 @@ bool single_core_soc::dump_signature(const std::string& path, int verbose_lvl) {
         sig_end <= sig_begin) {
         printf("Test signature begin address(0x%x) or signature end address(0x%x) is wrong.\n"
                "Failed to dump signature.", sig_begin, sig_end);
+        fclose(fp);
         return false;
     }
     assert(sig_begin < sig_end);
     
-    auto* fp = fopen(path.c_str(), "w");
-    assert(fp);
 
     for (uint32_t addr = sig_begin; addr < sig_end; addr += 4) {
         auto val = read_u32(addr);
