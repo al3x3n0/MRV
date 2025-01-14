@@ -255,6 +255,7 @@ module mrv1_issue #(
     ////////////////////////////////////////////////////////////////////////////////
     logic [NUM_FU_P-1:0]            issue_fu_req_lo;
     logic                           issue_b_is_branch_lo;
+    logic                           issue_b_is_jump_lo;
     logic [PC_WIDTH_P-1:0]          issue_insn_pc_lo;
     xrv_exe_src0_sel_e              issue_insn_src0_sel_lo;
     xrv_exe_src1_sel_e              issue_insn_src1_sel_lo;
@@ -270,7 +271,7 @@ module mrv1_issue #(
         issue_fu_req_lo,
         issue_fu_opc_o,
         issue_b_is_branch_lo,
-        issue_b_is_jump_o,
+        issue_b_is_jump_lo,
         issue_insn_src0_sel_lo,
         issue_insn_src1_sel_lo,
         issue_insn_imm0_lo,
@@ -307,6 +308,7 @@ module mrv1_issue #(
         .insn_imm1_i    (issue_insn_imm1_lo),
         .insn_pc_i      (issue_insn_pc_lo),
         .insn_is_br_i   (issue_b_is_branch_lo),
+        .insn_is_jump_i (issue_b_is_jump_lo),
         .src0_data_o    (issue_src0_data_o),
         .src1_data_o    (issue_src1_data_o),
         .src2_data_o    (issue_src2_data_o)
@@ -316,6 +318,7 @@ module mrv1_issue #(
     assign issue_itag_o         = iq_issue_itag_lo[issue_tid_o];
     assign issue_pc_o           = issue_insn_pc_lo;
     assign issue_b_is_branch_o  = issue_b_is_branch_lo;
+    assign issue_b_is_jump_o    = issue_b_is_jump_lo;
     assign issue_fu_req_o       = issue_tid_vld_lo ? issue_fu_req_lo : '0;
 
     always_comb begin
