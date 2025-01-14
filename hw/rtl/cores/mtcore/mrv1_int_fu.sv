@@ -852,19 +852,25 @@ module mrv1_int_fu
     end
     /////////////////////////////////////////////////////////////////////////////////
 
+    /////////////////////////////////////////////////////////////////////////////////
+    // PC increment
+    /////////////////////////////////////////////////////////////////////////////////
+    wire [PC_WIDTH_P-1:0] pc_inc_w = exec_pc_i + exec_src2_data_i;
+
     ////////////////////////////////////////////////////////
     // Result MUX
     ////////////////////////////////////////////////////////
+    logic [DATA_WIDTH_P-1:0] int_fu_res;
     always_comb begin
-        int_fu_res_o = '0;
+        int_fu_res = '0;
         ////////////////////////////////////////////////////////
         unique case (int_fu_opc_i)
             ////////////////////////////////////////////////////////
             // Standard Operations
             ////////////////////////////////////////////////////////
-            MRV_INT_FU_AND: int_fu_res_o = exec_src0_data_i & exec_src1_data_i;
-            MRV_INT_FU_OR:  int_fu_res_o = exec_src0_data_i | exec_src1_data_i;
-            MRV_INT_FU_XOR: int_fu_res_o = exec_src0_data_i ^ exec_src1_data_i;
+            MRV_INT_FU_AND: int_fu_res = exec_src0_data_i & exec_src1_data_i;
+            MRV_INT_FU_OR:  int_fu_res = exec_src0_data_i | exec_src1_data_i;
+            MRV_INT_FU_XOR: int_fu_res = exec_src0_data_i ^ exec_src1_data_i;
             ////////////////////////////////////////////////////////
             // Shift Operations
             ////////////////////////////////////////////////////////
@@ -881,7 +887,7 @@ module mrv1_int_fu
             MRV_INT_FU_SRA,
             MRV_INT_FU_ROR:
             begin
-                int_fu_res_o = shift_result;
+                int_fu_res = shift_result;
             end
             ////////////////////////////////////////////////////////
             // bit manipulation instructions
@@ -890,15 +896,15 @@ module mrv1_int_fu
             MRV_INT_FU_BEXT,
             MRV_INT_FU_BEXTU:
             begin
-                int_fu_res_o = bextins_result;
+                int_fu_res = bextins_result;
             end
             ////////////////////////////////////////////////////////
-            MRV_INT_FU_BCLR: int_fu_res_o = bclr_result;
-            MRV_INT_FU_BSET: int_fu_res_o = bset_result;
+            MRV_INT_FU_BCLR: int_fu_res = bclr_result;
+            MRV_INT_FU_BSET: int_fu_res = bset_result;
             ////////////////////////////////////////////////////////
             // Bit reverse instruction
             ////////////////////////////////////////////////////////
-            MRV_INT_FU_BREV: int_fu_res_o = reverse_result;
+            MRV_INT_FU_BREV: int_fu_res = reverse_result;
             ////////////////////////////////////////////////////////
             // pack and shuffle operations
             ////////////////////////////////////////////////////////
@@ -910,7 +916,7 @@ module mrv1_int_fu
             MRV_INT_FU_EXTS,
             MRV_INT_FU_INS:
             begin
-                int_fu_res_o = pack_result;
+                int_fu_res = pack_result;
             end
             ////////////////////////////////////////////////////////
             // Min/Max/Ins
@@ -921,13 +927,13 @@ module mrv1_int_fu
             MRV_INT_FU_MAXU,
             MRV_INT_FU_ABS:
             begin
-                int_fu_res_o = result_minmax;
+                int_fu_res = result_minmax;
             end
             ////////////////////////////////////////////////////////
             MRV_INT_FU_CLIP,
             MRV_INT_FU_CLIPU:
             begin
-                int_fu_res_o = clip_result;
+                int_fu_res = clip_result;
             end
             ////////////////////////////////////////////////////////
             // Comparison Operations
@@ -943,10 +949,10 @@ module mrv1_int_fu
             MRV_INT_FU_LTS,
             MRV_INT_FU_LES:
             begin
-                int_fu_res_o[31:24] = {8{cmp_result[3]}};
-                int_fu_res_o[23:16] = {8{cmp_result[2]}};
-                int_fu_res_o[15:8]  = {8{cmp_result[1]}};
-                int_fu_res_o[7:0]   = {8{cmp_result[0]}};
+                int_fu_res[31:24] = {8{cmp_result[3]}};
+                int_fu_res[23:16] = {8{cmp_result[2]}};
+                int_fu_res[15:8]  = {8{cmp_result[1]}};
+                int_fu_res[7:0]   = {8{cmp_result[0]}};
             end
             ////////////////////////////////////////////////////////
             // Non-vector comparisons
@@ -956,24 +962,29 @@ module mrv1_int_fu
             MRV_INT_FU_SLETS,
             MRV_INT_FU_SLETU:
             begin
-                int_fu_res_o = {31'b0, comparison_result_w};
+                int_fu_res = {31'b0, comparison_result_w};
             end
             ////////////////////////////////////////////////////////
             MRV_INT_FU_FF1,
             MRV_INT_FU_FL1,
             MRV_INT_FU_CLB,
             MRV_INT_FU_CNT:
-                int_fu_res_o = {26'h0, bitop_result[5:0]};
+                int_fu_res = {26'h0, bitop_result[5:0]};
             ////////////////////////////////////////////////////////
             default: ;  // default case to suppress unique warning
         endcase
     end
 
+    ////////////////////////////////////////////////////////
+    // J/ALU
+    ////////////////////////////////////////////////////////
+    assign int_fu_res_o = b_is_jump_i ? pc_inc_w : int_fu_res;
+
     ////////////////////////////////////////////////////////////////////////////////
     // Conditional branch handling
     ////////////////////////////////////////////////////////////////////////////////
     assign b_pc_vld_o = int_fu_req_i & (b_is_branch_i | b_is_jump_i);
-    assign b_pc_o = b_is_jump_i ? adder_result : (exec_pc_i + exec_src2_data_i);
+    assign b_pc_o = b_is_jump_i ? adder_result : pc_inc_w;
     assign b_taken_o = b_is_branch_i ? comparison_result_w : b_is_jump_i;
     ////////////////////////////////////////////////////////////////////////////////
     always_comb begin
