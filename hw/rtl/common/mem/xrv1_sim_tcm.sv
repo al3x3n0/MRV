@@ -1,5 +1,6 @@
 module xrv1_sim_tcm
 #(
+    parameter DATA_WIDTH_P = 32,
     parameter itcm_size_p = 1 << 16,
     parameter dtcm_size_p = 1 << 16,
     parameter itcm_addr_width_lp = $clog2(itcm_size_p),
@@ -11,29 +12,31 @@ module xrv1_sim_tcm
     ////////////////////////////////////////////////////////////////////////////////
     // Instruction memory interface
     ////////////////////////////////////////////////////////////////////////////////
-    input logic                     imem_req_vld_i,
-    output logic                    imem_req_rdy_o,
-    input logic [31:0]              imem_req_addr_i,
-    output logic                    imem_resp_vld_o,
-    output logic [31:0]             imem_resp_data_o,
+    input  logic                       imem_req_vld_i,
+    output logic                       imem_req_rdy_o,
+    input  logic [DATA_WIDTH_P-1:0]    imem_req_addr_i,
+    output logic                       imem_resp_vld_o,
+    output logic [DATA_WIDTH_P-1:0]    imem_resp_data_o,
     ////////////////////////////////////////////////////////////////////////////////
     // Data memory interface
     ////////////////////////////////////////////////////////////////////////////////
-    input logic                     dmem_req_vld_i,
-    output  logic                   dmem_req_rdy_o,
-    output  logic                   dmem_resp_err_o,
-    input logic [31:0]              dmem_req_addr_i,
-    input logic                     dmem_req_w_en_i,
-    input logic [3:0]               dmem_req_w_be_i,
-    input logic [31:0]              dmem_req_w_data_i,
-    output  logic                   dmem_resp_vld_o,
-    output  logic [31:0]            dmem_resp_r_data_o
+    input  logic                       dmem_req_vld_i,
+    output logic                       dmem_req_rdy_o,
+    output logic                       dmem_resp_err_o,
+    input  logic [DATA_WIDTH_P-1:0]    dmem_req_addr_i,
+    input  logic                       dmem_req_w_en_i,
+    input  logic [DATA_BE_WIDTH_P-1:0] dmem_req_w_be_i,
+    input  logic [DATA_WIDTH_P-1:0]    dmem_req_w_data_i,
+    output logic                       dmem_resp_vld_o,
+    output logic [DATA_WIDTH_P-1:0]    dmem_resp_r_data_o
     ////////////////////////////////////////////////////////////////////////////////
 );
+    localparam DATA_BE_WIDTH_P = DATA_WIDTH_P >> 3;
     ////////////////////////////////////////////////////////////////////////////////
     // Dual-ported RAM sim model
     ////////////////////////////////////////////////////////////////////////////////
     xrv1_sim_ram #(
+        .DATA_WIDTH_P(DATA_WIDTH_P),
         .depth_p(itcm_size_p)
     ) itcm_i (
         ////////////////////////////////////////////////////////////////////////////////
@@ -56,6 +59,9 @@ module xrv1_sim_tcm
     always_ff @(posedge clk_i) begin
 	    imem_resp_vld_o <= imem_req_vld_i;
         dmem_resp_vld_o <= dmem_req_vld_i;
+        if (imem_resp_vld_o) begin
+            $display("[TCM] data addr %x data %x", imem_req_addr_i, imem_resp_data_o);
+        end
     end
     ////////////////////////////////////////////////////////////////////////////////
 

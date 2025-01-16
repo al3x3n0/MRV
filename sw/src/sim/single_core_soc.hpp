@@ -46,7 +46,7 @@ public:
     // check if simulation is really finished
     bool is_simulation_finished() const;
     // decode riscv instruction
-    static const char* riscv_decode_instruction(uint32_t pc, uint32_t inst);
+    static const char* riscv_decode_instruction(uint64_t pc, uint32_t inst);
     // print soc top module parameters
     void soc_print_parameters() const;
 
@@ -68,7 +68,7 @@ protected:
 };
 
 extern "C" {
-    extern const char* riscv_decode_instruction(uint32_t pc, uint32_t inst);
+    extern const char* riscv_decode_instruction(uint64_t pc, uint32_t inst);
 }
 
 #endif /* __SINGLE_CORE_SOC_HPP__ */

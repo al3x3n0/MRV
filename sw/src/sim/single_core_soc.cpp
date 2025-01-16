@@ -215,11 +215,11 @@ void single_core_soc::soc_print_parameters() const {
     m_rtl->soc_print_parameters();
 }
 
-const char* single_core_soc::riscv_decode_instruction(uint32_t pc, uint32_t inst) {
+const char* single_core_soc::riscv_decode_instruction(uint64_t pc, uint32_t inst) {
     riscv_inst_decode(inst_decode_buffer, pc, inst);
     return inst_decode_buffer;
 }
 
-extern const char* riscv_decode_instruction(uint32_t pc, uint32_t inst) {
+extern const char* riscv_decode_instruction(uint64_t pc, uint32_t inst) {
     return single_core_soc::riscv_decode_instruction(pc, inst);
 }

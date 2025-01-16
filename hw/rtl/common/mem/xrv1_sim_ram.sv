@@ -1,5 +1,6 @@
 module xrv1_sim_ram
 #(
+    parameter DATA_WIDTH_P = 32,
     parameter depth_p = 1 << 16,
     parameter addr_width_lp = $clog2(depth_p)
 )
@@ -8,15 +9,16 @@ module xrv1_sim_ram
     input  logic                        clk_i,
     ////////////////////////////////////////////////////////////////////////////////
     input  logic [addr_width_lp-1:0]    addr_0_i,
-    output logic [31:0]                 r_data_0_o,
+    output logic [DATA_WIDTH_P-1:0]     r_data_0_o,
     ////////////////////////////////////////////////////////////////////////////////
     input  logic [addr_width_lp-1:0]    addr_1_i,
-    output logic [31:0]                 r_data_1_o,
+    output logic [DATA_WIDTH_P-1:0]     r_data_1_o,
     input  logic                        w_en_1_i,
-    input  logic [31:0]                 w_data_1_i,
-    input  logic [3:0]                  w_be_1_i
+    input  logic [DATA_WIDTH_P-1:0]     w_data_1_i,
+    input  logic [DATA_BE_WIDTH_P-1:0]  w_be_1_i
     ////////////////////////////////////////////////////////////////////////////////
 );
+    localparam DATA_BE_WIDTH_P = DATA_WIDTH_P >> 3;
     ////////////////////////////////////////////////////////////////////////////////
     logic [7:0] ram [depth_p-1:0];
     ////////////////////////////////////////////////////////////////////////////////
@@ -25,11 +27,11 @@ module xrv1_sim_ram
     ////////////////////////////////////////////////////////////////////////////////
     genvar i;
     generate
-        for (i = 0; i < 4; i = i + 1) begin
+        for (i = 0; i < DATA_BE_WIDTH_P; i = i + 1) begin
             always @(posedge clk_i) begin
                 ////////////////////////////////////////////////////////////////////////////////
-                r_data_0_o[i * 8 +: 8] <= ram[addr_algn0_w + i];
                 r_data_1_o[i * 8 +: 8] <= ram[addr_algn1_w + i];
+                r_data_0_o[i * 8 +: 8] <= ram[addr_algn0_w + i];
                 ////////////////////////////////////////////////////////////////////////////////
                 if (w_en_1_i & w_be_1_i[i]) begin
                     ram[addr_algn1_w + i] <= w_data_1_i[i * 8 +: 8];
