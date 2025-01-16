@@ -1,25 +1,18 @@
 `include "pkg/mrv1_pkg.sv"
-
+`include "pkg/xm_rv_pkg.sv"
 
 module mrv1_core
     import mrv1_pkg::*;
     import xrv1_pkg::*;
+    import xm_rv_pkg::*;
 #(
     ////////////////////////////////////////////////////////////////////////////////
     parameter CORE_ID = "inv",
-    parameter CORE_RESET_ADDR = 'h2000,
-    ////////////////////////////////////////////////////////////////////////////////
+    parameter XLEN_P = 32,
     parameter NUM_THREADS_P = 4,
-    parameter PC_WIDTH_P = 32,
-    parameter DATA_WIDTH_P = 32,
-    parameter ITAG_WIDTH_P = 3,
-    parameter rf_addr_width_p = 5,
+    parameter CORE_RESET_ADDR = 'h2000,
+    parameter DEBUG_LEVEL_P = 0
     ////////////////////////////////////////////////////////////////////////////////
-    parameter NUM_RS_LP = 2,
-    parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P),
-    parameter IQ_SZ_LP = (1 << ITAG_WIDTH_P),
-    parameter IMEM_TAG_WIDTH_P = PC_WIDTH_P + TID_WIDTH_LP,
-    parameter DMEM_TAG_WIDTH_P = ITAG_WIDTH_P + TID_WIDTH_LP
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                        clk_i,
@@ -33,7 +26,7 @@ module mrv1_core
     output logic [PC_WIDTH_P-1:0]                       imem_req_addr_o,
     input  logic                                        imem_resp_vld_i,
     input  logic [IMEM_TAG_WIDTH_P-1:0]                 imem_resp_tag_i,
-    input  logic [31:0]                                 imem_resp_data_i,
+    input  logic [DATA_WIDTH_P-1:0]                     imem_resp_data_i,
     ////////////////////////////////////////////////////////////////////////////////
     // Data memory interface
     ////////////////////////////////////////////////////////////////////////////////
@@ -42,7 +35,7 @@ module mrv1_core
     input  logic                                        dmem_resp_err_i,
     output logic [DATA_WIDTH_P-1:0]                     dmem_req_addr_o,
     output logic                                        dmem_req_w_en_o,
-    output logic [3:0]                                  dmem_req_w_be_o,
+    output logic [DATA_BE_WIDTH_P-1:0]                  dmem_req_w_be_o,
     output logic [DMEM_TAG_WIDTH_P-1:0]                 dmem_req_tag_o,
     output logic [DATA_WIDTH_P-1:0]                     dmem_req_w_data_o,
     input  logic                                        dmem_resp_vld_i,
@@ -64,11 +57,22 @@ module mrv1_core
     //output logic [PC_WIDTH_P-1:0]                       ext_insn_pc_o,
     //output logic [TID_WIDTH_LP-1:0]                     ext_insn_tid_o,
 );
+    localparam PC_WIDTH_P = XLEN_P;
+    localparam DATA_WIDTH_P = XLEN_P;
+    localparam ITAG_WIDTH_P = 3;
+    localparam rf_addr_width_p = 5;
+    ////////////////////////////////////////////////////////////////////////////////
+    localparam NUM_RS_LP = 2;
+    localparam TID_WIDTH_LP = $clog2(NUM_THREADS_P);
+    localparam IQ_SZ_LP = (1 << ITAG_WIDTH_P);
+    localparam IMEM_TAG_WIDTH_P = PC_WIDTH_P + TID_WIDTH_LP;
+    localparam DMEM_TAG_WIDTH_P = ITAG_WIDTH_P + TID_WIDTH_LP;
+    localparam DATA_BE_WIDTH_P = DATA_WIDTH_P >> 3;
     ////////////////////////////////////////////////////////////////////////////////
     // Instruction Fetch Stage
     ////////////////////////////////////////////////////////////////////////////////
     logic                           ifetch_data_vld_lo;
-    logic [31:0]                    ifetch_data_lo;
+    logic [DATA_WIDTH_P-1:0]        ifetch_data_lo;
     logic [PC_WIDTH_P-1:0]          ifetch_pc_lo;
     logic [TID_WIDTH_LP-1:0]        ifetch_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
@@ -87,7 +91,8 @@ module mrv1_core
     mrv1_ifetch #(
         .CORE_RESET_ADDR            (CORE_RESET_ADDR),
         .NUM_THREADS_P              (NUM_THREADS_P),
-        .PC_WIDTH_P                 (PC_WIDTH_P)
+        .XLEN_P                     (XLEN_P),
+        .DEBUG_LEVEL_P              (DEBUG_LEVEL_P)
     ) if_i (
         ////////////////////////////////////////////////////////////////////////////////
         .clk_i                      (clk_i),
@@ -168,7 +173,7 @@ module mrv1_core
     ) id_i (
         ////////////////////////////////////////////////////////////////////////////////
         .insn_vld_i                 (ifetch_data_vld_lo/*fa_ifetch_data_vld_w*/),
-        .insn_i                     (ifetch_data_lo/*fa_ifetch_data_w*/),
+        .insn_i                     (ifetch_data_lo[31:0]/*fa_ifetch_data_w*/),
         .insn_pc_i                  (ifetch_pc_lo/*fa_ifetch_pc_w*/),
         .insn_tid_i                 (ifetch_tid_lo/*fa_ifetch_tid_w*/),
         .insn_illegal_o             (/*FIXME*/),
@@ -388,10 +393,8 @@ module mrv1_core
     logic [MRV_NUM_FU-1:0][DATA_WIDTH_P-1:0]     exec_fu_wb_data_lo;
     ////////////////////////////////////////////////////////////////////////////////
     mrv1_exec #(
-        .PC_WIDTH_P             (PC_WIDTH_P),
+        .XLEN_P                 (XLEN_P),
         .NUM_THREADS_P          (NUM_THREADS_P),
-        .DATA_WIDTH_P           (DATA_WIDTH_P),
-        .ITAG_WIDTH_P           (ITAG_WIDTH_P),
         .NUM_FU_P               (MRV_NUM_FU),
         .FU_OPC_WIDTH_P         (MRV_OPC_WIDTH_P)
     ) exec_i (

@@ -22,9 +22,12 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-module mrv1_popcnt (
-    input logic [31:0] in_i,
-    output logic [5:0]  result_o
+module mrv1_popcnt
+#(
+    parameter DATA_WIDTH_P = 32
+) (
+    input logic [DATA_WIDTH_P-1:0] in_i,
+    output logic [$clog2(DATA_WIDTH_P):0]  result_o
 );
 
   logic [15:0][1:0] cnt_l1;

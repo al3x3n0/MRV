@@ -3,9 +3,10 @@
 `include "xm_macro.svh"
 `include "pkg/xrv1_pkg.sv"
 `include "pkg/mrv1_pkg.sv"
+`include "pkg/xm_rv_pkg.sv"
 
 // c++ function to decode risc-v instruction
-import "DPI-C" function string riscv_decode_instruction(input int pc, input int inst);
+import "DPI-C" function string riscv_decode_instruction(input longint pc, input int inst);
 
 module rv_soc_sim_top #(
     parameter DEBUG_LEVEL_P = 0,
@@ -14,12 +15,7 @@ module rv_soc_sim_top #(
     parameter NUM_THREADS_P   = 8,
     parameter XLEN_P = 32,
     parameter CPU_RESET_ADDRESS_P = 'h2000,
-    parameter RAM_BITS_SIZE_P = 24,
-    parameter PC_WIDTH_P = XLEN_P,
-    ////////////////////////////////////////////////////////////////////////////////
-    parameter TID_WIDTH_LP = `XM_CLOG2(NUM_THREADS_P),
-    parameter IMEM_TAG_WIDTH_P = PC_WIDTH_P + TID_WIDTH_LP,
-    parameter DMEM_TAG_WIDTH_P = 3 + TID_WIDTH_LP
+    parameter RAM_BITS_SIZE_P = 24
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input logic                                 clk_i,
@@ -31,28 +27,37 @@ module rv_soc_sim_top #(
     ////////////////////////////////////////////////////////////////////////////////
     logic                       imem_req_vld;
     logic                       imem_req_rdy;
-    logic [31:0]                imem_req_addr;
+    logic [XLEN_P-1:0]          imem_req_addr;
     logic                       imem_resp_vld;
-    logic [31:0]                imem_resp_data;
+    logic [XLEN_P-1:0]                imem_resp_data;
     ////////////////////////////////////////////////////////////////////////////////
     // Data memory interface
     ////////////////////////////////////////////////////////////////////////////////
     logic                       dmem_req_vld;
     logic                       dmem_req_rdy;
     logic                       dmem_resp_err;
-    logic [31:0]                dmem_req_addr;
+    logic [XLEN_P-1:0]          dmem_req_addr;
     logic                       dmem_req_w_en;
-    logic [3:0]                 dmem_req_w_be;
-    logic [31:0]                dmem_req_w_data;
+    logic [DMEM_SHIFT-1:0]      dmem_req_w_be;
+    logic [XLEN_P-1:0]          dmem_req_w_data;
     logic                       dmem_resp_vld;
-    logic [31:0]                dmem_resp_r_data;
+    logic [XLEN_P-1:0]          dmem_resp_r_data;
     ////////////////////////////////////////////////////////////////////////////////
+
+    localparam PC_WIDTH_P = XLEN_P;
+    ////////////////////////////////////////////////////////////////////////////////
+    localparam TID_WIDTH_LP = `XM_CLOG2(NUM_THREADS_P);
+    localparam IMEM_TAG_WIDTH_P = PC_WIDTH_P + TID_WIDTH_LP;
+    localparam DMEM_TAG_WIDTH_P = 3 + TID_WIDTH_LP;
+    localparam DMEM_SHIFT = XLEN_P >> 3;
 
     generate
         if (DEBUG_LEVEL_P > 0) initial begin
             soc_print_parameters();
         end
     endgenerate
+
+    `STATIC_ASSERT((XLEN_P==32 || XLEN_P==64), ("Wrong XLEN_P parameter. Should be 32 or 64"))
 
 `ifdef TB_CORE_TYPE_XRV1
     ////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +102,9 @@ module rv_soc_sim_top #(
 
     mrv1_core #(
         .CORE_RESET_ADDR    (CPU_RESET_ADDRESS_P),
-        .NUM_THREADS_P      (NUM_THREADS_P)
+        .XLEN_P             (XLEN_P),
+        .NUM_THREADS_P      (NUM_THREADS_P),
+        .DEBUG_LEVEL_P      (DEBUG_LEVEL_P)
     ) core_i [CPU_NUM_CORES_P-1:0] (
         ////////////////////////////////////////////////////////////////////////////////
         .clk_i                      (clk_i),
@@ -136,6 +143,7 @@ module rv_soc_sim_top #(
     // TCM simulation model
     ////////////////////////////////////////////////////////////////////////////////
     xrv1_sim_tcm #(
+        .DATA_WIDTH_P(XLEN_P),
         .itcm_size_p(1 << RAM_BITS_SIZE_P),
         .dtcm_size_p(1 << RAM_BITS_SIZE_P)
     ) tcm_i (

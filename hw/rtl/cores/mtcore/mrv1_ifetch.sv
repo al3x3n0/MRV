@@ -2,8 +2,7 @@ module mrv1_ifetch
 #(
     ////////////////////////////////////////////////////////////////////////////////
     parameter CORE_RESET_ADDR = 'h2000,
-    parameter PC_WIDTH_P = 32,
-    parameter DATA_WIDTH_P = 32,
+    parameter XLEN_P = 32,
     parameter NUM_THREADS_P = 8,
     parameter NUM_BARR_P = 8,
     parameter ifq_size_p = 3,
@@ -11,7 +10,8 @@ module mrv1_ifetch
     parameter ifq_addr_width_lp = $clog2(ifq_size_p),
     parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P),
     parameter IMEM_TAG_WIDTH_P = PC_WIDTH_P + TID_WIDTH_LP,
-    parameter BARR_ID_WIDTH_LP = $clog2(NUM_BARR_P)
+    parameter BARR_ID_WIDTH_LP = $clog2(NUM_BARR_P),
+    parameter DEBUG_LEVEL_P = 0
     ////////////////////////////////////////////////////////////////////////////////
 ) (
     ////////////////////////////////////////////////////////////////////////////////
@@ -24,16 +24,16 @@ module mrv1_ifetch
     ////////////////////////////////////////////////////////////////////////////////
     output logic                                imem_req_vld_o,
     input  logic                                imem_req_rdy_i,
-    output logic [31:0]                         imem_req_addr_o,
+    output logic [XLEN_P-1:0]                   imem_req_addr_o,
     output logic [IMEM_TAG_WIDTH_P-1:0]         imem_req_tag_o,
     input  logic                                imem_resp_vld_i,
     input  logic [IMEM_TAG_WIDTH_P-1:0]         imem_resp_tag_i,
-    input  logic [31:0]                         imem_resp_data_i,
+    input  logic [XLEN_P-1:0]                   imem_resp_data_i,
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                fetch_en_i,
     ////////////////////////////////////////////////////////////////////////////////
     output logic                                ifetch_insn_vld_o,
-    output logic [31:0]                         ifetch_insn_data_o,
+    output logic [PC_WIDTH_P-1:0]               ifetch_insn_data_o,
     output logic [PC_WIDTH_P-1:0]               ifetch_insn_pc_o,
     output logic [TID_WIDTH_LP-1:0]             ifetch_insn_tid_o,
     ////////////////////////////////////////////////////////////////////////////////
@@ -59,6 +59,8 @@ module mrv1_ifetch
     input logic [BARR_ID_WIDTH_LP-1:0]          th_ctl_barrier_id_i,
     input logic [TID_WIDTH_LP-1:0]              th_ctl_barrier_size_m1_i
 );
+    localparam PC_WIDTH_P = XLEN_P;
+    localparam DATA_WIDTH_P = XLEN_P;
     ////////////////////////////////////////////////////////////////////////////////
     logic [NUM_THREADS_P-1:0]                   sched_rdy_li;
     logic                                       sched_fetch_req_lo;
@@ -82,7 +84,7 @@ module mrv1_ifetch
 
     ////////////////////////////////////////////////////////////////////////////////
     logic [NUM_THREADS_P-1:0]                   ifq_i_data_vld_lo;
-    logic [NUM_THREADS_P-1:0][31:0]             ifq_i_data_lo;
+    logic [NUM_THREADS_P-1:0][PC_WIDTH_P-1:0]   ifq_i_data_lo;
     logic [NUM_THREADS_P-1:0][PC_WIDTH_P-1:0]   ifq_pc_lo;
     logic [NUM_THREADS_P-1:0]                   decode_th_rdy_li;
     logic [NUM_THREADS_P-1:0]                   fetch_req_rdy_li;
@@ -111,7 +113,9 @@ module mrv1_ifetch
         end
         */
         ////////////////////////////////////////////////////////////////////////////////
-        xrv1_ifq ifq_i (
+        xrv1_ifq #(
+            .XLEN_P    (XLEN_P)
+        ) ifq_i (
             .clk_i                  (clk_i),
             .rst_i                  (rst_i | (exec_b_pc_vld_i & exec_b_taken_i)),
             ////////////////////////////////////////////////////////////////////////////////

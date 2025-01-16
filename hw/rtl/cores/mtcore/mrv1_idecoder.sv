@@ -3,18 +3,16 @@ import xrv1_pkg::*;
 
 
 module mrv1_idecoder
+import xm_rv_pkg::*;
 #(    
     ////////////////////////////////////////////////////////////////////////////////
-    parameter PC_WIDTH_P = 32,
-    parameter NUM_THREADS_P = 8,
-    parameter DATA_WIDTH_P = 32,
+    parameter XLEN_P = 32,
     parameter NUM_FU_P = "inv",
-    parameter FU_OPC_WIDTH_P = "inv",
-    parameter rf_addr_width_p = 5
+    parameter FU_OPC_WIDTH_P = "inv"
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                                        insn_vld_i,
-    input  logic [31:0]                                 insn_i,
+    input  logic [RV_INSN_WIDTH-1:0]                    insn_i,
     input  logic [PC_WIDTH_P-1:0]                       insn_pc_i,
     input  logic                                        insn_is_rv16_i,
     input  logic                                        insn_illegal_i,
@@ -38,6 +36,9 @@ module mrv1_idecoder
     output logic                                        dec_b_is_branch_o,
     output logic                                        dec_b_is_jump_o
 );
+    parameter PC_WIDTH_P = XLEN_P;
+    parameter DATA_WIDTH_P = XLEN_P;
+    parameter rf_addr_width_p = 5;
     ////////////////////////////////////////////////////////////////////////////////
     wire [6:0]  func7_w     = insn_i[31:25];
     wire [2:0]  func3_w     = insn_i[14:12];
@@ -52,12 +53,12 @@ module mrv1_idecoder
     ////////////////////////////////////////////////////////////////////////////////
     // Immediate decoding
     ////////////////////////////////////////////////////////////////////////////////
-    wire [31:0] imm_i_type_w = {{20 {insn_i[31]}}, insn_i[31:20]};
-    wire [31:0] imm_z_type_w = {20'b0, insn_i[31:20]};
-    wire [31:0] imm_s_type_w = {{20 {insn_i[31]}}, insn_i[31:25], insn_i[11:7]};
-    wire [31:0] imm_b_type_w = {{19 {insn_i[31]}}, insn_i[31], insn_i[7], insn_i[30:25], insn_i[11:8], 1'b0};
-    wire [31:0] imm_u_type_w = {insn_i[31:12], 12'b0};
-    wire [31:0] imm_j_type_w = {{12{insn_i[31]}}, insn_i[19:12], insn_i[20], insn_i[30:21], 1'b0};
+    wire [XLEN_P-1:0] imm_i_type_w = {{(XLEN_P-32 + 20) {insn_i[31]}}, insn_i[31:20]};
+    wire [XLEN_P-1:0] imm_z_type_w = {{(XLEN_P-32){1'b0}}, 20'b0, insn_i[31:20]};
+    wire [XLEN_P-1:0] imm_s_type_w = {{(XLEN_P-32 + 20) {insn_i[31]}}, insn_i[31:25], insn_i[11:7]};
+    wire [XLEN_P-1:0] imm_b_type_w = {{(XLEN_P-32+19) {insn_i[31]}}, insn_i[31], insn_i[7], insn_i[30:25], insn_i[11:8], 1'b0};
+    wire [XLEN_P-1:0] imm_u_type_w = {{(XLEN_P-32){insn_i[31]}}, insn_i[31:12], 12'b0};
+    wire [XLEN_P-1:0] imm_j_type_w = {{(XLEN_P-32+12){insn_i[31]}}, insn_i[19:12], insn_i[20], insn_i[30:21], 1'b0};
     ////////////////////////////////////////////////////////////////////////////////
     xrv_imm0_sel_e      imm0_sel_r;
     xrv_imm1_sel_e      imm1_sel_r;
@@ -87,10 +88,11 @@ module mrv1_idecoder
     // Instruction decoding
     ////////////////////////////////////////////////////////////////////////////////
     logic lsu_w_en_r;
-    logic [1:0] lsu_size_r;
+    rv_ls_data_size_e lsu_size_r;
     logic lsu_sign_r;
 
     always_comb begin
+        $display("[DECODER] pc %x data %x opc %x(data raw %x/%b), load opc %x opx eq load %d", insn_pc_i, insn_i, insn_i[6:2], insn_i[6:2], opcode_w, XRV_STORE, (opcode_w == XRV_STORE));
         ////////////////////////////////////////////////////////////////////////////////
         dec_src0_sel_o          = XRV_SRC0_RS0;
         dec_src1_sel_o          = XRV_SRC1_RS1;
@@ -106,7 +108,7 @@ module mrv1_idecoder
         dec_b_is_branch_o       = 'b0;
         dec_b_is_jump_o         = 'b0;
         lsu_w_en_r              = 'b0;
-        lsu_size_r              = 'b0;
+        lsu_size_r              = LS_B;
         lsu_sign_r              = 'b0;
         ////////////////////////////////////////////////////////////////////////////////
         insn_illegal_o          = 'b0;
@@ -147,15 +149,26 @@ module mrv1_idecoder
                     3'b111: dec_fu_opc_o = MRV_INT_FU_AND;
                     3'b001: begin
                         dec_fu_opc_o = MRV_INT_FU_SLL;  // Shift Left Logical by Immediate
-                        insn_illegal_o = func7_w != 7'b0;
+                        if (XLEN_P == 32) begin
+                            insn_illegal_o = func7_w != 7'b0;
+                        end
                     end
                     3'b101: begin
-                        if (func7_w == 7'b0)
-                            dec_fu_opc_o = MRV_INT_FU_SRL;  // Shift Right Logical by Immediate
-                        else if (func7_w == 7'b0100000)
-                            dec_fu_opc_o = MRV_INT_FU_SRA;  // Shift Right Arithmetically by Immediate
-                        else
-                            insn_illegal_o = 1'b1;
+                        if (XLEN_P == 32) begin
+                            if (func7_w == 7'b0)
+                                dec_fu_opc_o = MRV_INT_FU_SRL;  // Shift Right Logical by Immediate
+                            else if (func7_w == 7'b0100000)
+                                dec_fu_opc_o = MRV_INT_FU_SRA;  // Shift Right Arithmetically by Immediate
+                            else
+                                insn_illegal_o = 1'b1;
+                        end else begin
+                            if (func7_w[6:1] == 6'b0)
+                                dec_fu_opc_o = MRV_INT_FU_SRL;  // Shift Right Logical by Immediate
+                            else if (func7_w[6:1] == 6'b010000)
+                                dec_fu_opc_o = MRV_INT_FU_SRA;  // Shift Right Arithmetically by Immediate
+                            else
+                                insn_illegal_o = 1'b1;
+                        end
                     end
                 endcase
             end
@@ -238,10 +251,22 @@ module mrv1_idecoder
                 dec_src1_sel_o = XRV_SRC1_IMM;
                 imm1_sel_r = XRV_IMM1_I;
                 lsu_w_en_r = 1'b0;
-                lsu_size_r = func3_w[1:0];
+                case (func3_w[1:0])
+                    LS_B: lsu_size_r = LS_B;
+                    LS_H: lsu_size_r = LS_H;
+                    LS_W: lsu_size_r = LS_W;
+                    LS_D: begin
+                        if (XLEN_P == 64) begin
+                            lsu_size_r = LS_D;
+                        end else begin
+                            insn_illegal_o = 'b1;
+                        end
+                    end
+                endcase
                 lsu_sign_r = ~func3_w[2];
                 dec_fu_req_o[MRV_FU_TYPE_MEM] = 1'b1;
                 dec_fu_opc_o = FU_OPC_WIDTH_P'({lsu_sign_r, lsu_size_r, lsu_w_en_r});
+                
             end
             ////////////////////////////////////////////////////////////////////////////////
             XRV_STORE: begin
@@ -251,7 +276,18 @@ module mrv1_idecoder
                 dec_src1_sel_o = XRV_SRC1_IMM;
                 imm1_sel_r = XRV_IMM1_S;
                 lsu_w_en_r = 1'b1;
-                lsu_size_r = func3_w[1:0];
+                case (func3_w[1:0])
+                    LS_B: lsu_size_r = LS_B;
+                    LS_H: lsu_size_r = LS_H;
+                    LS_W: lsu_size_r = LS_W;
+                    LS_D: begin
+                        if (XLEN_P == 64) begin
+                            lsu_size_r = LS_D;
+                        end else begin
+                            insn_illegal_o = 'b1;
+                        end
+                    end
+                endcase
                 dec_fu_req_o[MRV_FU_TYPE_MEM] = 1'b1;
                 dec_fu_opc_o = FU_OPC_WIDTH_P'({1'b0, lsu_size_r, lsu_w_en_r});
             end

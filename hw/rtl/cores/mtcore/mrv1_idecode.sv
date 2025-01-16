@@ -57,6 +57,9 @@ module mrv1_idecode #(
     );
     ////////////////////////////////////////////////////////////////////////////////
     always_comb begin
+        if (insn_vld_i) begin
+            $display("[IDECODE] pc %x insn bytes %x", insn_pc_i, insn_i);
+        end
         if (insn_is_rv16_w) begin
             insn_li = rv16_insn_lo;
             insn_illegal_li = rv16_insn_illegal_lo;
@@ -67,10 +70,9 @@ module mrv1_idecode #(
     end
     ////////////////////////////////////////////////////////////////////////////////
     mrv1_idecoder #(
-        .DATA_WIDTH_P               (DATA_WIDTH_P),
+        .XLEN_P                     (DATA_WIDTH_P),
         .NUM_FU_P                   (NUM_FU_P),
-        .FU_OPC_WIDTH_P             (FU_OPC_WIDTH_P),
-        .rf_addr_width_p            (rf_addr_width_p)
+        .FU_OPC_WIDTH_P             (FU_OPC_WIDTH_P)
     ) decoder_i (
         ////////////////////////////////////////////////////////////////////////////////
         .insn_vld_i                 (insn_vld_i),
@@ -103,7 +105,7 @@ module mrv1_idecode #(
 
     always_comb begin
         if (insn_vld_i) begin
-            $display("[DECODE] %s", riscv_decode_instruction(insn_pc_i, insn_li));
+            $display("[DECODE] %s", riscv_decode_instruction({{64-PC_WIDTH_P{1'b0}}, insn_pc_i}, insn_li));
         end
     end
 
