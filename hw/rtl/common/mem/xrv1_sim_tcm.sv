@@ -62,6 +62,10 @@ module xrv1_sim_tcm
         if (imem_resp_vld_o) begin
             $display("[TCM] data addr %x data %x", imem_req_addr_i, imem_resp_data_o);
         end
+
+        if (dmem_req_w_en_i && dmem_req_addr_i == 'h1000) begin
+            print_char(dmem_req_w_data_i[7:0]);
+        end
     end
     ////////////////////////////////////////////////////////////////////////////////
 

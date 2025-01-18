@@ -24,5 +24,6 @@ BOOST_PYTHON_MODULE(libmrv1_rv_soc_sim_top_dut)
         .def("read_word", &mrv1_soc::read_u32)
         .def("dump_signature", &mrv1_soc::dump_signature)
         .def("is_sim_finished", &mrv1_soc::is_simulation_finished)
+        .def("get_print_buffer", &mrv1_soc::get_print_buffer)
         .def("get_reg_val", &mrv1_soc::get_reg_val_u32);
 }

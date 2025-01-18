@@ -7,6 +7,7 @@
 
 // c++ function to decode risc-v instruction
 import "DPI-C" function string riscv_decode_instruction(input longint pc, input int inst);
+import "DPI-C" function void print_char(input byte c);
 
 module rv_soc_sim_top #(
     parameter DEBUG_LEVEL_P = 0,

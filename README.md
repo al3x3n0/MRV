@@ -98,3 +98,14 @@ Configures rv instruction decoder to enable ZIcsr-extension.
 
 ### RV_IDECODER_RV_HAS_ZIFENCEI_EXT
 Configures rv instruction decoder to enable ZFencei-extension.
+
+# How to print something from SoC
+The dirty example of how to print something from SoC is in hello_world.cc file.  
+The idea is that you have to write every character you want to print to the address of **0x1000**.  
+Then from SoC python wrapper you could call **get_print_buffer()** method of dut to get a string with characters.
+
+# How to build hello_world
+To build hello_world run:
+```
+riscv32-unknown-elf-g++ -march=rv32i -mabi=ilp32 ../MRV/sw/src/sim/hello_world.cc  -T ../MRV/sw/dut/link.ld -nostartfiles -o hello.bin -O0
+```
