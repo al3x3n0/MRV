@@ -1,15 +1,10 @@
 module mrv1_exec
 #(
     ////////////////////////////////////////////////////////////////////////////////
-    parameter PC_WIDTH_P = 32,
-    parameter NUM_THREADS_P = 8,
-    parameter DATA_WIDTH_P = 32,
-    parameter ITAG_WIDTH_P = 3,
+    parameter XLEN_P = 32,
     parameter NUM_FU_P = "inv",
-    parameter FU_OPC_WIDTH_P = "inv",
-    ////////////////////////////////////////////////////////////////////////////////
-    parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P),
-    parameter DMEM_TAG_WIDTH_P = ITAG_WIDTH_P + TID_WIDTH_LP
+    parameter NUM_THREADS_P = 8,
+    parameter FU_OPC_WIDTH_P = "inv"
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input logic                                         clk_i,
@@ -48,7 +43,7 @@ module mrv1_exec
     input  logic                                        dmem_resp_err_i,
     output logic [DATA_WIDTH_P-1:0]                     dmem_req_addr_o,
     output logic                                        dmem_req_w_en_o,
-    output logic [3:0]                                  dmem_req_w_be_o,
+    output logic [DATA_BE_WIDTH_P-1:0]                  dmem_req_w_be_o,
     output logic [DMEM_TAG_WIDTH_P-1:0]                 dmem_req_tag_o,
     output logic [DATA_WIDTH_P-1:0]                     dmem_req_w_data_o,
     input  logic                                        dmem_resp_vld_i,
@@ -62,6 +57,14 @@ module mrv1_exec
     output logic                                        th_ctl_tspawn_vld_o,
     output logic [PC_WIDTH_P-1:0]                       th_ctl_tspawn_pc_o
 );
+    parameter PC_WIDTH_P = XLEN_P;
+    parameter DATA_WIDTH_P = XLEN_P;
+    parameter ITAG_WIDTH_P = 3;
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P);
+    parameter DMEM_TAG_WIDTH_P = ITAG_WIDTH_P + TID_WIDTH_LP;
+    localparam DATA_BE_WIDTH_P = DATA_WIDTH_P >> 3;
+
     ////////////////////////////////////////////////////////////////////////////////
     // ALU
     ////////////////////////////////////////////////////////////////////////////////
@@ -142,7 +145,7 @@ module mrv1_exec
     } = issue_fu_opc_i[3:0];
 
     mrv1_lsu #(
-        .DATA_WIDTH_P                   (DATA_WIDTH_P),
+        .XLEN_P                         (DATA_WIDTH_P),
         .ITAG_WIDTH_P                   (ITAG_WIDTH_P),
         .NUM_THREADS_P                  (NUM_THREADS_P)
     ) lsu_i (
@@ -186,8 +189,7 @@ module mrv1_exec
     // System 
     ////////////////////////////////////////////////////////////////////////////////
     mrv1_sys_fu #(
-        .DATA_WIDTH_P                   (DATA_WIDTH_P),
-        .ITAG_WIDTH_P                   (ITAG_WIDTH_P),
+        .XLEN_P                         (XLEN_P),
         .NUM_THREADS_P                  (NUM_THREADS_P)
     ) sys_i (
         .clk_i                          (clk_i),

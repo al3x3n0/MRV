@@ -4,15 +4,9 @@ import xrv1_pkg::*;
 
 module mrv1_lsu #(
     parameter XLEN_P = 32,
-    parameter PC_WIDTH_P = XLEN_P,
-    parameter ADDR_WIDTH_P = XLEN_P,
-    parameter DATA_WIDTH_P = XLEN_P,
     parameter ITAG_WIDTH_P = 3,
-    parameter NUM_THREADS_P = "inv",
+    parameter NUM_THREADS_P = "inv"
     ////////////////////////////////////////////////////////////////////////////////
-    parameter DATA_BE_WIDTH_P = DATA_WIDTH_P >> 3,
-    parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P),
-    parameter DMEM_TAG_WIDTH_P = ITAG_WIDTH_P + TID_WIDTH_LP
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input  logic                        clk_i,
@@ -54,6 +48,12 @@ module mrv1_lsu #(
     output logic [TID_WIDTH_LP-1:0]     lsu_tid_o
     ////////////////////////////////////////////////////////////////////////////////
 );
+    localparam PC_WIDTH_P = XLEN_P;
+    localparam ADDR_WIDTH_P = XLEN_P;
+    localparam DATA_WIDTH_P = XLEN_P;
+    localparam DATA_BE_WIDTH_P = DATA_WIDTH_P >> 3;
+    localparam TID_WIDTH_LP = $clog2(NUM_THREADS_P);
+    localparam DMEM_TAG_WIDTH_P = ITAG_WIDTH_P + TID_WIDTH_LP;
     ////////////////////////////////////////////////////////////////////////////////
     wire dmem_req_accept_w = dmem_req_rdy_i & dmem_req_vld_o;
     wire lsu_accept_w = lsu_req_i & lsu_rdy_o;
@@ -61,8 +61,8 @@ module mrv1_lsu #(
     ////////////////////////////////////////////////////////////////////////////////
     // LSU request address calculation
     ////////////////////////////////////////////////////////////////////////////////
-    wire [31:0] lsu_req_addr_w = lsu_req_addr_base_i + lsu_req_addr_offset_i;
-    wire [31:0] lsu_req_addr_algn_w = {lsu_req_addr_w[31:2], 2'b00};
+    wire [XLEN_P-1:0] lsu_req_addr_w = lsu_req_addr_base_i + lsu_req_addr_offset_i;
+    wire [XLEN_P-1:0] lsu_req_addr_algn_w = {lsu_req_addr_w[XLEN_P-1:2], 2'b00};
     wire [1:0]  lsu_req_offset_w = lsu_req_addr_w[1:0];
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -101,7 +101,7 @@ module mrv1_lsu #(
     logic [NUM_THREADS_P-1:0]                       dmem_req_vld_lo;
     logic [NUM_THREADS_P-1:0][ADDR_WIDTH_P-1:0]     dmem_req_addr_lo;
     logic [NUM_THREADS_P-1:0]                       dmem_req_w_en_lo;
-    logic [NUM_THREADS_P-1:0][3:0]                  dmem_req_w_be_lo;
+    logic [NUM_THREADS_P-1:0][DATA_BE_WIDTH_P-1:0]  dmem_req_w_be_lo;
     logic [NUM_THREADS_P-1:0][ITAG_WIDTH_P-1:0]     dmem_req_itag_lo;
     logic [NUM_THREADS_P-1:0][DATA_WIDTH_P-1:0]     dmem_req_w_data_lo;
 
@@ -114,8 +114,7 @@ module mrv1_lsu #(
         assign mem_req_rdy_li[i] = dmem_req_rdy_i && dmem_req_vld_lo[i];
 
         mrv1_mem_queue #(
-            .ADDR_WIDTH_P               (ADDR_WIDTH_P),
-            .DATA_WIDTH_P               (DATA_WIDTH_P),
+            .XLEN_P                     (ADDR_WIDTH_P),
             .ITAG_WIDTH_P               (ITAG_WIDTH_P),
             .NUM_THREADS_P              (NUM_THREADS_P)
         ) q_i (

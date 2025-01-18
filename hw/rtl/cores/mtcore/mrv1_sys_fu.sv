@@ -1,11 +1,7 @@
 module mrv1_sys_fu
 #(
-    parameter DATA_WIDTH_P = 32,
-    parameter ITAG_WIDTH_P = 3,
-    parameter NUM_THREADS_P = "inv",
-    parameter PC_WIDTH_P = 32,
-    ////////////////////////////////////////////////////////////////////////////////
-    parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P)
+    parameter XLEN_P = 32,
+    parameter NUM_THREADS_P = "inv"
 ) (
     ////////////////////////////////////////////////////////////////////////////////
     input logic                         clk_i,
@@ -32,6 +28,12 @@ module mrv1_sys_fu
     output logic                        th_ctl_tspawn_vld_o,
     output logic [PC_WIDTH_P-1:0]       th_ctl_tspawn_pc_o
 );
+    localparam DATA_WIDTH_P = XLEN_P;
+    localparam ITAG_WIDTH_P = 3;
+    localparam PC_WIDTH_P = XLEN_P;
+    ////////////////////////////////////////////////////////////////////////////////
+    localparam TID_WIDTH_LP = $clog2(NUM_THREADS_P);
+
     ////////////////////////////////////////////////////////////////////////////////
     assign sys_fu_rdy_o = 1'b1;
     assign sys_fu_done_o = sys_fu_req_i;
@@ -58,7 +60,7 @@ module mrv1_sys_fu
     ////////////////////////////////////////////////////////////////////////////////
     wire [11:0] csr_addr_w     = exec_src1_data_i[11:0];
     mrv1_csrf #(
-        .DATA_WIDTH_P           (DATA_WIDTH_P),
+        .XLEN_P                 (DATA_WIDTH_P),
         .NUM_THREADS_P          (NUM_THREADS_P)
     ) csrf_i (
         .clk_i                  (clk_i),

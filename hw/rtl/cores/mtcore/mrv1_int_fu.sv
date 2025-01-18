@@ -22,8 +22,8 @@ module mrv1_int_fu
     ////////////////////////////////////////////////////////////////////////////////
     input mrv_int_fu_op_e               int_fu_opc_i,
     input mrv_vec_mode_e                int_fu_vec_mode_i,
-    input logic [4:0]                   int_fu_bmask0_i,
-    input logic [4:0]                   int_fu_bmask1_i,
+    input logic [5:0]                   int_fu_bmask0_i,
+    input logic [5:0]                   int_fu_bmask1_i,
     input logic [1:0]                   int_fu_imm_vec_ext_i,
     input logic                         int_fu_req_i,
     output logic                        int_fu_rdy_o,
@@ -41,6 +41,8 @@ module mrv1_int_fu
     output logic                        b_taken_o,
     output logic [TID_WIDTH_LP-1:0]     b_tid_o
 );
+    localparam DATA_WIDTH_LOG = $clog2(DATA_WIDTH_P);
+    localparam DATA_WIDTH_DIV_8 = DATA_WIDTH_P >> 3;
     ////////////////////////////////////////////////////////////////////////////////
     assign int_fu_rdy_o     = 1'b1;
     assign int_fu_done_o    = int_fu_req_i;
@@ -84,6 +86,30 @@ module mrv1_int_fu
     logic [DATA_WIDTH_P+3:0] adder_in_a, adder_in_b;
     logic [DATA_WIDTH_P-1:0] adder_result;
     logic [DATA_WIDTH_P+4:0] adder_result_expanded;
+
+    localparam ADDER_STEP_BIT = 8;
+    localparam STEPS_NUM = DATA_WIDTH_P / ADDER_STEP_BIT;
+    logic [DATA_WIDTH_P-1+STEPS_NUM:0] my_adder_in_a, my_adder_in_b;
+    logic [DATA_WIDTH_P+STEPS_NUM:0] my_adder_result_expanded;
+    logic [DATA_WIDTH_P-1:0] my_adder_result;
+    
+    for (genvar j = 0; j < STEPS_NUM; j++) begin
+        always_comb begin
+            my_adder_in_a[j * (ADDER_STEP_BIT+1)] = 1'b1;
+            my_adder_in_a[(j+1) * ADDER_STEP_BIT + j : 1 + (ADDER_STEP_BIT+1)*j] = adder_op_a[(j + 1) * ADDER_STEP_BIT - 1 : j * ADDER_STEP_BIT];
+            //my_adder_in_a[ADDER_STEP_BIT * (j+1) + j : 1 + j * ADDER_STEP_BIT] = adder_op_a[(j + 1) * ADDER_STEP_BIT - 1 : j * ADDER_STEP_BIT];
+
+            my_adder_in_b[j * (ADDER_STEP_BIT+1)] = 1'b0;
+            my_adder_in_b[(j+1) * ADDER_STEP_BIT + j : 1 + (ADDER_STEP_BIT+1)*j] = adder_op_b[(j+1) * ADDER_STEP_BIT - 1:j * ADDER_STEP_BIT];
+            my_adder_result[(ADDER_STEP_BIT * (j+1)) - 1:ADDER_STEP_BIT * j] = my_adder_result_expanded[(j+1) * ADDER_STEP_BIT + j : 1 + (ADDER_STEP_BIT+1)*j];
+
+            if (adder_op_b_negate || int_fu_opc_i inside { MRV_INT_FU_ABS, MRV_INT_FU_CLIP }) begin
+            // special case for subtractions and absolute number calculations
+                my_adder_in_b[0] = 1'b1;
+            end
+        end
+    end
+    assign my_adder_result_expanded = $signed(my_adder_in_a) + $signed(my_adder_in_b);
 
     assign adder_op_b_negate = int_fu_opc_i inside {
         MRV_INT_FU_SUB,
@@ -152,25 +178,40 @@ module mrv1_int_fu
     // actual adder
     //////////////////////////////////////////////////////////////////////////////////////////
     assign adder_result_expanded = $signed(adder_in_a) + $signed(adder_in_b);
-    assign adder_result = {
-        adder_result_expanded[35:28],
-        adder_result_expanded[26:19],
-        adder_result_expanded[17:10],
-        adder_result_expanded[8:1]
-    };
+    // generate
+    // if (DATA_WIDTH_P == 32) begin
+    //     assign adder_result = {
+    //         adder_result_expanded[35:28],
+    //         adder_result_expanded[26:19],
+    //         adder_result_expanded[17:10],
+    //         adder_result_expanded[8:1]
+    //     };
+    // end else begin
+    //     // assign adder_result = {
+    //     //     adder_result_expanded[DATA_WIDTH_P-1+4:36],
+    //     //     adder_result_expanded[35:28],
+    //     //     adder_result_expanded[26:19],
+    //     //     adder_result_expanded[17:10],
+    //     //     adder_result_expanded[8:1]
+    //     // };
+    //     assign adder_result[DATA_WIDTH_P-1:0] =  $signed(adder_op_a) + $signed(adder_op_b);
+    //     //assign adder_result = my_adder_result;
+    // end
+    // endgenerate
+    assign adder_result = my_adder_result;
 
     //////////////////////////////////////////////////////////////////////////////////////////
     // normalization stage
     //////////////////////////////////////////////////////////////////////////////////////////
-    logic [31:0] adder_round_value;
-    logic [31:0] adder_round_result;
+    logic [DATA_WIDTH_P-1:0] adder_round_value;
+    logic [DATA_WIDTH_P-1:0] adder_round_result;
 
     assign adder_round_value = int_fu_opc_i inside {
         MRV_INT_FU_ADDR,
         MRV_INT_FU_SUBR,
         MRV_INT_FU_ADDUR,
         MRV_INT_FU_SUBUR
-    } ? {1'b0, bmask[31:1]} : '0;
+    } ? {1'b0, bmask[DATA_WIDTH_P-1:1]} : '0;
     assign adder_round_result = adder_result + adder_round_value;
     //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -257,7 +298,7 @@ module mrv1_int_fu
                           (shift_use_round ? adder_round_result : exec_src0_data_i);
     assign shift_amt_int = shift_use_round ? shift_amt_norm :
                             (shift_left ? shift_amt_left : shift_amt);
-    assign shift_amt_norm = {4{3'b000, int_fu_bmask1_i}};
+    assign shift_amt_norm = {DATA_WIDTH_DIV_8{2'b00, int_fu_bmask1_i}};
 
     ////////////////////////////////////////////////////////////////////////////////
     // right shifts, we let the synthesizer optimize this
@@ -288,7 +329,7 @@ module mrv1_int_fu
             ////////////////////////////////////////////////////////////////////////////////
             default: // MRV_VEC_MODE32
             begin
-                shift_right_result_wide = shift_op_a_wide >> shift_amt_int[4:0];
+                shift_right_result_wide = shift_op_a_wide >> shift_amt_int[DATA_WIDTH_LOG-1:0];
                 shift_right_result = shift_right_result_wide[DATA_WIDTH_P-1:0];
             end
         endcase
@@ -299,8 +340,8 @@ module mrv1_int_fu
     ////////////////////////////////////////////////////////////////////////////////
     genvar j;
     generate
-        for (j = 0; j < 32; j++) begin : gen_shift_left_result
-            assign shift_left_result[j] = shift_right_result[31-j];
+        for (j = 0; j < DATA_WIDTH_P; j++) begin : gen_shift_left_result
+            assign shift_left_result[j] = shift_right_result[DATA_WIDTH_P-1-j];
         end
     endgenerate
     assign shift_result = shift_left ? shift_left_result : shift_right_result;
@@ -308,14 +349,14 @@ module mrv1_int_fu
     //////////////////////////////////////////////////////////////////
     // Comparison
     //////////////////////////////////////////////////////////////////
-    logic [ 3:0] is_equal;
-    logic [ 3:0] is_greater;  // handles both signed and unsigned forms
+    logic [ DATA_WIDTH_DIV_8-1:0] is_equal;
+    logic [ DATA_WIDTH_DIV_8-1:0] is_greater;  // handles both signed and unsigned forms
     //////////////////////////////////////////////////////////////////
     // 8-bit vector comparisons, basic building blocks
     //////////////////////////////////////////////////////////////////
-    logic [ 3:0] cmp_signed;
-    logic [ 3:0] is_equal_vec;
-    logic [ 3:0] is_greater_vec;
+    logic [ DATA_WIDTH_DIV_8-1:0] cmp_signed;
+    logic [ DATA_WIDTH_DIV_8-1:0] is_equal_vec;
+    logic [ DATA_WIDTH_DIV_8-1:0] is_greater_vec;
 
     //////////////////////////////////////////////////////////////////
     //second == comparator for CLIP instructions
@@ -324,7 +365,7 @@ module mrv1_int_fu
     wire is_equal_clip = exec_src0_data_i == exec_src1_data_eq;
     //////////////////////////////////////////////////////////////////
     always_comb begin
-        cmp_signed = 4'b0;
+        cmp_signed = 'b0;
         unique case (int_fu_opc_i)
             MRV_INT_FU_GTS,
             MRV_INT_FU_GES,
@@ -338,9 +379,9 @@ module mrv1_int_fu
             MRV_INT_FU_CLIP,
             MRV_INT_FU_CLIPU: begin
                 case (int_fu_vec_mode_i)
-                    MRV_VEC_MODE8:  cmp_signed[3:0] = 4'b1111;
-                    MRV_VEC_MODE16: cmp_signed[3:0] = 4'b1010;
-                    default:    cmp_signed[3:0] = 4'b1000;
+                    MRV_VEC_MODE8:  cmp_signed[DATA_WIDTH_DIV_8-1:0] = {DATA_WIDTH_DIV_8{1'b1}};
+                    MRV_VEC_MODE16: cmp_signed[DATA_WIDTH_DIV_8-1:0] = {DATA_WIDTH_DIV_8/2{2'b10}};
+                    default:    cmp_signed[DATA_WIDTH_DIV_8-1:0] = {1'b1, {DATA_WIDTH_DIV_8-1{1'b0}}};
                 endcase
             end
             default: ;
@@ -352,7 +393,7 @@ module mrv1_int_fu
     //////////////////////////////////////////////////////////////////
     genvar i;
     generate
-        for (i = 0; i < 4; i++) begin : gen_is_vec
+        for (i = 0; i < DATA_WIDTH_DIV_8; i++) begin : gen_is_vec
             assign is_equal_vec[i] = (exec_src0_data_i[8*i+7:8*i] == exec_src1_data_i[8*i+7:i*8]);
             assign is_greater_vec[i] = $signed(
                 {exec_src0_data_i[8*i+7] & cmp_signed[i], exec_src0_data_i[8*i+7:8*i]}
@@ -366,14 +407,29 @@ module mrv1_int_fu
     // generate the real equal and greater than signals that take the vector
     // mode into account
     //////////////////////////////////////////////////////////////////
+    logic [DATA_WIDTH_DIV_8-1:0] tmp_arr;
     always_comb begin
         //////////////////////////////////////////////////////////////////
         // 32-bit mode
         //////////////////////////////////////////////////////////////////
-        is_equal[3:0] = {4{is_equal_vec[3] & is_equal_vec[2] & is_equal_vec[1] & is_equal_vec[0]}};
-        is_greater[3:0] = {4{is_greater_vec[3] | (is_equal_vec[3] & (is_greater_vec[2]
-                                                | (is_equal_vec[2] & (is_greater_vec[1]
-                                                | (is_equal_vec[1] & (is_greater_vec[0]))))))}};
+        is_equal[DATA_WIDTH_DIV_8-1:0] = {(DATA_WIDTH_DIV_8){&is_equal_vec}};
+        // is_greater[DATA_WIDTH_DIV_8-1:0] = {DATA_WIDTH_DIV_8{is_greater_vec[7] 
+        //                                         | (is_equal_vec[7] & (is_greater_vec[6]
+        //                                         | (is_equal_vec[6] & (is_greater_vec[5]
+        //                                         | (is_equal_vec[5] & (is_greater_vec[4]
+        //                                         | (is_equal_vec[4] & (is_greater_vec[3]
+        //                                         | (is_equal_vec[3] & (is_greater_vec[2]
+        //                                         | (is_equal_vec[2] & (is_greater_vec[1]
+        //                                         | (is_equal_vec[1] & (is_greater_vec[0]))))))))))))))}};
+        for (int i = 0; i < DATA_WIDTH_DIV_8; i++) begin
+            if (i == 0)
+                assign tmp_arr[i] = is_greater_vec[i] & is_equal_vec[i+1];
+            else if (i == DATA_WIDTH_DIV_8-1)
+                assign tmp_arr[i] = (is_greater_vec[i] | tmp_arr[i-1]);
+            else
+                assign tmp_arr[i] = (is_greater_vec[i] | tmp_arr[i-1]) & is_equal_vec[i+1];
+        end
+        is_greater[DATA_WIDTH_DIV_8-1:0] = {DATA_WIDTH_DIV_8{tmp_arr[DATA_WIDTH_DIV_8-1]}};
         //////////////////////////////////////////////////////////////////
         case (int_fu_vec_mode_i)
             //////////////////////////////////////////////////////////////////
@@ -392,10 +448,11 @@ module mrv1_int_fu
         endcase
     end
 
+
     //////////////////////////////////////////////////////////////////
     // generate comparison result
     //////////////////////////////////////////////////////////////////
-    logic [3:0] cmp_result;
+    logic [DATA_WIDTH_DIV_8-1:0] cmp_result;
     always_comb begin
         cmp_result = is_equal;
         unique case (int_fu_opc_i)
@@ -422,16 +479,16 @@ module mrv1_int_fu
             default:;
         endcase
     end
-    wire comparison_result_w = cmp_result[3];
+    wire comparison_result_w = cmp_result[DATA_WIDTH_DIV_8-1];
     //////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////
     // min/max/abs handling
     //////////////////////////////////////////////////////////////////
-    logic [31:0] result_minmax;
+    logic [DATA_WIDTH_P-1:0] result_minmax;
     logic [ 3:0] sel_minmax;
     logic        do_min;
-    logic [31:0] minmax_b;
+    logic [DATA_WIDTH_P-1:0] minmax_b;
     //////////////////////////////////////////////////////////////////
     assign minmax_b = (int_fu_opc_i == MRV_INT_FU_ABS) ? adder_result : exec_src1_data_i;
     assign do_min = int_fu_opc_i inside {
@@ -440,7 +497,7 @@ module mrv1_int_fu
         MRV_INT_FU_CLIP,
         MRV_INT_FU_CLIPU
     };
-    assign sel_minmax[3:0] = is_greater ^ {4{do_min}};
+    assign sel_minmax[3:0] = is_greater[3:0] ^ {4{do_min}};
     assign result_minmax[31:24] = (sel_minmax[3] == 1'b1) ? exec_src0_data_i[31:24] : minmax_b[31:24];
     assign result_minmax[23:16] = (sel_minmax[2] == 1'b1) ? exec_src0_data_i[23:16] : minmax_b[23:16];
     assign result_minmax[15:8] = (sel_minmax[1] == 1'b1) ? exec_src0_data_i[15:8] : minmax_b[15:8];
@@ -450,7 +507,7 @@ module mrv1_int_fu
     //////////////////////////////////////////////////////////////////
     // Clip
     //////////////////////////////////////////////////////////////////
-    logic [31:0] clip_result;  // result of clip and clip
+    logic [DATA_WIDTH_P-1:0] clip_result;  // result of clip and clip
     always_comb begin
         clip_result = result_minmax;
         if (int_fu_opc_i == MRV_INT_FU_CLIPU) begin
@@ -473,10 +530,10 @@ module mrv1_int_fu
     logic [1:0]      shuffle_reg0_sel;
     logic [3:0]      shuffle_through;
     ////////////////////////////////////////////////////////////////////////////////
-    logic [31:0] shuffle_r1, shuffle_r0;
-    logic [31:0] shuffle_r1_in, shuffle_r0_in;
-    logic [31:0] shuffle_result;
-    logic [31:0] pack_result;
+    logic [DATA_WIDTH_P-1:0] shuffle_r1, shuffle_r0;
+    logic [DATA_WIDTH_P-1:0] shuffle_r1_in, shuffle_r0_in;
+    logic [DATA_WIDTH_P-1:0] shuffle_result;
+    logic [DATA_WIDTH_P-1:0] pack_result;
     ////////////////////////////////////////////////////////////////////////////////
 
     always_comb begin
@@ -665,10 +722,10 @@ module mrv1_int_fu
     end
     ////////////////////////////////////////////////////////////////////////////////
     assign shuffle_r0_in = shuffle_reg0_sel[1] ? exec_src0_data_i :
-        (shuffle_reg0_sel[0] ? {2{exec_src0_data_i[15:0]}} : {4{exec_src0_data_i[7:0]}});
+        (shuffle_reg0_sel[0] ? {(DATA_WIDTH_DIV_8/2){exec_src0_data_i[15:0]}} : {DATA_WIDTH_DIV_8{exec_src0_data_i[7:0]}});
     ////////////////////////////////////////////////////////////////////////////////
     assign shuffle_r1_in = shuffle_reg1_sel[1] ? {
-        {8{exec_src0_data_i[31]}}, {8{exec_src0_data_i[23]}}, {8{exec_src0_data_i[15]}}, {8{exec_src0_data_i[7]}}
+        {(DATA_WIDTH_DIV_8*2){exec_src0_data_i[31]}}, {(DATA_WIDTH_DIV_8*2){exec_src0_data_i[23]}}, {(DATA_WIDTH_DIV_8*2){exec_src0_data_i[15]}}, {(DATA_WIDTH_DIV_8*2){exec_src0_data_i[7]}}
     } : (shuffle_reg1_sel[0] ? exec_src2_data_i : exec_src1_data_i);
     ////////////////////////////////////////////////////////////////////////////////
     assign shuffle_r0[31:24] = shuffle_byte_sel[3][1] ?
@@ -712,14 +769,16 @@ module mrv1_int_fu
     // Bit count operations
     /////////////////////////////////////////////////////////////////////
     logic [DATA_WIDTH_P-1:0] ff_input;  // either op_a_i or its bit reversed version
-    logic [ 5:0] cnt_result;  // population count
-    logic [ 5:0] clb_result;  // count leading bits
-    logic [ 4:0] ff1_result;  // holds the index of the first '1'
+    logic [ $clog2(DATA_WIDTH_P):0] cnt_result;  // population count
+    logic [ $clog2(DATA_WIDTH_P):0] clb_result;  // count leading bits
+    logic [ $clog2(DATA_WIDTH_P)-1:0] ff1_result;  // holds the index of the first '1'
     logic        ff_no_one;  // if no ones are found
-    logic [ 4:0] fl1_result;  // holds the index of the last '1'
-    logic [ 5:0] bitop_result;  // result of all bitop operations muxed together
+    logic [ $clog2(DATA_WIDTH_P)-1:0] fl1_result;  // holds the index of the last '1'
+    logic [ $clog2(DATA_WIDTH_P):0] bitop_result;  // result of all bitop operations muxed together
     /////////////////////////////////////////////////////////////////////
-    mrv1_popcnt popcnt_i (
+    mrv1_popcnt #(
+        .DATA_WIDTH_P(DATA_WIDTH_P)
+    ) popcnt_i (
         .in_i       (exec_src0_data_i),
         .result_o   (cnt_result)
     );
@@ -761,21 +820,21 @@ module mrv1_int_fu
     // special case if ff1_res is 0 (no 1 found), then we keep the 0
     // this is done in the result mux
     /////////////////////////////////////////////////////////////////////////////////
-    assign fl1_result = 5'd31 - ff1_result;
-    assign clb_result = ff1_result - 5'd1;
+    assign fl1_result = 'd31 - ff1_result;
+    assign clb_result = ff1_result - 'd1;
     /////////////////////////////////////////////////////////////////////////////////
     always_comb begin
         bitop_result = '0;
         case (int_fu_opc_i)
             MRV_INT_FU_FF1:
-                bitop_result = ff_no_one ? 6'd32 : {1'b0, ff1_result};
+                bitop_result = ff_no_one ? 'd32 : {1'b0, ff1_result};
             MRV_INT_FU_FL1:
-                bitop_result = ff_no_one ? 6'd32 : {1'b0, fl1_result};
+                bitop_result = ff_no_one ? 'd32 : {1'b0, fl1_result};
             MRV_INT_FU_CNT:
                 bitop_result = cnt_result;
             MRV_INT_FU_CLB: begin
                 if (ff_no_one) begin
-                    if (exec_src0_data_i[31]) bitop_result = 6'd31;
+                    if (exec_src0_data_i[31]) bitop_result = 'd31;
                     else bitop_result = '0;
                 end else begin
                     bitop_result = clb_result;
@@ -791,19 +850,25 @@ module mrv1_int_fu
     /////////////////////////////////////////////////////////////////////////////////
     logic extract_is_signed;
     logic extract_sign;
-    logic [31:0] bmask_first, bmask_inv;
-    logic [31:0] bextins_and;
-    logic [31:0] bextins_result, bclr_result, bset_result;
+    logic [DATA_WIDTH_P-1:0] bmask_first, bmask_inv;
+    logic [DATA_WIDTH_P-1:0] bextins_and;
+    logic [DATA_WIDTH_P-1:0] bextins_result, bclr_result, bset_result;
     /////////////////////////////////////////////////////////////////////////////////
     // construct bit mask for insert/extract/bclr/bset
     // bmask looks like this 00..0011..1100..00
     /////////////////////////////////////////////////////////////////////////////////
-    assign bmask_first       = {32'hFFFFFFFE} << int_fu_bmask0_i;
+    generate
+        if (DATA_WIDTH_P == 32) begin
+            assign bmask_first       = {32'hFFFFFFFE} << int_fu_bmask0_i;
+        end else begin
+            assign bmask_first       = {64'hFFFFFFFE} << int_fu_bmask0_i;
+        end
+    endgenerate
     assign bmask             = (~bmask_first) << int_fu_bmask1_i;
     assign bmask_inv         = ~bmask;
-    assign bextins_and       = (int_fu_opc_i == MRV_INT_FU_BINS) ? exec_src2_data_i : {32{extract_sign}};
+    assign bextins_and       = (int_fu_opc_i == MRV_INT_FU_BINS) ? exec_src2_data_i : {DATA_WIDTH_P{extract_sign}};
     assign extract_is_signed = (int_fu_opc_i == MRV_INT_FU_BEXT);
-    assign extract_sign      = extract_is_signed & shift_result[int_fu_bmask0_i];
+    assign extract_sign      = extract_is_signed & shift_result[int_fu_bmask0_i[DATA_WIDTH_LOG-1:0]];
     assign bextins_result    = (bmask & shift_result) | (bextins_and & bmask_inv);
     assign bclr_result       = exec_src0_data_i & bmask_inv;
     assign bset_result       = exec_src0_data_i | bmask;
@@ -812,10 +877,10 @@ module mrv1_int_fu
     /////////////////////////////////////////////////////////////////////////////////
     // Bit Reverse
     /////////////////////////////////////////////////////////////////////////////////
-    logic [31:0] radix_2_rev;
-    logic [31:0] radix_4_rev;
-    logic [31:0] radix_8_rev;
-    logic [31:0] reverse_result;
+    logic [DATA_WIDTH_P-1:0] radix_2_rev;
+    logic [DATA_WIDTH_P-1:0] radix_4_rev;
+    logic [DATA_WIDTH_P-1:0] radix_8_rev;
+    logic [DATA_WIDTH_P-1:0] reverse_result;
     logic [ 1:0] radix_mux_sel;
     /////////////////////////////////////////////////////////////////////////////////
     assign radix_mux_sel = int_fu_bmask0_i[1:0];
@@ -962,14 +1027,14 @@ module mrv1_int_fu
             MRV_INT_FU_SLETS,
             MRV_INT_FU_SLETU:
             begin
-                int_fu_res = {31'b0, comparison_result_w};
+                int_fu_res = {{DATA_WIDTH_P-1{1'b0}}, comparison_result_w};
             end
             ////////////////////////////////////////////////////////
             MRV_INT_FU_FF1,
             MRV_INT_FU_FL1,
             MRV_INT_FU_CLB,
             MRV_INT_FU_CNT:
-                int_fu_res = {26'h0, bitop_result[5:0]};
+                int_fu_res = {{DATA_WIDTH_P-6{1'h0}}, bitop_result[5:0]};
             ////////////////////////////////////////////////////////
             default: ;  // default case to suppress unique warning
         endcase

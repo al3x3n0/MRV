@@ -1,5 +1,6 @@
 module xrv1_ifq
 #(
+    parameter XLEN_P = 32,
     parameter ifq_size_p = 'd3,
     parameter ifq_addr_width_lp = $clog2(ifq_size_p)
 ) (
@@ -10,12 +11,12 @@ module xrv1_ifq
     input logic                 enqueue_i,
     input logic                 dequeue_i,
     ////////////////////////////////////////////////////////////////////////////////
-    input logic [31:0]          fetch_data_i,
-    input logic [31:0]          fetch_pc_i,
+    input logic [XLEN_P-1:0]    fetch_data_i,
+    input logic [XLEN_P-1:0]    fetch_pc_i,
     ////////////////////////////////////////////////////////////////////////////////
     output logic                fetch_data_vld_o,
-    output logic [31:0]         fetch_data_o,
-    output logic [31:0]         fetch_pc_o,
+    output logic [XLEN_P-1:0]   fetch_data_o,
+    output logic [XLEN_P-1:0]   fetch_pc_o,
     ////////////////////////////////////////////////////////////////////////////////
     output logic                empty_o,
     output logic                full_o,
@@ -23,8 +24,8 @@ module xrv1_ifq
     ////////////////////////////////////////////////////////////////////////////////
 );
     ////////////////////////////////////////////////////////////////////////////////
-    logic [ifq_size_p-1:0][31:0]                ifq_insn_data_q;
-    logic [ifq_size_p-1:0][31:0]                ifq_insn_pc_q;
+    logic [ifq_size_p-1:0][XLEN_P-1:0]                ifq_insn_data_q;
+    logic [ifq_size_p-1:0][XLEN_P-1:0]          ifq_insn_pc_q;
     logic [ifq_size_p-1:0]                      ifq_insn_vld_q;
     ////////////////////////////////////////////////////////////////////////////////
     logic [ifq_addr_width_lp:0]                 ifq_size_q;
@@ -96,8 +97,8 @@ module xrv1_ifq
     ////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////
-    wire [31:0] fetch_data_0_w = ifq_insn_data_q[ifq_r_ptr_q];
-    wire [31:0] fetch_data_1_w = ifq_insn_data_q[ifq_r_ptr_n_wrp_w];
+    wire [XLEN_P-1:0] fetch_data_0_w = ifq_insn_data_q[ifq_r_ptr_q];
+    wire [XLEN_P-1:0] fetch_data_1_w = ifq_insn_data_q[ifq_r_ptr_n_wrp_w];
     wire fetch_data_0_vld_w = ifq_insn_vld_q[ifq_r_ptr_q];
     wire fetch_data_1_vld_w = ifq_insn_vld_q[ifq_r_ptr_n_wrp_w];
     ////////////////////////////////////////////////////////////////////////////////
@@ -113,7 +114,9 @@ module xrv1_ifq
     end
 
     ////////////////////////////////////////////////////////////////////////////////
-    xrv1_ialigner ialigner_i (
+    xrv1_ialigner #(
+        .XLEN_P(XLEN_P)
+    ) ialigner_i  (
         ////////////////////////////////////////////////////////////////////////////////
         .i_data_0_i             (fetch_data_0_w),
         .i_data_0_vld_i         (fetch_data_0_vld_w),

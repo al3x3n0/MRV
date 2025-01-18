@@ -14,10 +14,14 @@ bool ElfLoader::load(int verbose_lvl) {
     int byte_written = 0;
 
     if (!m_reader.load(m_filename)) {
+        fprintf(stderr, "Failed to load file %s into reader\n", m_filename.c_str());
         return false;
     }
 
-    if (m_reader.get_class() != ELFIO::ELFCLASS32) {
+    if (m_reader.get_class() != ELFIO::ELFCLASS32 &&
+        m_reader.get_class() != ELFIO::ELFCLASS64) {
+        fprintf(stderr, "Wrong elf class %d. Expected %d or %d\n",
+                m_reader.get_class(), ELFIO::ELFCLASS32, ELFIO::ELFCLASS64);
         return false;
     }
 

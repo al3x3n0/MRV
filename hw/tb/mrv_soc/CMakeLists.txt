@@ -31,13 +31,18 @@ if (MRV_SOC_THREAD_NUM)
     list(APPEND MRV_SOC_VERILATOR_EXTRA_ARGS "-GNUM_THREADS_P=${MRV_SOC_THREAD_NUM}")
 endif ()
 
+# configure cpu code xlen
+if (MRV_SOC_XLEN)
+    list(APPEND MRV_SOC_VERILATOR_EXTRA_ARGS "-GXLEN_P=${MRV_SOC_XLEN}")
+endif ()
+
 ###############################################################################
 # prepare mrv1 core
 set(MRV1_TB_SRC_DIR "${HW_SRC_DIR}/tb")
 set(MRV1_SOC_SRC_DIR "${HW_SRC_DIR}/rtl/soc/rv_soc/")
 set(MRV1_RTL_SRC_DIR "${RTL_SRC_DIR}/cores/mtcore")
 set(XRV1_RTL_SRC_DIR "${RTL_SRC_DIR}/cores/ucore")
-set(NRV1_RTL_INC_DIR "${RTL_SRC_DIR}/pkg")
+set(MRV1_RTL_INC_DIR "${RTL_SRC_DIR}/pkg")
 
 file(GLOB MRV1_SV_SRC
     "${MRV1_TB_SRC_DIR}/*.sv"
