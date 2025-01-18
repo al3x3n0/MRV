@@ -49,6 +49,8 @@ public:
     static const char* riscv_decode_instruction(uint64_t pc, uint32_t inst);
     // print soc top module parameters
     void soc_print_parameters() const;
+    // get soc print buffer
+    std::string get_print_buffer() const;
 
 protected:
     virtual void on_simulation_step(int verbose_lvl) = 0;
@@ -69,6 +71,7 @@ protected:
 
 extern "C" {
     extern const char* riscv_decode_instruction(uint64_t pc, uint32_t inst);
+    extern void print_char(char c);
 }
 
 #endif /* __SINGLE_CORE_SOC_HPP__ */

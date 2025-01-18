@@ -1,9 +1,11 @@
 #include <string>
+#include <vector>
 
 #include "sim/single_core_soc.hpp"
 #include "isa_sim/riscv_inst_dump.h"
 
 char inst_decode_buffer [1024];
+std::vector<char> to_print;
 
 // verilator includes
 #include "Vrv_soc_sim_top.h"
@@ -220,6 +222,15 @@ const char* single_core_soc::riscv_decode_instruction(uint64_t pc, uint32_t inst
     return inst_decode_buffer;
 }
 
+std::string single_core_soc::get_print_buffer() const {
+    std::string res{to_print.begin(), to_print.end()};
+    return res;
+}
+
 extern const char* riscv_decode_instruction(uint64_t pc, uint32_t inst) {
     return single_core_soc::riscv_decode_instruction(pc, inst);
+}
+
+extern void print_char(char c) {
+    to_print.push_back(c);
 }
