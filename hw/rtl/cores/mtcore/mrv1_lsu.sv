@@ -52,6 +52,7 @@ module mrv1_lsu #(
     localparam ADDR_WIDTH_P = XLEN_P;
     localparam DATA_WIDTH_P = XLEN_P;
     localparam DATA_BE_WIDTH_P = DATA_WIDTH_P >> 3;
+    localparam DATA_BE_WIDTH_LOG = $clog2(DATA_BE_WIDTH_P);
     localparam TID_WIDTH_LP = $clog2(NUM_THREADS_P);
     localparam DMEM_TAG_WIDTH_P = ITAG_WIDTH_P + TID_WIDTH_LP;
     ////////////////////////////////////////////////////////////////////////////////
@@ -62,8 +63,8 @@ module mrv1_lsu #(
     // LSU request address calculation
     ////////////////////////////////////////////////////////////////////////////////
     wire [XLEN_P-1:0] lsu_req_addr_w = lsu_req_addr_base_i + lsu_req_addr_offset_i;
-    wire [XLEN_P-1:0] lsu_req_addr_algn_w = {lsu_req_addr_w[XLEN_P-1:2], 2'b00};
-    wire [1:0]  lsu_req_offset_w = lsu_req_addr_w[1:0];
+    wire [XLEN_P-1:0] lsu_req_addr_algn_w = {lsu_req_addr_w[XLEN_P-1:DATA_BE_WIDTH_LOG-1], {(DATA_BE_WIDTH_LOG-1){1'b0}}};
+    wire [DATA_BE_WIDTH_LOG-1:0]  lsu_req_offset_w = lsu_req_addr_w[DATA_BE_WIDTH_LOG-1:0];
 
     ////////////////////////////////////////////////////////////////////////////////
     // Check whether access is unaligned
@@ -71,10 +72,12 @@ module mrv1_lsu #(
     wire         w_ls_acc_w = lsu_req_size_i == LS_W;
     wire         h_ls_acc_w = lsu_req_size_i == LS_H;
     wire         b_ls_acc_w = lsu_req_size_i == LS_B;
+    wire         d_ls_acc_w = lsu_req_size_i == LS_D;
     ////////////////////////////////////////////////////////////////////////////////
+    wire         unaligned_d_acc_w = (XLEN_P == 32) ? 1'b0 : d_ls_acc_w & lsu_req_addr_w[2:0] != 3'b000;
     wire         unaligned_w_acc_w = w_ls_acc_w & lsu_req_addr_w[1:0] != 2'b00;
     wire         unaligned_h_acc_w = h_ls_acc_w & lsu_req_addr_w[1:0] == 2'b11;
-    wire         unaligned_acc_w = unaligned_w_acc_w | unaligned_h_acc_w;
+    wire         unaligned_acc_w = unaligned_w_acc_w | unaligned_h_acc_w | unaligned_d_acc_w;
     ////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////
