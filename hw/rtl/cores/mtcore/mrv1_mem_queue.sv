@@ -1,4 +1,7 @@
+`include "pkg/xm_rv_pkg.sv"
+
 module mrv1_mem_queue
+    import xm_rv_pkg::*;
 #(
     parameter XLEN_P = 32,
     parameter NUM_THREADS_P = "inv",
@@ -13,7 +16,7 @@ module mrv1_mem_queue
     input  logic                            lsu_req_w_en_i,
     input  logic [ADDR_WIDTH_P-1:0]         lsu_req_addr_i,
     input  logic [1:0]                      lsu_req_size_i,
-    input  logic [1:0]                      lsu_req_offset_i,
+    input  logic [DATA_BE_WIDTH_LOG-1:0]    lsu_req_offset_i,
     input  logic                            lsu_req_unalgn_i,
     input  logic                            lsu_req_signed_i,
     input  logic [DATA_WIDTH_P-1:0]         lsu_req_w_data_i,
@@ -42,6 +45,7 @@ module mrv1_mem_queue
     localparam ADDR_WIDTH_P = XLEN_P;
     localparam DATA_WIDTH_P = XLEN_P;
     localparam DATA_BE_WIDTH_P = DATA_WIDTH_P >> 3;
+    localparam DATA_BE_WIDTH_LOG = $clog2(DATA_BE_WIDTH_P);
     localparam QUEUE_SIZE_LP = (1 << ITAG_WIDTH_P);
     localparam TID_WIDTH_LP = $clog2(NUM_THREADS_P);
 
@@ -58,7 +62,7 @@ module mrv1_mem_queue
     logic [QUEUE_SIZE_LP-1:0]                       req_p0_sent_q, req_p0_sent_n;
     logic [QUEUE_SIZE_LP-1:0]                       req_signed_q;
     logic [QUEUE_SIZE_LP-1:0]                       req_unalgn_q;
-    logic [QUEUE_SIZE_LP-1:0][1:0]                  req_offset_q;
+    logic [QUEUE_SIZE_LP-1:0][DATA_BE_WIDTH_LOG-1:0]req_offset_q;
     logic [QUEUE_SIZE_LP-1:0][1:0]                  req_size_q;
     logic [QUEUE_SIZE_LP-1:0][ADDR_WIDTH_P-1:0]     req_addr_q;
     logic [QUEUE_SIZE_LP-1:0][DATA_WIDTH_P-1:0]     req_w_data_q;
@@ -96,14 +100,14 @@ module mrv1_mem_queue
     ////////////////////////////////////////////////////////////////////////////////
     wire                       req_p0_sent_w       = req_p0_sent_q[req_ptr_r]; 
     wire                       req_unalgn_w        = req_unalgn_q[req_ptr_r];
-    wire [1:0]                 req_offset_w        = req_offset_q[req_ptr_r];
+    wire [DATA_BE_WIDTH_LOG-1:0] req_offset_w        = req_offset_q[req_ptr_r];
     wire [1:0]                 req_size_w          = req_size_q[req_ptr_r];
     wire [ADDR_WIDTH_P-1:0]    req_addr_w          = req_addr_q[req_ptr_r];
     wire [DATA_WIDTH_P-1:0]    req_w_data_w        = req_w_data_q[req_ptr_r];
     ////////////////////////////////////////////////////////////////////////////////
     wire [1:0]                 resp_size_w         = req_size_q[commit_ptr_r];
     wire                       resp_signed_w       = req_signed_q[commit_ptr_r];
-    wire [1:0]                 resp_offset_w       = req_offset_q[commit_ptr_r];
+    wire [DATA_BE_WIDTH_LOG-1:0] resp_offset_w       = req_offset_q[commit_ptr_r];
     wire                       resp_unalgn_w       = req_unalgn_q[commit_ptr_r];
     wire [DATA_WIDTH_P-1:0]    resp_data0_w        = resp_data0_q[commit_ptr_r];
     wire [DATA_WIDTH_P-1:0]    resp_data1_w        = resp_data1_q[commit_ptr_r];
@@ -211,26 +215,42 @@ module mrv1_mem_queue
     // Read data alignment
     ////////////////////////////////////////////////////////////////////////////////
     wire [DATA_WIDTH_P*2-1:0] dmem_unalgn_resp_data_w = {resp_data1_w, resp_data0_w};
+    logic [DATA_WIDTH_P-1:0] dmem_resp_data_tmp [0:DATA_BE_WIDTH_P-1];
     logic [DATA_WIDTH_P-1:0] dmem_resp_data_r;
-    always_comb begin
-        if (resp_unalgn_w) begin
-            case (resp_offset_w)
-                2'b00: dmem_resp_data_r = dmem_unalgn_resp_data_w[DATA_WIDTH_P-1:0];
-                2'b01: dmem_resp_data_r = dmem_unalgn_resp_data_w[DATA_WIDTH_P-1+8:8];
-                2'b10: dmem_resp_data_r = dmem_unalgn_resp_data_w[DATA_WIDTH_P-1+16:16];
-                2'b11: dmem_resp_data_r = dmem_unalgn_resp_data_w[DATA_WIDTH_P-1+24:24];
-            endcase
-        end
-        else begin
-            case (resp_offset_w)
-                2'b00: dmem_resp_data_r = DATA_WIDTH_P'(dmem_unalgn_resp_data_w[DATA_WIDTH_P-1:0]);
-                2'b01: dmem_resp_data_r = DATA_WIDTH_P'(dmem_unalgn_resp_data_w[DATA_WIDTH_P-1:8]);
-                2'b10: dmem_resp_data_r = DATA_WIDTH_P'(dmem_unalgn_resp_data_w[DATA_WIDTH_P-1:16]);
-                2'b11: dmem_resp_data_r = DATA_WIDTH_P'(dmem_unalgn_resp_data_w[DATA_WIDTH_P-1:24]);
-            endcase
+
+    for (genvar i = 0; i < DATA_BE_WIDTH_P; i++) begin
+        always_comb begin
+            if (resp_unalgn_w) begin
+                dmem_resp_data_tmp[i] = dmem_unalgn_resp_data_w[DATA_WIDTH_P-1 + i*8:i*8];
+            end else begin
+                dmem_resp_data_tmp[i] = DATA_WIDTH_P'(dmem_unalgn_resp_data_w[DATA_WIDTH_P-1:i*8]);
+            end
         end
     end
-    ////////////////////////////////////////////////////////////////////////////////
+    assign dmem_resp_data_r = dmem_resp_data_tmp[resp_offset_w];
+    // always_comb begin
+    //     if (resp_unalgn_w) begin
+    //         case (resp_offset_w)
+    //             2'b00: dmem_resp_data_r = dmem_unalgn_resp_data_w[DATA_WIDTH_P-1:0];
+    //             2'b01: dmem_resp_data_r = dmem_unalgn_resp_data_w[DATA_WIDTH_P-1+8:8];
+    //             2'b10: dmem_resp_data_r = dmem_unalgn_resp_data_w[DATA_WIDTH_P-1+16:16];
+    //             2'b11: dmem_resp_data_r = dmem_unalgn_resp_data_w[DATA_WIDTH_P-1+24:24];
+    //         endcase
+    //         // for (int i = 0; i < DATA_BE_WIDTH_LOG; i++) begin
+    //         //     dmem_resp_data_r = dmem_unalgn_resp_data_w[DATA_WIDTH_P-1 + i*8:i*8];
+    //         // end
+    //     end
+    //     else begin
+    //         case (resp_offset_w)
+    //             2'b00: dmem_resp_data_r = DATA_WIDTH_P'(dmem_unalgn_resp_data_w[DATA_WIDTH_P-1:0]);
+    //             2'b01: dmem_resp_data_r = DATA_WIDTH_P'(dmem_unalgn_resp_data_w[DATA_WIDTH_P-1:8]);
+    //             2'b10: dmem_resp_data_r = DATA_WIDTH_P'(dmem_unalgn_resp_data_w[DATA_WIDTH_P-1:16]);
+    //             2'b11: dmem_resp_data_r = DATA_WIDTH_P'(dmem_unalgn_resp_data_w[DATA_WIDTH_P-1:24]);
+    //         endcase
+    //     end
+    // end
+
+    //////////////////////////////////////////////////////////////////////////////
     // Load data sign-extension
     ////////////////////////////////////////////////////////////////////////////////
     logic [DATA_WIDTH_P-1:0] wb_data_sext_r;
@@ -239,7 +259,8 @@ module mrv1_mem_queue
         case (resp_size_w)
             LS_B: wb_data_sext_r    = {{(DATA_WIDTH_P-8){dmem_resp_data_r[7]}}, dmem_resp_data_r[7:0]};
             LS_H: wb_data_sext_r    = {{(DATA_WIDTH_P-16){dmem_resp_data_r[15]}}, dmem_resp_data_r[15:0]};
-            LS_W: wb_data_sext_r    = dmem_resp_data_r;
+            LS_W: wb_data_sext_r    = {{(DATA_WIDTH_P-32){dmem_resp_data_r[31]}}, dmem_resp_data_r[31:0]};
+            LS_D: wb_data_sext_r    = dmem_resp_data_r;
             default: wb_data_sext_r = dmem_resp_data_r;
         endcase
     end
@@ -250,7 +271,8 @@ module mrv1_mem_queue
         case (resp_size_w)
             LS_B: wb_data_zext_r = {{(DATA_WIDTH_P-8){1'b0}}, dmem_resp_data_r[7:0]};
             LS_H: wb_data_zext_r = {{(DATA_WIDTH_P-16){1'b0}}, dmem_resp_data_r[15:0]};
-            LS_W: wb_data_zext_r = dmem_resp_data_r;
+            LS_W: wb_data_zext_r = {{(DATA_WIDTH_P-32){1'b0}}, dmem_resp_data_r[31:0]};
+            LS_D: wb_data_zext_r = dmem_resp_data_r;
             default: wb_data_zext_r = dmem_resp_data_r;
         endcase
     end
@@ -261,54 +283,47 @@ module mrv1_mem_queue
     ////////////////////////////////////////////////////////////////////////////////
     // Write data alignment
     ////////////////////////////////////////////////////////////////////////////////
+    logic [DATA_WIDTH_P*2-1:0] req_full_w_data_tmp [0:DATA_BE_WIDTH_P-1];
     logic [DATA_WIDTH_P*2-1:0] req_full_w_data_r;
-    always_comb begin
-        case (req_offset_w)
-            2'b00:   req_full_w_data_r = {{(DATA_WIDTH_P){1'b0}}, req_w_data_w};
-            2'b01:   req_full_w_data_r = {{(DATA_WIDTH_P-8){1'b0}}, req_w_data_w, 8'd0};
-            2'b10:   req_full_w_data_r = {{(DATA_WIDTH_P-16){1'b0}}, req_w_data_w, 16'd0};
-            2'b11:   req_full_w_data_r = {{(DATA_WIDTH_P-24){1'b0}},  req_w_data_w, 24'd0};
-            default: req_full_w_data_r = {{(DATA_WIDTH_P){1'b0}}, req_w_data_w};
-        endcase
+    // always_comb begin
+    //     case (req_offset_w)
+    //         2'b00:   req_full_w_data_r = {{(DATA_WIDTH_P){1'b0}}, req_w_data_w};
+    //         2'b01:   req_full_w_data_r = {{(DATA_WIDTH_P-8){1'b0}}, req_w_data_w, 8'd0};
+    //         2'b10:   req_full_w_data_r = {{(DATA_WIDTH_P-16){1'b0}}, req_w_data_w, 16'd0};
+    //         2'b11:   req_full_w_data_r = {{(DATA_WIDTH_P-24){1'b0}},  req_w_data_w, 24'd0};
+    //         default: req_full_w_data_r = {{(DATA_WIDTH_P){1'b0}}, req_w_data_w};
+    //     endcase
+    // end
+
+    for (genvar i = 0; i < DATA_BE_WIDTH_P; i++) begin
+        assign req_full_w_data_tmp[i] = {{(DATA_WIDTH_P-i*8){1'b0}}, req_w_data_w, {(i*8){1'b0}}};
     end
+    assign req_full_w_data_r = req_full_w_data_tmp[req_offset_w];
+
     ////////////////////////////////////////////////////////////////////////////////
     // Byte-enable generation
     ////////////////////////////////////////////////////////////////////////////////
     logic [DATA_BE_WIDTH_P-1:0]  dmem_req_be_0_r;
     logic [DATA_BE_WIDTH_P-1:0]  dmem_req_be_1_r;
-    always_comb begin
-        case ({req_offset_w, req_size_w})
-            {2'b00, LS_W}: dmem_req_be_0_r = {{{DATA_BE_WIDTH_P-4}{1'b0}}, 4'b1111};
-            {2'b01, LS_W}: dmem_req_be_0_r = {{{DATA_BE_WIDTH_P-4}{1'b0}}, 4'b1110};
-            {2'b10, LS_W}: dmem_req_be_0_r = {{{DATA_BE_WIDTH_P-4}{1'b0}}, 4'b1100};
-            {2'b11, LS_W}: dmem_req_be_0_r = {{{DATA_BE_WIDTH_P-4}{1'b0}}, 4'b1000};
-
-            {2'b00, LS_H}: dmem_req_be_0_r = {{{DATA_BE_WIDTH_P-4}{1'b0}}, 4'b0011};
-            {2'b01, LS_H}: dmem_req_be_0_r = {{{DATA_BE_WIDTH_P-4}{1'b0}}, 4'b0110};
-            {2'b10, LS_H}: dmem_req_be_0_r = {{{DATA_BE_WIDTH_P-4}{1'b0}}, 4'b1100};
-            {2'b11, LS_H}: dmem_req_be_0_r = {{{DATA_BE_WIDTH_P-4}{1'b0}}, 4'b1000};
-
-            {2'b00, LS_B}: dmem_req_be_0_r = {{{DATA_BE_WIDTH_P-4}{1'b0}}, 4'b0001};
-            {2'b01, LS_B}: dmem_req_be_0_r = {{{DATA_BE_WIDTH_P-4}{1'b0}}, 4'b0010};
-            {2'b10, LS_B}: dmem_req_be_0_r = {{{DATA_BE_WIDTH_P-4}{1'b0}}, 4'b0100};
-            {2'b11, LS_B}: dmem_req_be_0_r = {{{DATA_BE_WIDTH_P-4}{1'b0}}, 4'b1000};
-            
-            default: dmem_req_be_0_r       = {{{DATA_BE_WIDTH_P-4}{1'b1}}, 4'b1111};
-        endcase
+    logic [DATA_BE_WIDTH_P*2-1:0] dmem_req_be_tmp [0:DATA_BE_WIDTH_P-1][0:3];
+    
+    for (genvar i = 0; i < DATA_BE_WIDTH_P; i++) begin
+        assign dmem_req_be_tmp[i][LS_B] = {{(DATA_BE_WIDTH_P*2-i-1){1'b0}}, 1'b1, {(i){1'b0}}};
+        assign dmem_req_be_tmp[i][LS_H] = {{(DATA_BE_WIDTH_P*2-i-2){1'b0}}, 2'b11, {(i){1'b0}}};
+        assign dmem_req_be_tmp[i][LS_W] = {{(DATA_BE_WIDTH_P*2-i-4){1'b0}}, 4'b1111, {(i){1'b0}}};
+        if (XLEN_P == 32) begin
+            assign dmem_req_be_tmp[i][LS_D] = 'h0;
+        end else begin
+            assign dmem_req_be_tmp[i][LS_D] = {{(DATA_BE_WIDTH_P*2-i-8){1'b0}}, 8'b11111111, {(i){1'b0}}};
+        end
     end
-    always_comb begin
-        case ({req_offset_w, req_size_w})
-            {2'b01, LS_W}: dmem_req_be_1_r = {{{DATA_BE_WIDTH_P-4}{1'b0}}, 4'b0001};
-            {2'b10, LS_W}: dmem_req_be_1_r = {{{DATA_BE_WIDTH_P-4}{1'b0}}, 4'b0011};
-            {2'b11, LS_W}: dmem_req_be_1_r = {{{DATA_BE_WIDTH_P-4}{1'b0}}, 4'b0111};
-            {2'b11, LS_H}: dmem_req_be_1_r = {{{DATA_BE_WIDTH_P-4}{1'b0}}, 4'b0001};
-            default: dmem_req_be_1_r       = {{{DATA_BE_WIDTH_P-4}{1'b1}}, 4'b1};
-        endcase
-    end
+    assign dmem_req_be_0_r = dmem_req_be_tmp[req_offset_w][req_size_w][DATA_BE_WIDTH_P-1:0];
+    assign dmem_req_be_1_r = dmem_req_be_tmp[req_offset_w][req_size_w][DATA_BE_WIDTH_P*2-1:DATA_BE_WIDTH_P];
+
     assign dmem_req_itag_o      = req_ptr_r;
     assign dmem_req_vld_o       = req_vld_q[req_ptr_r];
     assign dmem_req_wnr_o       = req_wnr_q[req_ptr_r];
-    assign dmem_req_addr_o      = req_p0_sent_w ? (req_addr_w + 'd4) : req_addr_w; // FIXME
+    assign dmem_req_addr_o      = req_p0_sent_w ? (req_addr_w + XLEN_P'(DATA_BE_WIDTH_P)) : req_addr_w; // FIXME
     assign dmem_req_w_be_o      = req_p0_sent_w ? dmem_req_be_1_r : dmem_req_be_0_r;
     assign dmem_req_w_data_o    = req_p0_sent_w ? req_full_w_data_r[DATA_WIDTH_P*2-1:DATA_WIDTH_P] : req_full_w_data_r[DATA_WIDTH_P-1:0];
     ////////////////////////////////////////////////////////////////////////////////
