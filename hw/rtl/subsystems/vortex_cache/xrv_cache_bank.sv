@@ -16,8 +16,8 @@
 
 module xrv_cache_bank #(
     ////////////////////////////////////////////////////////////////////////////////
-    parameter XLEN_P                    = 64,
-    parameter MEM_ADDR_WIDTH_P          = XLEN_P,
+    parameter XLEN_P                    = 32,
+    parameter MEM_ADDR_WIDTH_P          = (XLEN_P == 32 ? 32 : 48),
     ////////////////////////////////////////////////////////////////////////////////
     parameter `STRING INSTANCE_ID       = "",
     ////////////////////////////////////////////////////////////////////////////////
@@ -387,6 +387,7 @@ module xrv_cache_bank #(
     // TAGS
     ////////////////////////////////////////////////////////////////////////////////
     xrv_cache_tags #(
+        .XLEN_P             (XLEN_P),
         .LINE_SIZE_P        (LINE_SIZE_P),
         .NUM_BANKS_P        (NUM_BANKS_P),
         .NUM_WAYS_P         (NUM_WAYS_P),
@@ -458,6 +459,7 @@ module xrv_cache_bank #(
     // Cache bank data storage
     ////////////////////////////////////////////////////////////////////////////////
     xrv_cache_data #(
+        .XLEN_P             (XLEN_P),
         .LINE_SIZE_P        (LINE_SIZE_P),
         .NUM_BANKS_P        (NUM_BANKS_P),
         .NUM_WAYS_P         (NUM_WAYS_P),
@@ -530,6 +532,7 @@ module xrv_cache_bank #(
     xrv_cache_mshr #(
         .INSTANCE_ID            (`SFORMATF(("%s-mshr", INSTANCE_ID))),
         .BANK_ID_P              (BANK_ID_P),
+        .XLEN_P                 (XLEN_P),
         .LINE_SIZE_P            (LINE_SIZE_P),
         .NUM_BANKS_P            (NUM_BANKS_P),
         .MSHR_SIZE_P            (MSHR_SIZE_P),

@@ -12,6 +12,21 @@
 `define CACHE_NC_MEM_TAG_WIDTH(mshr_size, num_banks, num_reqs, mem_ports, line_size, word_size, tag_width, uuid_width) \
         (`XM_MAX(`CACHE_MEM_TAG_WIDTH(mshr_size, num_banks, mem_ports, uuid_width), `CACHE_BYPASS_TAG_WIDTH(num_reqs, mem_ports, line_size, word_size, tag_width)) + 1)
 
+`define CACHE_CLUSTER_CORE_ARB_TAG(tag_width, num_inputs, num_caches) \
+        (tag_width + `XM_ARB_SEL_BITS(num_inputs, `XM_UP(num_caches)))
+
+`define CACHE_CLUSTER_MEM_ARB_TAG(tag_width, num_caches) \
+        (tag_width + `XM_ARB_SEL_BITS(`XM_UP(num_caches), 1))
+
+`define CACHE_CLUSTER_MEM_TAG_WIDTH(mshr_size, num_banks, mem_ports, num_caches, uuid_width) \
+        `CACHE_CLUSTER_MEM_ARB_TAG(`CACHE_MEM_TAG_WIDTH(mshr_size, num_banks, mem_ports, uuid_width), num_caches)
+
+`define CACHE_CLUSTER_BYPASS_MEM_TAG_WIDTH(num_reqs, mem_ports, line_size, word_size, tag_width, num_inputs, num_caches) \
+        `CACHE_CLUSTER_MEM_ARB_TAG(`CACHE_BYPASS_TAG_WIDTH(num_reqs, mem_ports, line_size, word_size, `CACHE_CLUSTER_CORE_ARB_TAG(tag_width, num_inputs, num_caches)), num_caches)
+
+`define CACHE_CLUSTER_NC_MEM_TAG_WIDTH(mshr_size, num_banks, num_reqs, mem_ports, line_size, word_size, tag_width, num_inputs, num_caches, uuid_width) \
+        `CACHE_CLUSTER_MEM_ARB_TAG(`CACHE_NC_MEM_TAG_WIDTH(mshr_size, num_banks, num_reqs, mem_ports, line_size, word_size, `CACHE_CLUSTER_CORE_ARB_TAG(tag_width, num_inputs, num_caches), uuid_width), num_caches)
+
 `define CACHE_LINE_ADDR_TAG(x)     x[CACHE_LINE_ADDR_WIDTH_LP-1 :CACHE_LINE_SEL_BITS_LP]
 
 `define CACHE_BANK_TO_FULL_ADDR(x, b) {x, (XLEN_P-$bits(x))'(b << (XLEN_P-$bits(x)-CACHE_BANK_SEL_BITS_LP))}
@@ -44,7 +59,7 @@
     assign dst.req_data.rw = 0; \
     assign dst.req_data.addr = src.req_data.addr; \
     assign dst.req_data.data = '0; \
-    assign dst.req_data.byteen = '1; \
+    assign dst.req_data.be = '1; \
     assign dst.req_data.flags = src.req_data.flags; \
     assign dst.req_data.tag = src.req_data.tag; \
     assign src.req_rdy = dst.req_rdy; \
@@ -52,6 +67,72 @@
     assign src.resp_data.data = dst.resp_data.data; \
     assign src.resp_data.tag = dst.resp_data.tag; \
     assign dst.resp_rdy = src.resp_rdy
+
+`define ASSIGN_XRV_CACHE_IF_EX(dst, src, TD, TS, UUID) \
+    assign dst.req_vld = src.req_vld; \
+    assign dst.req_data.rw = src.req_data.rw; \
+    assign dst.req_data.addr = src.req_data.addr; \
+    assign dst.req_data.data = src.req_data.data; \
+    assign dst.req_data.be = src.req_data.be; \
+    assign dst.req_data.flags = src.req_data.flags; \
+    /* verilator lint_off GENUNNAMED */ \
+    if (TD != TS) begin \
+        if (UUID != 0) begin \
+            if (TD > TS) begin \
+                assign dst.req_data.tag = {src.req_data.tag.uuid, {(TD-TS){1'b0}}, src.req_data.tag.value}; \
+            end else begin \
+                assign dst.req_data.tag = {src.req_data.tag.uuid, src.req_data.tag.value[TD-UUID-1:0]}; \
+            end \
+        end else begin \
+            if (TD > TS) begin \
+                assign dst.req_data.tag = {{(TD-TS){1'b0}}, src.req_data.tag}; \
+            end else begin \
+                assign dst.req_data.tag = src.req_data.tag[TD-1:0]; \
+            end \
+        end \
+    end else begin \
+        assign dst.req_data.tag = src.req_data.tag; \
+    end \
+    /* verilator lint_on GENUNNAMED */ \
+    assign src.req_rdy = dst.req_rdy; \
+    assign src.resp_vld = dst.resp_vld; \
+    assign src.resp_data.data = dst.resp_data.data; \
+    /* verilator lint_off GENUNNAMED */ \
+    if (TD != TS) begin \
+        if (UUID != 0) begin \
+            if (TD > TS) begin \
+                assign src.resp_data.tag = {dst.resp_data.tag.uuid, dst.resp_data.tag.value[TS-UUID-1:0]}; \
+            end else begin \
+                assign src.resp_data.tag = {dst.resp_data.tag.uuid, {(TS-TD){1'b0}}, dst.resp_data.tag.value}; \
+            end \
+        end else begin \
+            if (TD > TS) begin \
+                assign src.resp_data.tag = dst.resp_data.tag[TS-1:0]; \
+            end else begin \
+                assign src.resp_data.tag = {{(TS-TD){1'b0}}, dst.resp_data.tag}; \
+            end \
+        end \
+    end else begin \
+        assign src.resp_data.tag = dst.resp_data.tag; \
+    end \
+    /* verilator lint_on GENUNNAMED */ \
+    assign dst.resp_rdy = src.resp_rdy
+
+`define INIT_XRV_CACHE_IF(itf) \
+    assign itf.req_vld = 0; \
+    assign itf.req_data = '0; \
+    `XM_UNUSED_VAR (itf.req_rdy) \
+    `XM_UNUSED_VAR (itf.resp_vld) \
+    `XM_UNUSED_VAR (itf.resp_data) \
+    assign itf.resp_rdy = 0;
+
+`define UNUSED_XRV_CACHE_IF(itf) \
+    `XM_UNUSED_VAR (itf.req_vld) \
+    `XM_UNUSED_VAR (itf.req_data) \
+    assign itf.req_rdy = 0; \
+    assign itf.resp_vld = 0; \
+    assign itf.resp_data  = '0; \
+    `XM_UNUSED_VAR (itf.resp_rdy)
 
 `define XRV_CACHE_LOCALPARAMS parameter CACHE_REQ_SEL_BITS_LP = `XM_CLOG2(NUM_REQS_P), \
     parameter CACHE_WORD_WIDTH_LP = (8 * WORD_SIZE_P), \

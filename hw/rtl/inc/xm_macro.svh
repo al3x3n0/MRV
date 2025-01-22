@@ -28,6 +28,8 @@
 // lut(x): (x & 8) != 0
 `define XM_TO_OUT_BUF_LUTRAM(s)  ((s & 8) != 0)
 
+`define XM_ARB_SEL_BITS(I, O)  ((I > O) ? `XM_CLOG2(`XM_CDIV(I, O)) : 0)
+
 `define STATIC_ASSERT(cond, msg) \
     /* verilator lint_off GENUNNAMED */ \
     if (!(cond)) $error msg; \
@@ -108,6 +110,23 @@
 `define XM_BUFFER(dst, src) `XM_BUFFER_EX(dst, src, 1'b1, 0, 1)
 
 `define MAX_FANOUT 8
+`define PRESERVE_NET
+
+`define RESET_RELAY_EX(dst, src, size, fanout)  \
+    wire [size-1:0] dst;                        \
+    xrv_reset_relay #(.N(size), .MAX_FANOUT(fanout)) __``dst ( \
+        .clk_i      (clk_i),                         \
+        .rst_i      (src),                         \
+        .rst_o      (dst)                          \
+    )
+
+`define RESET_RELAY_EN(dst, src, enable) \
+    `RESET_RELAY_EX (dst, src, 1, ((enable) ? 0 : -1))
+
+`define RESET_RELAY(dst, src) \
+    `RESET_RELAY_EX (dst, src, 1, 0)
+
+`define PLATFORM_MEMORY_BANKS 2
 
 
 `endif /* XM_MACRO_SVH */
