@@ -45,7 +45,7 @@ interface xrv_cache_if #(
     logic                           req_rdy;
 
     logic                           resp_vld;
-    resp_data_t                      resp_data;
+    resp_data_t                     resp_data;
     logic                           resp_rdy;
 
     modport master (

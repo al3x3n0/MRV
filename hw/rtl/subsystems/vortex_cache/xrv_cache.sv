@@ -17,9 +17,9 @@
 module xrv_cache #(
     ////////////////////////////////////////////////////////////////////////////////
     parameter XLEN_P                    = 32,
-    parameter MEM_ADDR_WIDTH_P          = XLEN_P,
+    parameter MEM_ADDR_WIDTH_P          = (XLEN_P == 32 ? 32 : 48),
     ////////////////////////////////////////////////////////////////////////////////
-    parameter `STRING INSTANCE_ID   = "",
+    parameter `STRING INSTANCE_ID       = "",
     ////////////////////////////////////////////////////////////////////////////////
     // Size of cache in bytes
     ////////////////////////////////////////////////////////////////////////////////
@@ -152,6 +152,7 @@ module xrv_cache #(
 `endif
 
     xrv_cache_if #(
+        .MEM_ADDR_WIDTH_P   (MEM_ADDR_WIDTH_P),
         .DATA_SIZE_P        (WORD_SIZE_P),
         .TAG_WIDTH_P        (TAG_WIDTH_P)
     ) core_bus2_if[NUM_REQS_P]();
@@ -186,8 +187,9 @@ module xrv_cache #(
     // Memory response gather
     ////////////////////////////////////////////////////////////////////////////////
     xrv_cache_if #(
-        .DATA_SIZE_P    (LINE_SIZE_P),
-        .TAG_WIDTH_P    (MEM_TAG_WIDTH_LP)
+        .MEM_ADDR_WIDTH_P   (MEM_ADDR_WIDTH_P),
+        .DATA_SIZE_P        (LINE_SIZE_P),
+        .TAG_WIDTH_P        (MEM_TAG_WIDTH_LP)
     ) mem_bus_tmp_if[NUM_MEM_PORTS_P]();
 
     logic [NUM_MEM_PORTS_P-1:0]                             mem_bus_tmp_resp_vld;
@@ -413,6 +415,7 @@ module xrv_cache #(
     for (genvar bank_id = 0; bank_id < NUM_BANKS_P; ++bank_id) begin : g_banks
         xrv_cache_bank #(
             .BANK_ID_P      (bank_id),
+            .XLEN_P         (XLEN_P),
             .INSTANCE_ID    (`SFORMATF(("%s-bank%0d", INSTANCE_ID, bank_id))),
             .LINE_SIZE_P    (LINE_SIZE_P),
             .NUM_BANKS_P    (NUM_BANKS_P),
