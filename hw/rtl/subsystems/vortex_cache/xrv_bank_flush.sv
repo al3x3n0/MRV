@@ -17,8 +17,8 @@
 
 module xrv_bank_flush #(
     ////////////////////////////////////////////////////////////////////////////////
-    parameter XLEN_P                    = 64,
-    parameter MEM_ADDR_WIDTH_P          = XLEN_P,
+    parameter XLEN_P                    = 32,
+    parameter MEM_ADDR_WIDTH_P          = (XLEN_P == 32 ? 32 : 48),
     ////////////////////////////////////////////////////////////////////////////////
     parameter BANK_ID_P                 = 0,
     parameter HAS_WRITEBACK_P           = 0,
