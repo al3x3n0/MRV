@@ -77,13 +77,13 @@ module xrv_mem_arb #(
     for (genvar i = 0; i < NUM_OUTPUTS_P; ++i) begin : g_bus_out_if
         wire [TAG_WIDTH_P-1:0] req_tag_out;
         xrv_bits_insert #(
-            .N   (TAG_WIDTH_P),
-            .S   (LOG_NUM_REQS),
-            .POS (TAG_SEL_IDX)
+            .N          (TAG_WIDTH_P),
+            .S          (LOG_NUM_REQS),
+            .POS        (TAG_SEL_IDX)
         ) bits_insert (
-            .data_i  (req_tag_out),
-            .ins_in   (req_sel_o[i]),
-            .data_o (bus_out_if[i].req_data.tag)
+            .data_i     (req_tag_out),
+            .ins_i      (req_sel_o[i]),
+            .data_o     (bus_out_if[i].req_data.tag)
         );
         assign bus_out_if[i].req_vld = req_vld_o[i];
         assign {

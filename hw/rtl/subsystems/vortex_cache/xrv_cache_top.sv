@@ -16,8 +16,8 @@
 
 module xrv_cache_top #(
     ////////////////////////////////////////////////////////////////////////////////
-    parameter XLEN_P                    = 64,
-    parameter MEM_ADDR_WIDTH_P          = XLEN_P,
+    parameter XLEN_P                    = 32,
+    parameter MEM_ADDR_WIDTH_P          = (XLEN_P == 32 ? 32 : 48),
     ////////////////////////////////////////////////////////////////////////////////
     parameter `STRING INSTANCE_ID       = "",
     ////////////////////////////////////////////////////////////////////////////////
@@ -143,11 +143,13 @@ module xrv_cache_top #(
     output logic                                mem_resp_rdy [NUM_MEM_PORTS_P]
 );
     xrv_cache_if #(
+        .MEM_ADDR_WIDTH_P   (MEM_ADDR_WIDTH_P),
         .DATA_SIZE_P        (WORD_SIZE_P),
         .TAG_WIDTH_P        (TAG_WIDTH_P)
     ) core_bus_if[NUM_REQS_P]();
 
     xrv_cache_if #(
+        .MEM_ADDR_WIDTH_P   (MEM_ADDR_WIDTH_P),
         .DATA_SIZE_P        (LINE_SIZE_P),
         .TAG_WIDTH_P        (MEM_TAG_WIDTH_LP)
     ) mem_bus_if[NUM_MEM_PORTS_P]();

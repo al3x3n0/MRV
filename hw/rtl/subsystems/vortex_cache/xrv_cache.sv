@@ -115,29 +115,29 @@ module xrv_cache #(
     xrv_cache_if.master         mem_bus_if  [NUM_MEM_PORTS_P]
 );
 
-    `STATIC_ASSERT(NUM_BANKS_P == (1 << $clog2(NUM_BANKS_P)), ("invld parameter: number of banks must be power of 2"))
+    `STATIC_ASSERT(NUM_BANKS_P == (1 << `XM_CLOG2(NUM_BANKS_P)), ("invld parameter: number of banks must be power of 2"))
     `STATIC_ASSERT(IS_WRITEABLE_P || !HAS_WRITEBACK_P, ("invld parameter: writeback requires write enable"))
     `STATIC_ASSERT(HAS_WRITEBACK_P || !HAS_DIRTY_BYTES_P, ("invld parameter: dirty bytes require writeback"))
     `STATIC_ASSERT(NUM_BANKS_P >= NUM_MEM_PORTS_P, ("invld parameter: number of banks must be greater or equal to number of memory ports"))
 
-    localparam REQ_SEL_WIDTH   = `XM_UP(CACHE_REQ_SEL_BITS_LP);
-    localparam WORD_SEL_WIDTH  = `XM_UP(CACHE_WORD_SEL_BITS_LP);
-    localparam MSHR_ADDR_WIDTH = `XM_LOG2UP(MSHR_SIZE_P);
-    localparam MEM_TAG_WIDTH_LP   = `CACHE_MEM_TAG_WIDTH(MSHR_SIZE_P, NUM_BANKS_P, NUM_MEM_PORTS_P, UUID_WIDTH_P);
-    localparam WORDS_PER_LINE  = LINE_SIZE_P / WORD_SIZE_P;
-    localparam WORD_WIDTH_LP      = WORD_SIZE_P * 8;
-    localparam WORD_SEL_BITS   = $clog2(WORDS_PER_LINE);
-    localparam BANK_SEL_BITS   = $clog2(NUM_BANKS_P);
-    localparam BANK_SEL_WIDTH  = `XM_UP(BANK_SEL_BITS);
-    localparam LINE_ADDR_WIDTH = (CACHE_WORD_ADDR_WIDTH_LP - BANK_SEL_BITS - WORD_SEL_BITS);
+    localparam REQ_SEL_WIDTH        = `XM_UP(CACHE_REQ_SEL_BITS_LP);
+    localparam WORD_SEL_WIDTH       = `XM_UP(CACHE_WORD_SEL_BITS_LP);
+    localparam MSHR_ADDR_WIDTH      = `XM_LOG2UP(MSHR_SIZE_P);
+    localparam MEM_TAG_WIDTH_LP     = `CACHE_MEM_TAG_WIDTH(MSHR_SIZE_P, NUM_BANKS_P, NUM_MEM_PORTS_P, UUID_WIDTH_P);
+    localparam WORDS_PER_LINE       = LINE_SIZE_P / WORD_SIZE_P;
+    localparam WORD_WIDTH_LP        = WORD_SIZE_P * 8;
+    localparam WORD_SEL_BITS        = `XM_CLOG2(WORDS_PER_LINE);
+    localparam BANK_SEL_BITS        = `XM_CLOG2(NUM_BANKS_P);
+    localparam BANK_SEL_WIDTH       = `XM_UP(BANK_SEL_BITS);
+    localparam LINE_ADDR_WIDTH      = (CACHE_WORD_ADDR_WIDTH_LP - BANK_SEL_BITS - WORD_SEL_BITS);
     localparam CORE_REQ_DATA_WIDTH_LP  = LINE_ADDR_WIDTH + 1 + WORD_SEL_WIDTH + WORD_SIZE_P + WORD_WIDTH_LP + TAG_WIDTH_P + `XM_UP(FLAGS_WIDTH_P);
     localparam CORE_RESP_DATA_WIDTH_LP  = WORD_WIDTH_LP + TAG_WIDTH_P;
     localparam BANK_MEM_TAG_WIDTH_LP = UUID_WIDTH_P + MSHR_ADDR_WIDTH;
     localparam MEM_REQ_DATAW   = (CACHE_LINE_ADDR_WIDTH_LP + 1 + LINE_SIZE_P + CACHE_LINE_WIDTH_LP + BANK_MEM_TAG_WIDTH_LP + `XM_UP(FLAGS_WIDTH_P));
     localparam MEM_RESP_DATA_WIDTH_LP   = CACHE_LINE_WIDTH_LP + MEM_TAG_WIDTH_LP;
-    localparam NUM_MEM_PORTS_P_SEL_BITS = $clog2(NUM_MEM_PORTS_P);
+    localparam NUM_MEM_PORTS_P_SEL_BITS = `XM_CLOG2(NUM_MEM_PORTS_P);
     localparam NUM_MEM_PORTS_P_SEL_WIDTH = `XM_UP(NUM_MEM_PORTS_P_SEL_BITS);
-    localparam MEM_ARB_SEL_BITS = $clog2(`XM_CDIV(NUM_BANKS_P, NUM_MEM_PORTS_P));
+    localparam MEM_ARB_SEL_BITS = `XM_CLOG2(`XM_CDIV(NUM_BANKS_P, NUM_MEM_PORTS_P));
     localparam MEM_ARB_SEL_WIDTH = `XM_UP(MEM_ARB_SEL_BITS);
 
     localparam CORE_RESP_REG_DISABLE_LP = (NUM_BANKS_P != 1) || (NUM_REQS_P != 1);
@@ -675,13 +675,13 @@ module xrv_cache #(
     end
 
     // per cycle: read misses, write misses, msrq stalls, pipeline stalls
-    logic [$clog2(NUM_REQS_P+1)-1:0]  perf_core_reads_per_cycle;
-    logic [$clog2(NUM_REQS_P+1)-1:0]  perf_core_writes_per_cycle;
-    logic [$clog2(NUM_REQS_P+1)-1:0]  perf_cresp_stall_per_cycle;
-    logic [$clog2(NUM_BANKS_P+1)-1:0] perf_read_miss_per_cycle;
-    logic [$clog2(NUM_BANKS_P+1)-1:0] perf_write_miss_per_cycle;
-    logic [$clog2(NUM_BANKS_P+1)-1:0] perf_mshr_stall_per_cycle;
-    logic [$clog2(NUM_MEM_PORTS_P+1)-1:0] perf_mem_stall_per_cycle;
+    logic [`XM_CLOG2(NUM_REQS_P+1)-1:0]  perf_core_reads_per_cycle;
+    logic [`XM_CLOG2(NUM_REQS_P+1)-1:0]  perf_core_writes_per_cycle;
+    logic [`XM_CLOG2(NUM_REQS_P+1)-1:0]  perf_cresp_stall_per_cycle;
+    logic [`XM_CLOG2(NUM_BANKS_P+1)-1:0] perf_read_miss_per_cycle;
+    logic [`XM_CLOG2(NUM_BANKS_P+1)-1:0] perf_write_miss_per_cycle;
+    logic [`XM_CLOG2(NUM_BANKS_P+1)-1:0] perf_mshr_stall_per_cycle;
+    logic [`XM_CLOG2(NUM_MEM_PORTS_P+1)-1:0] perf_mem_stall_per_cycle;
 
     `POP_COUNT(perf_core_reads_per_cycle, perf_core_reads_per_req);
     `POP_COUNT(perf_core_writes_per_cycle, perf_core_writes_per_req);

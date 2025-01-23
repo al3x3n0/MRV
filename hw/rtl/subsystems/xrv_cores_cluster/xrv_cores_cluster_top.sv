@@ -147,7 +147,7 @@ module xrv_cores_cluster_top #(
     for (genvar i = 0; i < L2_NUM_MEM_PORTS_P; ++i) begin : g_mem_bus_if
         assign mem_req_vld[i]       = mem_bus_if[i].req_vld;
         assign mem_req_rw[i]        = mem_bus_if[i].req_data.rw;
-        assign mem_req_be[i]    = mem_bus_if[i].req_data.be;
+        assign mem_req_be[i]        = mem_bus_if[i].req_data.be;
         assign mem_req_addr[i]      = mem_bus_if[i].req_data.addr;
         assign mem_req_data[i]      = mem_bus_if[i].req_data.data;
         assign mem_req_tag[i]       = mem_bus_if[i].req_data.tag;

@@ -98,12 +98,12 @@ module xrv_cache_bank #(
     input logic                                     core_req_vld_i,
     input logic [CACHE_LINE_ADDR_WIDTH_LP-1:0]      core_req_addr_i,
     input logic                                     core_req_rw_i,         // write enable
-    input wire [WORD_SEL_WIDTH_LP-1:0]             core_req_wsel_i,       // select the word in a cacheline, e.g. word size = 4 bytes, cacheline size = 64 bytes, it should have log(64/4)= 4 bits
-    input logic [WORD_SIZE_P-1:0]                   core_req_be_i,     // which bytes in data to write
+    input wire [WORD_SEL_WIDTH_LP-1:0]              core_req_wsel_i,       // select the word in a cacheline, e.g. word size = 4 bytes, cacheline size = 64 bytes, it should have log(64/4)= 4 bits
+    input logic [WORD_SIZE_P-1:0]                   core_req_be_i,          // which bytes in data to write
     input logic [CACHE_WORD_WIDTH_LP-1:0]           core_req_data_i,       // data to be written
     input logic [TAG_WIDTH_P-1:0]                   core_req_tag_i,        // identifier of the request (request id)
     input logic [REQ_SEL_WIDTH_LP-1:0]              core_req_idx_i,        // index of the request in the core request array
-    input logic [`XM_UP(FLAGS_WIDTH_P)-1:0]           core_req_flags_i,
+    input logic [`XM_UP(FLAGS_WIDTH_P)-1:0]         core_req_flags_i,
     output logic                                    core_req_rdy_o,
     ////////////////////////////////////////////////////////////////////////////////
     // Core Response
@@ -121,8 +121,8 @@ module xrv_cache_bank #(
     output logic                                    mem_req_rw_o,
     output logic [LINE_SIZE_P-1:0]                  mem_req_be_o,
     output logic [CACHE_LINE_WIDTH_LP-1:0]          mem_req_data_o,
-    output logic [MEM_TAG_WIDTH_LP-1:0]           mem_req_tag_o,
-    output logic [`XM_UP(FLAGS_WIDTH_P)-1:0]          mem_req_flags_o,
+    output logic [MEM_TAG_WIDTH_LP-1:0]             mem_req_tag_o,
+    output logic [`XM_UP(FLAGS_WIDTH_P)-1:0]        mem_req_flags_o,
     input  logic                                    mem_req_rdy_i,
     ////////////////////////////////////////////////////////////////////////////////
     // Memory response
