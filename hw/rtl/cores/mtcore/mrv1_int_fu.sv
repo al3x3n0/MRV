@@ -113,6 +113,7 @@ module mrv1_int_fu
 
     assign adder_op_b_negate = int_fu_opc_i inside {
         MRV_INT_FU_SUB,
+        MRV_INT_FU_SUBW,
         MRV_INT_FU_SUBR,
         MRV_INT_FU_SUBU,
         MRV_INT_FU_SUBUR
@@ -221,18 +222,20 @@ module mrv1_int_fu
     logic        shift_left;  // should we shift left
     logic        shift_use_round;
     logic        shift_arithmetic;
+    logic        op_use_half_and_sign_extend;
 
     logic [DATA_WIDTH_P-1:0] shift_amt_left;  // amount of shift, if to the left
     logic [DATA_WIDTH_P-1:0] shift_amt;  // amount of shift, to the right
     logic [DATA_WIDTH_P-1:0] shift_amt_int;  // amount of shift, used for the actual shifters
     logic [DATA_WIDTH_P-1:0] shift_amt_norm;  // amount of shift, used for normalization
     logic [DATA_WIDTH_P-1:0] shift_op_a;  // input of the shifter
+    logic [DATA_WIDTH_P-1:0] shift_op_a_my;  // input of the shifter
     logic [DATA_WIDTH_P-1:0] shift_result;
     logic [DATA_WIDTH_P-1:0] shift_right_result;
     logic [DATA_WIDTH_P*2-1:0] shift_right_result_wide;
     logic [DATA_WIDTH_P-1:0] shift_left_result;
     ////////////////////////////////////////////////////////////////////////////////
-    assign shift_amt = exec_src1_data_i;
+    assign shift_amt = op_use_half_and_sign_extend ? {{DATA_WIDTH_P-5{1'b0}}, exec_src1_data_i[4:0]} : exec_src1_data_i;
     ////////////////////////////////////////////////////////////////////////////////
     // by reversing the bits of the input, we also have to reverse the order of shift amounts
     ////////////////////////////////////////////////////////////////////////////////
@@ -263,6 +266,7 @@ module mrv1_int_fu
     ////////////////////////////////////////////////////////////////////////////////
     assign shift_left = int_fu_opc_i inside {
         MRV_INT_FU_SLL,
+        MRV_INT_FU_SLLW,
         MRV_INT_FU_BINS,
         MRV_INT_FU_FL1,
         MRV_INT_FU_CLB,
@@ -272,30 +276,49 @@ module mrv1_int_fu
     ////////////////////////////////////////////////////////////////////////////////
     assign shift_use_round = int_fu_opc_i inside {
         MRV_INT_FU_SUB,
+        MRV_INT_FU_SUBW,
         MRV_INT_FU_SUBR,
         MRV_INT_FU_SUBU,
         MRV_INT_FU_SUBUR,
         MRV_INT_FU_ADD,
+        MRV_INT_FU_ADDW,
         MRV_INT_FU_ADDR,
         MRV_INT_FU_ADDU,
         MRV_INT_FU_ADDUR
     };
 
     ////////////////////////////////////////////////////////////////////////////////
+    assign op_use_half_and_sign_extend = int_fu_opc_i inside {
+        MRV_INT_FU_ADDW,
+        MRV_INT_FU_SUBW,
+        MRV_INT_FU_SLLW,
+        MRV_INT_FU_SRAW,
+        MRV_INT_FU_SRLW
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////
     assign shift_arithmetic = int_fu_opc_i inside {
         MRV_INT_FU_SRA,
+        MRV_INT_FU_SRAW,
         MRV_INT_FU_BEXT,
         MRV_INT_FU_ADD,
+        MRV_INT_FU_ADDW,
         MRV_INT_FU_ADDR,
         MRV_INT_FU_SUB,
+        MRV_INT_FU_SUBW,
         MRV_INT_FU_SUBR
     };
 
     ////////////////////////////////////////////////////////////////////////////////
     // choose the bit reversed or the normal input for shift operand a
     ////////////////////////////////////////////////////////////////////////////////
+    logic sraw_sign;
+    assign sraw_sign = (int_fu_opc_i == MRV_INT_FU_SRAW) ? exec_src0_data_i[31] : 1'b0;
     assign shift_op_a    = shift_left ? exec_src0_data_rev :
-                          (shift_use_round ? adder_round_result : exec_src0_data_i);
+                          (shift_use_round ? adder_round_result : op_use_half_and_sign_extend ? {{DATA_WIDTH_P-32{sraw_sign}}, exec_src0_data_i[31:0]} : exec_src0_data_i);
+    logic sign_bit;
+    assign sign_bit = op_use_half_and_sign_extend ? shift_op_a[31] :  shift_op_a[DATA_WIDTH_P-1];
+
     assign shift_amt_int = shift_use_round ? shift_amt_norm :
                             (shift_left ? shift_amt_left : shift_amt);
     assign shift_amt_norm = {DATA_WIDTH_DIV_8{2'b00, int_fu_bmask1_i}};
@@ -305,7 +328,7 @@ module mrv1_int_fu
     ////////////////////////////////////////////////////////////////////////////////
     wire [DATA_WIDTH_P*2-1:0] shift_op_a_wide = (int_fu_opc_i == MRV_INT_FU_ROR) ? {
         shift_op_a, shift_op_a
-    } : $signed({{DATA_WIDTH_P{shift_arithmetic & shift_op_a[DATA_WIDTH_P-1]}}, shift_op_a});
+    } : $signed({{DATA_WIDTH_P{shift_arithmetic & sign_bit}}, shift_op_a});
     logic [DATA_WIDTH_P/8-1:0] shift_right_result_unused;
     ////////////////////////////////////////////////////////////////////////////////
     always_comb begin
@@ -335,6 +358,7 @@ module mrv1_int_fu
         endcase
         ;  // case (vec_mode_i)
     end
+
     ////////////////////////////////////////////////////////////////////////////////
     // bit reverse the shift_right_result for left shifts
     ////////////////////////////////////////////////////////////////////////////////
@@ -953,6 +977,14 @@ module mrv1_int_fu
             MRV_INT_FU_ROR:
             begin
                 int_fu_res = shift_result;
+            end
+            MRV_INT_FU_ADDW,
+            MRV_INT_FU_SUBW,
+            MRV_INT_FU_SLLW,
+            MRV_INT_FU_SRLW,
+            MRV_INT_FU_SRAW:
+            begin
+                int_fu_res = {{DATA_WIDTH_P-32{shift_result[31]}}, shift_result[31:0]};
             end
             ////////////////////////////////////////////////////////
             // bit manipulation instructions

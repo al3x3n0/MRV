@@ -329,7 +329,60 @@ import xm_rv_pkg::*;
                 end
             end
             ////////////////////////////////////////////////////////////////////////////////
+            XRV_ARITH_64: begin
+                if (XLEN_P == 64) begin
+                    dec_rs0_vld_o = 1'b1;
+                    dec_rs1_vld_o = 1'b1;
+                    dec_rd_vld_o  = 1'b1;
+                    dec_fu_req_o[MRV_FU_TYPE_INT] = 1'b1;
+                    if (func7_w == 7'd0) begin
+                        case (func3_w)
+                            3'b000: dec_fu_opc_o = MRV_INT_FU_ADDW;
+                            3'b001: dec_fu_opc_o = MRV_INT_FU_SLLW;
+                            3'b101: dec_fu_opc_o = MRV_INT_FU_SRLW;
+                            default: dec_fu_opc_o = MRV_INT_FU_ADDW;
+                        endcase
+                    end
+                    else if (func7_w == 7'd32) begin
+                    dec_fu_req_o[MRV_FU_TYPE_INT] = 1'b1;
+                    if (func3_w == 3'b000)
+                        dec_fu_opc_o = MRV_INT_FU_SUBW;
+                    else if (func3_w == 3'b101)
+                        dec_fu_opc_o = MRV_INT_FU_SRAW;
+                    else
+                        insn_illegal_o = 1'b1;
+                end
+                end else begin
+                    insn_illegal_o = 'b1;
+                end
+            end
+            ////////////////////////////////////////////////////////////////////////////////
+            XRV_ARITH_64_IMM: begin
+                if (XLEN_P == 64) begin
+                    dec_src0_sel_o = XRV_SRC0_RS0;
+                    dec_src1_sel_o = XRV_SRC1_IMM;
+                    imm1_sel_r = XRV_IMM1_I;
+                    dec_rs0_vld_o = 1'b1;
+                    dec_fu_req_o[MRV_FU_TYPE_INT] = 1'b1;
+                    case (func3_w)
+                        3'b000: dec_fu_opc_o = MRV_INT_FU_ADDW;
+                        3'b001: dec_fu_opc_o = MRV_INT_FU_SLLW;  // Shift Left Logical by Immediate
+                        3'b101: begin
+                            if (func7_w[6:0] == 7'b0)
+                                dec_fu_opc_o = MRV_INT_FU_SRLW;  // Shift Right Logical by Immediate
+                            else if (func7_w[6:0] == 7'b0100000)
+                                dec_fu_opc_o = MRV_INT_FU_SRAW;  // Shift Right Arithmetically by Immediate
+                            else
+                                insn_illegal_o = 1'b1;
+                        end
+                        default: dec_fu_opc_o = MRV_INT_FU_ADDW;
+                    endcase
+                end else begin
+                    insn_illegal_o = 'b1;
+                end
+            end
             default: insn_illegal_o = 1'b1;
+            ////////////////////////////////////////////////////////////////////////////////
         endcase
     end
 

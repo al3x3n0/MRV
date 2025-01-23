@@ -29,6 +29,8 @@ package mrv1_pkg;
         MRV_INT_FU_SUBR  = 7'b0011101,
         MRV_INT_FU_ADDUR = 7'b0011110,
         MRV_INT_FU_SUBUR = 7'b0011111,
+        MRV_INT_FU_ADDW  = 7'b1111000,
+        MRV_INT_FU_SUBW  = 7'b1111001,
         ////////////////////////////////////////////////////////////////////////////////
         MRV_INT_FU_XOR = 7'b0101111,
         MRV_INT_FU_OR  = 7'b0101110,
@@ -40,6 +42,9 @@ package mrv1_pkg;
         MRV_INT_FU_SRL = 7'b0100101,
         MRV_INT_FU_ROR = 7'b0100110,
         MRV_INT_FU_SLL = 7'b0100111,
+        MRV_INT_FU_SLLW = 7'b1100000,
+        MRV_INT_FU_SRLW = 7'b1100001,
+        MRV_INT_FU_SRAW = 7'b1100010,
         ////////////////////////////////////////////////////////////////////////////////
         // bit manipulation
         ////////////////////////////////////////////////////////////////////////////////
