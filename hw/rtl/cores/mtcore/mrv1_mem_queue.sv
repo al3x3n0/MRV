@@ -185,7 +185,7 @@ module mrv1_mem_queue
             req_wnr_q[head_ptr_r]        <= lsu_req_w_en_i;
             req_signed_q[head_ptr_r]     <= lsu_req_signed_i;
             req_unalgn_q[head_ptr_r]     <= lsu_req_unalgn_i;
-            req_offset_q[head_ptr_r]     <= lsu_req_offset_i;
+            req_offset_q[head_ptr_r]     <= (lsu_req_size_i == LS_D) ? lsu_req_offset_i : {{DATA_BE_WIDTH_LOG-2{1'b0}}, lsu_req_offset_i[1:0]};
             req_size_q[head_ptr_r]       <= lsu_req_size_i;
             req_addr_q[head_ptr_r]       <= lsu_req_addr_i;
             req_w_data_q[head_ptr_r]     <= lsu_req_w_data_i;
