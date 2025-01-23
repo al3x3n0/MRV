@@ -9,7 +9,7 @@ module mrv1_ifetch
     ////////////////////////////////////////////////////////////////////////////////
     parameter ifq_addr_width_lp = $clog2(ifq_size_p),
     parameter TID_WIDTH_LP = $clog2(NUM_THREADS_P),
-    parameter IMEM_TAG_WIDTH_P = PC_WIDTH_P + TID_WIDTH_LP,
+    parameter IMEM_TAG_WIDTH_P = TID_WIDTH_LP,
     parameter BARR_ID_WIDTH_LP = $clog2(NUM_BARR_P),
     parameter DEBUG_LEVEL_P = 0
     ////////////////////////////////////////////////////////////////////////////////
@@ -68,9 +68,9 @@ module mrv1_ifetch
     logic [TID_WIDTH_LP-1:0]                    sched_tid_lo;
     logic [NUM_THREADS_P-1:0]                   th_stalled_lo;
     ////////////////////////////////////////////////////////////////////////////////
-    assign imem_req_vld_o = sched_fetch_req_lo & fetch_req_rdy_li[sched_tid_lo];
-    assign imem_req_addr_o = sched_pc_lo;
-    assign imem_req_tag_o = {sched_pc_lo, sched_tid_lo};
+    assign imem_req_vld_o   = sched_fetch_req_lo & fetch_req_rdy_li[sched_tid_lo];
+    assign imem_req_addr_o  = sched_pc_lo;
+    assign imem_req_tag_o   = sched_tid_lo;
     ////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +80,15 @@ module mrv1_ifetch
     ////////////////////////////////////////////////////////////////////////////////
     logic [TID_WIDTH_LP-1:0]        fetch_tid_li;
     logic [PC_WIDTH_P-1:0]          fetch_pc_li;
-    assign {fetch_pc_li, fetch_tid_li} = imem_resp_tag_i;
+    ////////////////////////////////////////////////////////////////////////////////
+    logic [NUM_THREADS_P-1:0][PC_WIDTH_P-1:0] fetch_pc_r;
+    always_ff @(posedge clk_i) begin
+        if (imem_req_vld_o) begin
+            fetch_pc_r[sched_tid_lo] <= sched_pc_lo;
+        end
+    end
+    assign fetch_tid_li = imem_resp_tag_i;
+    assign fetch_pc_li = fetch_pc_r[imem_resp_tag_i];
 
     ////////////////////////////////////////////////////////////////////////////////
     logic [NUM_THREADS_P-1:0]                   ifq_i_data_vld_lo;

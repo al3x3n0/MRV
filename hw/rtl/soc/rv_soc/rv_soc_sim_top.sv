@@ -4,10 +4,8 @@
 `include "pkg/xrv1_pkg.sv"
 `include "pkg/mrv1_pkg.sv"
 `include "pkg/xm_rv_pkg.sv"
+`include "xm_dpi.svh"
 
-// c++ function to decode risc-v instruction
-import "DPI-C" function string riscv_decode_instruction(input longint pc, input int inst);
-import "DPI-C" function void print_char(input byte c);
 
 module rv_soc_sim_top #(
     parameter DEBUG_LEVEL_P = 0,
@@ -48,7 +46,7 @@ module rv_soc_sim_top #(
     localparam PC_WIDTH_P = XLEN_P;
     ////////////////////////////////////////////////////////////////////////////////
     localparam TID_WIDTH_LP = `XM_CLOG2(NUM_THREADS_P);
-    localparam IMEM_TAG_WIDTH_P = PC_WIDTH_P + TID_WIDTH_LP;
+    localparam IMEM_TAG_WIDTH_P = TID_WIDTH_LP;
     localparam DMEM_TAG_WIDTH_P = 3 + TID_WIDTH_LP;
     localparam DMEM_SHIFT = XLEN_P >> 3;
 

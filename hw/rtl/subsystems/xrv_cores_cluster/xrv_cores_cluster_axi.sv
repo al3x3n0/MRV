@@ -179,9 +179,9 @@ module xrv_cores_cluster_axi #(
     ////////////////////////////////////////////////////////////////////////////////
     input wire                          m_axi_rvld [AXI_NUM_BANKS_P],
     output wire                         m_axi_rrdy [AXI_NUM_BANKS_P],
-    input wire [AXI_DATA_WIDTH_P-1:0]     m_axi_rdata [AXI_NUM_BANKS_P],
+    input wire [AXI_DATA_WIDTH_P-1:0]   m_axi_rdata [AXI_NUM_BANKS_P],
     input wire                          m_axi_rlast [AXI_NUM_BANKS_P],
-    input wire [AXI_TID_WIDTH_P-1:0]      m_axi_rid [AXI_NUM_BANKS_P],
+    input wire [AXI_TID_WIDTH_P-1:0]    m_axi_rid [AXI_NUM_BANKS_P],
     input wire [1:0]                    m_axi_rresp [AXI_NUM_BANKS_P]
 );
     localparam DST_LDATAW = `XM_CLOG2(AXI_DATA_WIDTH_P);
@@ -190,18 +190,18 @@ module xrv_cores_cluster_axi #(
     localparam VX_MEM_TAG_A_WIDTH  = CLUSTER_MEM_TAG_WIDTH_P + `XM_MAX(SUB_LDATAW, 0);
     localparam VX_MEM_ADDR_A_WIDTH = CLUSTER_MEM_ADDR_WIDTH_P - SUB_LDATAW;
 
-    wire                            mem_req_vld [CLUSTER_NUM_MEM_PORTS_P];
-    wire                            mem_req_rw [CLUSTER_NUM_MEM_PORTS_P];
-    wire [CLUSTER_MEM_BYTEEN_WIDTH_P-1:0] mem_req_be [CLUSTER_NUM_MEM_PORTS_P];
-    wire [CLUSTER_MEM_ADDR_WIDTH_P-1:0]   mem_req_addr [CLUSTER_NUM_MEM_PORTS_P];
-    wire [CLUSTER_MEM_DATA_WIDTH_P-1:0]   mem_req_data [CLUSTER_NUM_MEM_PORTS_P];
-    wire [CLUSTER_MEM_TAG_WIDTH_P-1:0]    mem_req_tag [CLUSTER_NUM_MEM_PORTS_P];
-    wire                            mem_req_rdy [CLUSTER_NUM_MEM_PORTS_P];
+    wire                                    mem_req_vld [CLUSTER_NUM_MEM_PORTS_P];
+    wire                                    mem_req_rw [CLUSTER_NUM_MEM_PORTS_P];
+    wire [CLUSTER_MEM_BYTEEN_WIDTH_P-1:0]   mem_req_be [CLUSTER_NUM_MEM_PORTS_P];
+    wire [CLUSTER_MEM_ADDR_WIDTH_P-1:0]     mem_req_addr [CLUSTER_NUM_MEM_PORTS_P];
+    wire [CLUSTER_MEM_DATA_WIDTH_P-1:0]     mem_req_data [CLUSTER_NUM_MEM_PORTS_P];
+    wire [CLUSTER_MEM_TAG_WIDTH_P-1:0]      mem_req_tag [CLUSTER_NUM_MEM_PORTS_P];
+    wire                                    mem_req_rdy [CLUSTER_NUM_MEM_PORTS_P];
 
-    wire                            mem_resp_vld [CLUSTER_NUM_MEM_PORTS_P];
-    wire [CLUSTER_MEM_DATA_WIDTH_P-1:0]   mem_resp_data [CLUSTER_NUM_MEM_PORTS_P];
-    wire [CLUSTER_MEM_TAG_WIDTH_P-1:0]    mem_resp_tag [CLUSTER_NUM_MEM_PORTS_P];
-    wire                            mem_resp_rdy [CLUSTER_NUM_MEM_PORTS_P];
+    wire                                    mem_resp_vld [CLUSTER_NUM_MEM_PORTS_P];
+    wire [CLUSTER_MEM_DATA_WIDTH_P-1:0]     mem_resp_data [CLUSTER_NUM_MEM_PORTS_P];
+    wire [CLUSTER_MEM_TAG_WIDTH_P-1:0]      mem_resp_tag [CLUSTER_NUM_MEM_PORTS_P];
+    wire                                    mem_resp_rdy [CLUSTER_NUM_MEM_PORTS_P];
 
     xrv_cores_cluster_top #(
         ///////////////////////////////////////////////////////////////////////////////

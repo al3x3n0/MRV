@@ -100,14 +100,14 @@ module mrv1_mem_queue
     ////////////////////////////////////////////////////////////////////////////////
     wire                       req_p0_sent_w       = req_p0_sent_q[req_ptr_r]; 
     wire                       req_unalgn_w        = req_unalgn_q[req_ptr_r];
-    wire [DATA_BE_WIDTH_LOG-1:0] req_offset_w        = req_offset_q[req_ptr_r];
+    wire [DATA_BE_WIDTH_LOG-1:0] req_offset_w      = req_offset_q[req_ptr_r];
     wire [1:0]                 req_size_w          = req_size_q[req_ptr_r];
     wire [ADDR_WIDTH_P-1:0]    req_addr_w          = req_addr_q[req_ptr_r];
     wire [DATA_WIDTH_P-1:0]    req_w_data_w        = req_w_data_q[req_ptr_r];
     ////////////////////////////////////////////////////////////////////////////////
     wire [1:0]                 resp_size_w         = req_size_q[commit_ptr_r];
     wire                       resp_signed_w       = req_signed_q[commit_ptr_r];
-    wire [DATA_BE_WIDTH_LOG-1:0] resp_offset_w       = req_offset_q[commit_ptr_r];
+    wire [DATA_BE_WIDTH_LOG-1:0] resp_offset_w     = req_offset_q[commit_ptr_r];
     wire                       resp_unalgn_w       = req_unalgn_q[commit_ptr_r];
     wire [DATA_WIDTH_P-1:0]    resp_data0_w        = resp_data0_q[commit_ptr_r];
     wire [DATA_WIDTH_P-1:0]    resp_data1_w        = resp_data1_q[commit_ptr_r];

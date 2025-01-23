@@ -5,7 +5,7 @@
         parameter L1I_TAG_WIDTH_LP	        = (UUID_WIDTH_P + L1I_TAG_ID_BITS_LP), \
         parameter L1I_MEM_DATA_WIDTH_LP     = (L1I_LINE_SIZE_LP * 8), \
         parameter L1I_MEM_TAG_WIDTH_LP      = `CACHE_CLUSTER_MEM_TAG_WIDTH(L1I_MSHR_SIZE_P, 1, 1, NUM_L1I_CACHES_P, UUID_WIDTH_P), \
-        parameter L1D_TAG_ID_BITS_LP        = `XM_CLOG2(8), \
+        parameter L1D_TAG_ID_BITS_LP        = `XM_CLOG2(8) + TID_WIDTH_LP, \
         parameter L1D_TAG_WIDTH_LP	        = (UUID_WIDTH_P + L1D_TAG_ID_BITS_LP), \
         parameter L1D_WORD_SIZE_LP          = XLEN_P / 8, \
         parameter L1D_LINE_SIZE_LP          = L1_LINE_SIZE_P, \

@@ -55,9 +55,6 @@ module mrv1_lsu #(
     localparam DATA_BE_WIDTH_LOG = $clog2(DATA_BE_WIDTH_P);
     localparam TID_WIDTH_LP = $clog2(NUM_THREADS_P);
     localparam DMEM_TAG_WIDTH_P = ITAG_WIDTH_P + TID_WIDTH_LP;
-    ////////////////////////////////////////////////////////////////////////////////
-    wire dmem_req_accept_w = dmem_req_rdy_i & dmem_req_vld_o;
-    wire lsu_accept_w = lsu_req_i & lsu_rdy_o;
 
     ////////////////////////////////////////////////////////////////////////////////
     // LSU request address calculation
@@ -113,8 +110,8 @@ module mrv1_lsu #(
         wire lsu_req_vld_li = lsu_req_i && exec_tid_i == TID_WIDTH_LP'(i);
         wire dmem_resp_vld_li = dmem_resp_vld_i && dmem_resp_tid_li == TID_WIDTH_LP'(i);
         wire mem_commit_vld_li = mem_commit_vld_lo && mem_commit_tid_lo == TID_WIDTH_LP'(i);
-        wire sched_req_vld_li = sched_req_vld_lo && sched_req_tid_lo == TID_WIDTH_LP'(i);
-        assign mem_req_rdy_li[i] = dmem_req_rdy_i && dmem_req_vld_lo[i];
+        wire sched_req_vld_li = sched_req_vld_lo && (sched_req_tid_lo == TID_WIDTH_LP'(i));
+        assign mem_req_rdy_li[i] = dmem_req_vld_lo[i];
 
         mrv1_mem_queue #(
             .XLEN_P                     (ADDR_WIDTH_P),
