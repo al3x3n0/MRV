@@ -114,13 +114,13 @@ module xrv_mem_arb #(
         for (genvar i = 0; i < NUM_OUTPUTS_P; ++i) begin : g_resp_data_i
             wire [TAG_WIDTH_P-1:0] resp_tag_out;
             xrv_bits_remove #(
-                .N   (TAG_WIDTH_P + LOG_NUM_REQS),
-                .S   (LOG_NUM_REQS),
-                .POS (TAG_SEL_IDX)
+                .N          (TAG_WIDTH_P + LOG_NUM_REQS),
+                .S          (LOG_NUM_REQS),
+                .POS        (TAG_SEL_IDX)
             ) bits_remove (
-                .data_i  (bus_out_if[i].resp_data.tag),
-                .sel_o  (resp_sel_i[i]),
-                .data_o (resp_tag_out)
+                .data_i     (bus_out_if[i].resp_data.tag),
+                .sel_o      (resp_sel_i[i]),
+                .data_o     (resp_tag_out)
             );
             assign resp_vld_i[i] = bus_out_if[i].resp_vld;
             assign resp_data_i[i]  = {bus_out_if[i].resp_data.data, resp_tag_out};

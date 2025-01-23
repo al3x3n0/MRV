@@ -65,7 +65,7 @@ module mrv1_core
     localparam NUM_RS_LP = 2;
     localparam TID_WIDTH_LP = $clog2(NUM_THREADS_P);
     localparam IQ_SZ_LP = (1 << ITAG_WIDTH_P);
-    localparam IMEM_TAG_WIDTH_P = PC_WIDTH_P + TID_WIDTH_LP;
+    localparam IMEM_TAG_WIDTH_P = TID_WIDTH_LP;
     localparam DMEM_TAG_WIDTH_P = ITAG_WIDTH_P + TID_WIDTH_LP;
     localparam DATA_BE_WIDTH_P = DATA_WIDTH_P >> 3;
     ////////////////////////////////////////////////////////////////////////////////

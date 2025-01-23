@@ -49,21 +49,19 @@ module xrv_index_buffer #(
         .full_o         (full)
     );
 
-    xrv_dp_ram #(
-        .DATA_WIDTH_P (DATA_WIDTH_P),
-        .SIZE_P  (SIZE_P),
-        .LUTRAM (LUTRAM),
-        .RDW_MODE ("W")
+    xrv_mem_r1w1 #(
+        .DATA_WIDTH_P   (DATA_WIDTH_P),
+        .DEPTH_P        (SIZE_P)
+        //.LUTRAM         (LUTRAM),
+        //.RDW_MODE       ("W") FIXME
     ) data_table (
-        .clk_i      (clk_i),
-        .rst_i      (rst_i),
-        .read       (1'b1),
-        .write      (acquire_en),
-        .wren       (1'b1),
-        .waddr      (write_addr),
-        .wdata      (write_data),
-        .raddr      (read_addr),
-        .rdata      (read_data)
+        .clk_i          (clk_i),
+        .rst_i          (rst_i),
+        .do_wr_i        (acquire_en),
+        .wr_addr_i      (write_addr),
+        .wr_data_i      (write_data),
+        .rd_addr_i      (read_addr),
+        .rd_data_o      (read_data)
     );
 
 endmodule

@@ -13,6 +13,7 @@
 
 `include "subsystems/vortex_cache/defines.svh"
 `include "xm_macro.svh"
+`include "xm_dpi.svh"
 
 
 module xrv_cores_socket #(
@@ -123,7 +124,7 @@ module xrv_cores_socket #(
     // L1D parameters
     ////////////////////////////////////////////////////////////////////////////////
     // Core request tag Id bits
-    localparam L1D_TAG_ID_BITS_LP       = `XM_CLOG2(8);
+    localparam L1D_TAG_ID_BITS_LP       = `XM_CLOG2(8) + TID_WIDTH_LP;
     // Core request tag bits
     localparam L1D_TAG_WIDTH_LP	        = (UUID_WIDTH_P + L1D_TAG_ID_BITS_LP);
     // Memory request data bits
@@ -182,7 +183,7 @@ module xrv_cores_socket #(
         .TAG_WIDTH_P        (L1I_TAG_WIDTH_LP),
         .FLAGS_WIDTH_P      (0),
         .UUID_WIDTH_P       (UUID_WIDTH_P),
-        .IS_WRITEABLE_P     (0),
+        .IS_WRITEABLE_P     (1), // FIXME
         .REPL_POLICY        (L1I_REPL_POLICY_P),
         .NC_ENABLE          (0),
         .CORE_OUT_BUF       (3),
@@ -303,9 +304,15 @@ module xrv_cores_socket #(
 
         `RESET_RELAY (core_rst_i, rst_i);
 
+        logic [XLEN_P-1:0] imem_req_addr_lo;
+        logic [XLEN_P-1:0] dmem_req_addr_lo;
+
+        assign per_core_icache_bus_if[core_id].req_data.addr = imem_req_addr_lo[MEM_ADDR_WIDTH_P-1:`XM_CLOG2(L1I_WORD_SIZE_LP)];
+        assign per_core_dcache_bus_if[core_id].req_data.addr = dmem_req_addr_lo[MEM_ADDR_WIDTH_P-1:`XM_CLOG2(L1D_WORD_SIZE_LP)];
+
         mrv1_core #(
             .CORE_ID                ((SOCKET_ID * SOCKET_SIZE_P) + core_id),
-            .INSTANCE_ID            (`SFORMATF(("%s-core%0d", INSTANCE_ID, core_id))),
+            //.INSTANCE_ID            (`SFORMATF(("%s-core%0d", INSTANCE_ID, core_id))),
             ///////////////////////////////////////////////////////////////////////////
             .XLEN_P                 (XLEN_P),
             .NUM_THREADS_P          (NUM_THREADS_P)
@@ -317,7 +324,7 @@ module xrv_cores_socket #(
             .imem_req_vld_o         (per_core_icache_bus_if[core_id].req_vld),
             .imem_req_rdy_i         (per_core_icache_bus_if[core_id].req_rdy),
             .imem_req_tag_o         (per_core_icache_bus_if[core_id].req_data.tag),
-            .imem_req_addr_o        (per_core_icache_bus_if[core_id].req_data.addr),
+            .imem_req_addr_o        (imem_req_addr_lo),
             .imem_resp_vld_i        (per_core_icache_bus_if[core_id].resp_vld),
             .imem_resp_tag_i        (per_core_icache_bus_if[core_id].resp_data.tag),
             .imem_resp_data_i       (per_core_icache_bus_if[core_id].resp_data.data),
@@ -325,7 +332,7 @@ module xrv_cores_socket #(
             .dmem_req_vld_o         (per_core_dcache_bus_if[core_id].req_vld),
             .dmem_req_rdy_i         (per_core_dcache_bus_if[core_id].req_rdy),
             .dmem_resp_err_i        ('0),
-            .dmem_req_addr_o        (per_core_dcache_bus_if[core_id].req_data.addr),
+            .dmem_req_addr_o        (dmem_req_addr_lo),
             .dmem_req_w_en_o        (per_core_dcache_bus_if[core_id].req_data.rw),
             .dmem_req_w_be_o        (per_core_dcache_bus_if[core_id].req_data.be),
             .dmem_req_tag_o         (per_core_dcache_bus_if[core_id].req_data.tag),
