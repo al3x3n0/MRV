@@ -60,7 +60,7 @@ module mrv1_lsu #(
     // LSU request address calculation
     ////////////////////////////////////////////////////////////////////////////////
     wire [XLEN_P-1:0] lsu_req_addr_w = lsu_req_addr_base_i + lsu_req_addr_offset_i;
-    wire [XLEN_P-1:0] lsu_req_addr_algn_w = {lsu_req_addr_w[XLEN_P-1:DATA_BE_WIDTH_LOG-1], {(DATA_BE_WIDTH_LOG-1){1'b0}}};
+    wire [XLEN_P-1:0] lsu_req_addr_algn_w = {lsu_req_addr_w[XLEN_P-1:DATA_BE_WIDTH_LOG], {(DATA_BE_WIDTH_LOG){1'b0}}};
     wire [DATA_BE_WIDTH_LOG-1:0]  lsu_req_offset_w = lsu_req_addr_w[DATA_BE_WIDTH_LOG-1:0];
 
     ////////////////////////////////////////////////////////////////////////////////
