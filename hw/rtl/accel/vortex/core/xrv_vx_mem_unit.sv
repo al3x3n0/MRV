@@ -1,0 +1,221 @@
+// Copyright © 2019-2023
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+`include "xrv_vx_define.vh"
+
+module xrv_vx_mem_unit import xrv_vx_gpu_pkg::*; #(
+    parameter `STRING INSTANCE_ID = ""
+) (
+    input wire              clk_i,
+    input wire              rst_i,
+
+`ifdef PERF_ENABLE
+    output cache_perf_t     lmem_perf,
+`endif
+
+    xrv_vx_lsu_mem_if.slave lsu_mem_if [NUM_LSU_BLOCKS_P],
+    xrv_cache_if.master     dcache_bus_if [DCACHE_NUM_REQS]
+);
+    xrv_vx_lsu_mem_if #(
+        .NUM_LANES (`NUM_LSU_LANES),
+        .DATA_SIZE (LSU_WORD_SIZE),
+        .TAG_WIDTH (LSU_TAG_WIDTH)
+    ) lsu_dcache_if[NUM_LSU_BLOCKS_P]();
+
+`ifdef LMEM_ENABLE
+
+    `STATIC_ASSERT(`IS_DIVISBLE((1 << `LMEM_LOG_SIZE), `MEM_BLOCK_SIZE), ("invalid parameter"))
+    `STATIC_ASSERT(0 == (`LMEM_BASE_ADDR % (1 << `LMEM_LOG_SIZE)), ("invalid parameter"))
+
+    localparam LMEM_ADDR_WIDTH = `LMEM_LOG_SIZE - `CLOG2(LSU_WORD_SIZE);
+
+     xrv_vx_lsu_mem_if #(
+        .NUM_LANES (`NUM_LSU_LANES),
+        .DATA_SIZE (LSU_WORD_SIZE),
+        .TAG_WIDTH (LSU_TAG_WIDTH)
+    ) lsu_lmem_if[NUM_LSU_BLOCKS_P]();
+
+    for (genvar i = 0; i < NUM_LSU_BLOCKS_P; ++i) begin : g_lmem_switches
+        xrv_vx_lmem_switch #(
+            .REQ0_OUT_BUF (1),
+            .REQ1_OUT_BUF (0),
+            .RSP_OUT_BUF  (1),
+            .ARBITER      ("P")
+        ) lmem_switch (
+            .clk_i          (clk_i),
+            .rst_i        (rst_i),
+            .lsu_in_if    (lsu_mem_if[i]),
+            .global_out_if(lsu_dcache_if[i]),
+            .local_out_if (lsu_lmem_if[i])
+        );
+    end
+
+    xrv_cache_if #(
+        .DATA_SIZE (LSU_WORD_SIZE),
+        .TAG_WIDTH (LSU_TAG_WIDTH)
+    ) lmem_bus_if[LSU_NUM_REQS]();
+
+    for (genvar i = 0; i < NUM_LSU_BLOCKS_P; ++i) begin : g_lmem_adapters
+        xrv_cache_if #(
+            .DATA_SIZE (LSU_WORD_SIZE),
+            .TAG_WIDTH (LSU_TAG_WIDTH)
+        ) lmem_bus_tmp_if[`NUM_LSU_LANES]();
+
+        xrv_vx_lsu_adapter #(
+            .NUM_LANES    (`NUM_LSU_LANES),
+            .DATA_SIZE    (LSU_WORD_SIZE),
+            .TAG_WIDTH    (LSU_TAG_WIDTH),
+            .TAG_SEL_BITS (LSU_TAG_WIDTH - `UUID_WIDTH),
+            .ARBITER      ("P"),
+            .REQ_OUT_BUF  (3),
+            .RSP_OUT_BUF  (2)
+        ) lmem_adapter (
+            .clk_i        (clk_i),
+            .rst_i      (rst_i),
+            .lsu_mem_if (lsu_lmem_if[i]),
+            .mem_bus_if (lmem_bus_tmp_if)
+        );
+
+        for (genvar j = 0; j < `NUM_LSU_LANES; ++j) begin : g_lmem_bus_if
+            `ASSIGN_xrv_vx_MEM_BUS_IF (lmem_bus_if[i * `NUM_LSU_LANES + j], lmem_bus_tmp_if[j]);
+        end
+    end
+
+    xrv_vx_local_mem #(
+        .INSTANCE_ID(`SFORMATF(("%s-lmem", INSTANCE_ID))),
+        .SIZE       (1 << `LMEM_LOG_SIZE),
+        .NUM_REQS   (LSU_NUM_REQS),
+        .NUM_BANKS  (`LMEM_NUM_BANKS),
+        .WORD_SIZE  (LSU_WORD_SIZE),
+        .ADDR_WIDTH (LMEM_ADDR_WIDTH),
+        .UUID_WIDTH (`UUID_WIDTH),
+        .TAG_WIDTH  (LSU_TAG_WIDTH),
+        .OUT_BUF    (3)
+    ) local_mem (
+        .clk_i        (clk_i),
+        .rst_i      (rst_i),
+    `ifdef PERF_ENABLE
+        .lmem_perf  (lmem_perf),
+    `endif
+        .mem_bus_if (lmem_bus_if)
+    );
+
+`else
+
+`ifdef PERF_ENABLE
+    assign lmem_perf = '0;
+`endif
+    for (genvar i = 0; i < NUM_LSU_BLOCKS_P; ++i) begin : g_lsu_dcache_if
+        `ASSIGN_xrv_vx_MEM_BUS_IF (lsu_dcache_if[i], lsu_mem_if[i]);
+    end
+
+`endif
+
+    xrv_vx_lsu_mem_if #(
+        .NUM_LANES (DCACHE_CHANNELS),
+        .DATA_SIZE (DCACHE_WORD_SIZE),
+        .TAG_WIDTH (DCACHE_TAG_WIDTH)
+    ) dcache_coalesced_if[NUM_LSU_BLOCKS_P]();
+
+    if ((`NUM_LSU_LANES > 1) && (LSU_WORD_SIZE != DCACHE_WORD_SIZE)) begin : g_enabled
+
+        for (genvar i = 0; i < NUM_LSU_BLOCKS_P; ++i) begin : g_coalescers
+            xrv_vx_mem_coalescer #(
+                .INSTANCE_ID    (`SFORMATF(("%s-coalescer%0d", INSTANCE_ID, i))),
+                .NUM_REQS       (`NUM_LSU_LANES),
+                .DATA_IN_SIZE   (LSU_WORD_SIZE),
+                .DATA_OUT_SIZE  (DCACHE_WORD_SIZE),
+                .ADDR_WIDTH     (LSU_ADDR_WIDTH),
+                .FLAGS_WIDTH    (`MEM_REQ_FLAGS_WIDTH),
+                .TAG_WIDTH      (LSU_TAG_WIDTH),
+                .UUID_WIDTH     (`UUID_WIDTH),
+                .QUEUE_SIZE     (`LSUQ_OUT_SIZE)
+            ) mem_coalescer (
+                .clk_i            (clk_i),
+                .rst_i          (rst_i),
+
+                // Input request
+                .in_req_valid   (lsu_dcache_if[i].req_valid),
+                .in_req_mask    (lsu_dcache_if[i].req_data.mask),
+                .in_req_rw      (lsu_dcache_if[i].req_data.rw),
+                .in_req_byteen  (lsu_dcache_if[i].req_data.byteen),
+                .in_req_addr    (lsu_dcache_if[i].req_data.addr),
+                .in_req_flags   (lsu_dcache_if[i].req_data.flags),
+                .in_req_data    (lsu_dcache_if[i].req_data.data),
+                .in_req_tag     (lsu_dcache_if[i].req_data.tag),
+                .in_req_ready   (lsu_dcache_if[i].req_ready),
+
+                // Input response
+                .in_rsp_valid   (lsu_dcache_if[i].rsp_valid),
+                .in_rsp_mask    (lsu_dcache_if[i].rsp_data.mask),
+                .in_rsp_data    (lsu_dcache_if[i].rsp_data.data),
+                .in_rsp_tag     (lsu_dcache_if[i].rsp_data.tag),
+                .in_rsp_ready   (lsu_dcache_if[i].rsp_ready),
+
+                // Output request
+                .out_req_valid  (dcache_coalesced_if[i].req_valid),
+                .out_req_mask   (dcache_coalesced_if[i].req_data.mask),
+                .out_req_rw     (dcache_coalesced_if[i].req_data.rw),
+                .out_req_byteen (dcache_coalesced_if[i].req_data.byteen),
+                .out_req_addr   (dcache_coalesced_if[i].req_data.addr),
+                .out_req_flags  (dcache_coalesced_if[i].req_data.flags),
+                .out_req_data   (dcache_coalesced_if[i].req_data.data),
+                .out_req_tag    (dcache_coalesced_if[i].req_data.tag),
+                .out_req_ready  (dcache_coalesced_if[i].req_ready),
+
+                // Output response
+                .out_rsp_valid  (dcache_coalesced_if[i].rsp_valid),
+                .out_rsp_mask   (dcache_coalesced_if[i].rsp_data.mask),
+                .out_rsp_data   (dcache_coalesced_if[i].rsp_data.data),
+                .out_rsp_tag    (dcache_coalesced_if[i].rsp_data.tag),
+                .out_rsp_ready  (dcache_coalesced_if[i].rsp_ready)
+            );
+        end
+
+    end else begin : g_passthru
+
+        for (genvar i = 0; i < NUM_LSU_BLOCKS_P; ++i) begin : g_dcache_coalesced_if
+            `ASSIGN_xrv_vx_MEM_BUS_IF (dcache_coalesced_if[i], lsu_dcache_if[i]);
+        end
+
+    end
+
+    for (genvar i = 0; i < NUM_LSU_BLOCKS_P; ++i) begin : g_dcache_adapters
+
+        xrv_cache_if #(
+            .DATA_SIZE (DCACHE_WORD_SIZE),
+            .TAG_WIDTH (DCACHE_TAG_WIDTH)
+        ) dcache_bus_tmp_if[DCACHE_CHANNELS]();
+
+        xrv_vx_lsu_adapter #(
+            .NUM_LANES    (DCACHE_CHANNELS),
+            .DATA_SIZE    (DCACHE_WORD_SIZE),
+            .TAG_WIDTH    (DCACHE_TAG_WIDTH),
+            .TAG_SEL_BITS (DCACHE_TAG_WIDTH - `UUID_WIDTH),
+            .ARBITER      ("P"),
+            .REQ_OUT_BUF  (0),
+            .RSP_OUT_BUF  (0)
+        ) dcache_adapter (
+            .clk_i        (clk_i),
+            .rst_i      (rst_i),
+            .lsu_mem_if (dcache_coalesced_if[i]),
+            .mem_bus_if (dcache_bus_tmp_if)
+        );
+
+        for (genvar j = 0; j < DCACHE_CHANNELS; ++j) begin : g_dcache_bus_if
+            `ASSIGN_xrv_vx_MEM_BUS_IF (dcache_bus_if[i * DCACHE_CHANNELS + j], dcache_bus_tmp_if[j]);
+        end
+
+    end
+
+endmodule

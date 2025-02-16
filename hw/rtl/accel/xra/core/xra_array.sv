@@ -1,55 +1,47 @@
-module mtra_cells
+module xra_array
 #(
     ////////////////////////////////////////////////////////////////////////////////
-    parameter DATA_WIDTH_P = 32,
-    parameter NUM_THREADS_P = 8,
+    parameter XLEN_P                = "inv",
+    parameter VX_NUM_WARPS_P        = "inv",
+    parameter VX_NUM_THREADS_P      = "inv",
     ////////////////////////////////////////////////////////////////////////////////
-    parameter NUM_COLS_P = 8,
-    parameter NUM_ROWS_P = 8
+    parameter VX_NUM_LANES_P        = VX_NUM_THREADS_P,
+    parameter VX_ISSUE_WIDTH_P      = (VX_NUM_WARPS_P / 8),
     ////////////////////////////////////////////////////////////////////////////////
-    parameter BE_WIDTH_LP = DATA_WIDTH_P / 8
+    parameter NUM_COLS_P            = VX_NUM_LANES_P,
+    parameter NUM_ROWS_P            = VX_ISSUE_WIDTH_P,
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter VX_NUM_LSU_BLOCKS_P   = "inv"
+    ////////////////////////////////////////////////////////////////////////////////
 ) (
     ////////////////////////////////////////////////////////////////////////////////
-    input  logic                                                clk_i,
-    input  logic                                                rst_i,
+    input  logic                clk_i,
+    input  logic                rst_i,
     ////////////////////////////////////////////////////////////////////////////////
-    input  logic                                                imem_wr_en_i,
-    input  logic                                                imem_rd_en_i,
+    input  logic                imem_wr_en_i,
+    input  logic                imem_rd_en_i,
     ////////////////////////////////////////////////////////////////////////////////
-    output logic [NUM_COLS_P-1:0]                               dmem_req_vld_o,
-    input  logic [NUM_COLS_P-1:0]                               dmem_req_rdy_i,
-    output logic [NUM_COLS_P-1:0][DMEM_TAG_WIDTH_P-1:0]         dmem_req_tag_o,
-    input  logic [NUM_COLS_P-1:0]                               dmem_resp_err_i,
-    output logic [NUM_COLS_P-1:0][DATA_WIDTH_P-1:0]             dmem_req_addr_o,
-    output logic [NUM_COLS_P-1:0]                               dmem_req_w_en_o,
-    output logic [NUM_COLS_P-1:0][BE_WIDTH_LP-1:0]              dmem_req_w_be_o,
-    output logic [NUM_COLS_P-1:0][DATA_WIDTH_P-1:0]             dmem_req_w_data_o,
-    input  logic [NUM_COLS_P-1:0]                               dmem_resp_vld_i,
-    input  logic [NUM_COLS_P-1:0][DATA_WIDTH_P-1:0]             dmem_resp_r_data_i,
-    input  logic [NUM_COLS_P-1:0][DMEM_TAG_WIDTH_P-1:0]         dmem_resp_tag_i,
+    // VX -> XRA
     ////////////////////////////////////////////////////////////////////////////////
+    input  logic                vx_mode_en_i,
+    xrv_vx_lsu_mem_if.master    vx_lsu_mem_if [VX_NUM_LSU_BLOCKS_P],
+    ////////////////////////////////////////////////////////////////////////////////
+    xrv_vx_dispatch_if.slave    vx_int_dispatch_if [VX_ISSUE_WIDTH_P],
+    xrv_vx_commit_if.master     vx_int_commit_if [VX_ISSUE_WIDTH_P],
+    ////////////////////////////////////////////////////////////////////////////////
+    xrv_vx_dispatch_if.slave    vx_lsu_dispatch_if [VX_ISSUE_WIDTH_P],
+    xrv_vx_commit_if.master     vx_lsu_commit_if [VX_ISSUE_WIDTH_P]
 );
     ////////////////////////////////////////////////////////////////////////////////
-    logic [NUM_ROWS_P-1:0][NUM_COLS_P-1:0] cell_data_lo;
-    logic [NUM_ROWS_P-1:0][NUM_COLS_P-1:0] cell_flags_lo;
+    logic [NUM_ROWS_P-1:0][NUM_COLS_P-1:0]  cell_data_lo;
+    logic [NUM_ROWS_P-1:0][NUM_COLS_P-1:0]  cell_flags_lo;
     ////////////////////////////////////////////////////////////////////////////////
-    logic [-1:NUM_COLS_P][NUM_THREADS_P-1:0][DATA_WIDTH_P-1:0]  mesh_data_w  [-1:NUM_ROWS_P];
-    logic [-1:NUM_COLS_P][NUM_THREADS_P-1:0]                    mesh_data_vld_w [-1:NUM_ROWS_P];
-    logic [-1:NUM_COLS_P][NUM_THREADS_P-1:0]                    mesh_data_rdy_w [-1:NUM_ROWS_P];
-    logic [-1:NUM_COLS_P][NUM_THREADS_P-1:0][DATA_WIDTH_P-1:0]  mesh_flags_w [-1:NUM_ROWS_P];
-    logic [-1:NUM_COLS_P][NUM_THREADS_P-1:0]                    mesh_flags_vld_w [-1:NUM_ROWS_P];   
+    logic [-1:NUM_COLS_P][XLEN_P-1:0]       mesh_data_w  [-1:NUM_ROWS_P];
+    logic [-1:NUM_COLS_P]                   mesh_data_vld_w [-1:NUM_ROWS_P];
+    logic [-1:NUM_COLS_P]                   mesh_data_rdy_w [-1:NUM_ROWS_P];
+    logic [-1:NUM_COLS_P][XLEN_P-1:0]       mesh_flags_w [-1:NUM_ROWS_P];
+    logic [-1:NUM_COLS_P]                   mesh_flags_vld_w [-1:NUM_ROWS_P];   
 
-    ////////////////////////////////////////////////////////////////////////////////
-    logic [NUM_ROWS_P-1:0][NUM_COLS_P-1:0]                               dmem_req_vld_lo;
-    logic [NUM_ROWS_P-1:0][NUM_COLS_P-1:0]                               dmem_req_rdy_li;
-    logic [NUM_ROWS_P-1:0][NUM_COLS_P-1:0][DMEM_TAG_WIDTH_P-1:0]         dmem_req_tag_lo;
-    logic [NUM_ROWS_P-1:0][NUM_COLS_P-1:0][DATA_WIDTH_P-1:0]             dmem_req_addr_lo;
-    logic [NUM_ROWS_P-1:0][NUM_COLS_P-1:0]                               dmem_req_w_en_lo;
-    logic [NUM_ROWS_P-1:0][NUM_COLS_P-1:0][BE_WIDTH_LP-1:0]              dmem_req_w_be_lo;
-    logic [NUM_ROWS_P-1:0][NUM_COLS_P-1:0][DATA_WIDTH_P-1:0]             dmem_req_w_data_lo;
-    logic [NUM_ROWS_P-1:0][NUM_COLS_P-1:0]                               dmem_resp_vld_li;
-    logic [NUM_ROWS_P-1:0][NUM_COLS_P-1:0][DATA_WIDTH_P-1:0]             dmem_resp_r_data_li;
-    logic [NUM_ROWS_P-1:0][NUM_COLS_P-1:0][DMEM_TAG_WIDTH_P-1:0]         dmem_resp_tag_li;
 
     ////////////////////////////////////////////////////////////////////////////////
     // Reconfigurable Cells
@@ -57,13 +49,13 @@ module mtra_cells
     generate
         for (i = 0; i < NUM_ROWS_P; i++) begin
             for (j = 0; j < NUM_COLS_P; j++) begin
-                mtra_rcell #(
+                xra_rcell #(
                     ////////////////////////////////////////////////////////////////////////////////
                     .ROW_ID_P               (i),
                     .COL_ID_P               (j),
                     ////////////////////////////////////////////////////////////////////////////////
                     .NUM_THREADS_P          (NUM_THREADS_P),
-                    .DATA_WIDTH_P           (DATA_WIDTH_P)
+                    .XLEN_P                 (XLEN_P)
                 ) rc_i (
                     .clk_i                  (clk_i),
                     .rst_i                  (rst_i),
@@ -101,17 +93,7 @@ module mtra_cells
                     .data_o                 (cell_data_lo[i][j]),
                     .flags_o                (cell_flags_lo[i][j]),
                     ////////////////////////////////////////////////////////////////////////////////
-                    .dmem_req_vld_o         (dmem_req_vld_lo[i][j]),
-                    .dmem_req_rdy_i         (dmem_req_rdy_li[i][j]),
-                    .dmem_req_tag_o         (dmem_req_tag_lo[i][j]),
-                    .dmem_resp_err_i        (),
-                    .dmem_req_addr_o        (dmem_req_addr_lo[i][j]),
-                    .dmem_req_w_en_o        (dmem_req_w_en_lo[i][j]),
-                    .dmem_req_w_be_o        (dmem_req_w_be_lo[i][j]),
-                    .dmem_req_w_data_o      (dmem_req_w_data_lo[i][j]),
-                    .dmem_resp_vld_i        (dmem_resp_vld_li[i][j]),
-                    .dmem_resp_r_data_i     (dmem_resp_r_data_li[i][j]),
-                    .dmem_resp_tag_i        (dmem_resp_tag_li[i][j])
+                    
                     ////////////////////////////////////////////////////////////////////////////////
                 );
             end
