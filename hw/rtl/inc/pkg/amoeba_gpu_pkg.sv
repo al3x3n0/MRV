@@ -17,11 +17,27 @@
 `include "xm_macro.svh"
 
 `define ASSIGN_VX_IF(dst, src) \
-    assign dst.valid = src.valid; \
+    assign dst.vld = src.vld; \
     assign dst.data  = src.data; \
-    assign src.ready = dst.ready
+    assign src.rdy = dst.rdy
 
 package amoeba_gpu_pkg;
+
+    localparam VX_EX_ALU          = 0;
+    localparam VX_EX_LSU          = 1;
+    localparam VX_EX_SFU          = 2;
+    localparam VX_EX_FPU          = 3; // (VX_EX_SFU + `EXT_F_ENABLED)
+
+    localparam VX_NUM_EX_UNITS  = 3; // (3 + `EXT_F_ENABLED)
+    localparam VX_EX_BITS       = `XM_CLOG2(VX_NUM_EX_UNITS);
+    localparam VX_EX_WIDTH      = `XM_UP(VX_EX_BITS);
+
+    localparam VX_SFU_CSRS        = 0;
+    localparam VX_SFU_WCTL        = 1;
+
+    localparam VX_NUM_SFU_UNITS   = (2);
+    localparam VX_SFU_BITS        = `XM_CLOG2(VX_NUM_SFU_UNITS);
+    localparam VX_SFU_WIDTH       = `XM_UP(VX_SFU_BITS);
 
     localparam VX_LMEM_ENABLED            = 0;
     localparam VX_MEM_REQ_FLAG_FLUSH      = 0;
@@ -38,6 +54,8 @@ package amoeba_gpu_pkg;
     // Device configuration registers /////////////////////////////////////////////
     localparam VX_CSR_ADDR_BITS                = 12;
     localparam VX_DCR_ADDR_BITS                = 12;
+    localparam VX_DCR_ADDR_WIDTH               = VX_DCR_ADDR_BITS;
+    localparam VX_DCR_DATA_WIDTH               = 32;
 
     localparam VX_DCR_BASE_STATE_BEGIN         = 12'h001;
     localparam VX_DCR_BASE_STARTUP_ADDR0       = 12'h001;
@@ -285,12 +303,6 @@ package amoeba_gpu_pkg;
 
     ///////////////////////////////////////////////////////////////////////////////
 
-    localparam VX_INST_OP_BITS    = 4;
-    localparam VX_INST_ARGS_BITS  = $bits(op_args_t);
-    localparam VX_INST_FMT_BITS   = 2;
-
-    ///////////////////////////////////////////////////////////////////////////////
-
     localparam VX_INST_ALU_ADD         = 4'b0000;
     //localparam VX_INST_ALU_UNUSED    = 4'b0001;
     localparam VX_INST_ALU_LUI         = 4'b0010;
@@ -502,6 +514,12 @@ package amoeba_gpu_pkg;
         csr_args_t  csr;
         wctl_args_t wctl;
     } op_args_t;
+
+    ///////////////////////////////////////////////////////////////////////////////
+
+    localparam VX_INST_OP_BITS    = 4;
+    localparam VX_INST_ARGS_BITS  = $bits(op_args_t);
+    localparam VX_INST_FMT_BITS   = 2;
 
 `IGNORE_UNUSED_BEGIN
 

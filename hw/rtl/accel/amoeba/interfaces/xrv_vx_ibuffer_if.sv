@@ -13,17 +13,15 @@
 
 `include "xm_macro.svh"
 
-interface xrv_vx_decode_if import amoeba_gpu_pkg::*; #(
+interface xrv_vx_ibuffer_if import amoeba_gpu_pkg::*; #(
+    parameter XLEN_P        = "inv",
+    parameter PC_WIDTH_P    = XLEN_P,
     parameter NUM_THREADS_P = "inv",
-    parameter NUM_WARPS_P   = "inv",
-    parameter WID_WIDTH_P   = `XM_LOG2UP(NUM_WARPS_P),
-    parameter PC_WIDTH_P    = "inv",
-    parameter UUID_WIDTH_P  = 1
+    parameter UUID_WIDTH_P  = "inv"
 );
 
     typedef struct packed {
         logic [UUID_WIDTH_P-1:0]    uuid;
-        logic [WID_WIDTH_P-1:0]     wid;
         logic [NUM_THREADS_P-1:0]   tmask;
         logic [PC_WIDTH_P-1:0]      PC;
         logic [VX_EX_BITS-1:0]      ex_type;
@@ -39,26 +37,17 @@ interface xrv_vx_decode_if import amoeba_gpu_pkg::*; #(
     logic  vld;
     data_t data;
     logic  rdy;
-`ifndef L1_ENABLE
-    wire [NUM_WARPS_P-1:0] ibuf_pop;
-`endif
 
     modport master (
         output vld,
         output data,
         input  rdy
-    `ifndef L1_ENABLE
-        , input ibuf_pop
-    `endif
     );
 
     modport slave (
         input  vld,
         input  data,
         output rdy
-    `ifndef L1_ENABLE
-        , output ibuf_pop
-    `endif
     );
 
 endinterface

@@ -22,7 +22,9 @@ module xrv_vx_sfu_unit import amoeba_gpu_pkg::*; #(
     parameter NUM_WARPS_P               = "inv",
     parameter WID_WIDTH_P               = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P               = `XM_CLOG2(NUM_THREADS_P),
-    parameter DV_STACK_SIZE_WIDTH_P     = "inv"
+    parameter DV_STACK_SIZE_WIDTH_P     = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter ISSUE_WIDTH_P             = "inv"
 ) (
     input wire              clk_i,
     input wire              rst_i,
@@ -32,7 +34,7 @@ module xrv_vx_sfu_unit import amoeba_gpu_pkg::*; #(
     xrv_vx_pipeline_perf_if.slave pipeline_perf_if,
 `endif
 
-    input base_dcrs_t       base_dcrs,
+    input xrv_vx_base_dcrs_if   base_dcrs,
 
     // Inputs
     xrv_vx_dispatch_if.slave    dispatch_if [ISSUE_WIDTH_P],
@@ -49,7 +51,7 @@ module xrv_vx_sfu_unit import amoeba_gpu_pkg::*; #(
 );
     `XM_UNUSED_SPARAM (INSTANCE_ID)
     localparam BLOCK_SIZE   = 1;
-    localparam NUM_LANES_P    = NUM_SFU_LANES_P;
+    localparam NUM_LANES_P    = VX_NUM_SFU_UNITS;
     localparam PE_COUNT     = 2;
     localparam PE_SEL_BITS  = `XM_CLOG2(PE_COUNT);
     localparam PE_IDX_WCTL  = 0;
@@ -65,7 +67,7 @@ module xrv_vx_sfu_unit import amoeba_gpu_pkg::*; #(
 
     xrv_vx_dispatch_unit #(
         .BLOCK_SIZE (BLOCK_SIZE),
-        .NUM_LANES_P  (NUM_LANES_P),
+        .NUM_LANES  (NUM_LANES_P),
         .OUT_BUF    (3)
     ) dispatch_unit (
         .clk_i        (clk_i),

@@ -13,37 +13,47 @@
 
 `include "xm_macro.svh"
 
-interface xrv_vx_scoreboard_if import amoeba_gpu_pkg::*; ();
+interface xrv_vx_scoreboard_if import amoeba_gpu_pkg::*; #(
+    parameter NUM_THREADS_P = "inv",
+    parameter NUM_WARPS_P   = "inv",
+    parameter PC_WIDTH_P    = "inv",
+    parameter UUID_WIDTH_P  = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter ISSUE_WIDTH_P         = "inv",
+    parameter PER_ISSUE_WARPS_P     = (NUM_WARPS_P / ISSUE_WIDTH_P),
+    parameter ISSUE_WIS_P           = `XM_CLOG2(PER_ISSUE_WARPS_P),
+    parameter ISSUE_WIS_WIDTH_P     = `XM_UP(ISSUE_WIS_P)
+);
 
     typedef struct packed {
-        logic [UUID_WIDTH_P-1:0]    uuid;
-        logic [ISSUE_WIS_W-1:0]     wis;
-        logic [NUM_THREADS_P-1:0]   tmask;
-        logic [PC_WIDTH_P-1:0]      PC;
-        logic [VX_EX_BITS-1:0]      ex_type;
-        logic [VX_INST_OP_BITS-1:0] op_type;
-        op_args_t                   op_args;
-        logic                       wb;
+        logic [UUID_WIDTH_P-1:0]        uuid;
+        logic [ISSUE_WIS_WIDTH_P-1:0]   wis;
+        logic [NUM_THREADS_P-1:0]       tmask;
+        logic [PC_WIDTH_P-1:0]          PC;
+        logic [VX_EX_BITS-1:0]          ex_type;
+        logic [VX_INST_OP_BITS-1:0]     op_type;
+        op_args_t                       op_args;
+        logic                           wb;
         logic [VX_NR_BITS-1:0] rd;
         logic [VX_NR_BITS-1:0] rs1;
         logic [VX_NR_BITS-1:0] rs2;
         logic [VX_NR_BITS-1:0] rs3;
     } data_t;
 
-    logic  valid;
+    logic  vld;
     data_t data;
-    logic  ready;
+    logic  rdy;
 
     modport master (
-        output valid,
+        output vld,
         output data,
-        input  ready
+        input  rdy
     );
 
     modport slave (
-        input  valid,
+        input  vld,
         input  data,
-        output ready
+        output rdy
     );
 
 endinterface

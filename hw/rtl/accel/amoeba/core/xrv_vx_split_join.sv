@@ -21,16 +21,23 @@ module xrv_vx_split_join import amoeba_gpu_pkg::*; #(
     parameter PC_WIDTH_P            = "inv",
     ////////////////////////////////////////////////////////////////////////////////
     parameter TID_WIDTH_P           = `XM_CLOG2(NUM_THREADS_P),
-    parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P)
+    parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P),
     ////////////////////////////////////////////////////////////////////////////////
+    parameter DV_STACK_SIZE_P       = `XM_UP(NUM_THREADS_P-1),
+    parameter DV_STACK_SIZE_WIDTH_P = `XM_UP(`XM_CLOG2(DV_STACK_SIZE_P))
 ) (
     input  wire                         clk_i,
     input  wire                         rst_i,
-    input  wire                         valid,
+    input  wire                         vld,
     input  wire [WID_WIDTH_P-1:0]       wid,
-    input  split_t                      split,
-    input  join_t                       sjoin,
-    output wire                         join_valid,
+    input logic                     split_vld,
+    input logic                     split_is_dvg,
+    input logic [NUM_THREADS_P-1:0] split_then_tmask,
+    input logic [NUM_THREADS_P-1:0] split_else_tmask,
+    input logic [PC_WIDTH_P-1:0]    split_next_pc,
+    input logic                     sjoin_vld,
+    input logic [DV_STACK_SIZE_WIDTH_P-1:0] sjoin_stack_ptr,
+    output wire                         join_vld,
     output wire                         join_is_dvg,
     output wire                         join_is_else,
     output wire [WID_WIDTH_P-1:0]       join_wid,
@@ -45,13 +52,13 @@ module xrv_vx_split_join import amoeba_gpu_pkg::*; #(
     wire [DV_STACK_SIZE_WIDTH_P-1:0] ipdom_q_ptr [NUM_WARPS_P-1:0];
     wire ipdom_set [NUM_WARPS_P-1:0];
 
-    wire [(NUM_THREADS_P+PC_WIDTH_P)-1:0] ipdom_q0 = {split.then_tmask | split.else_tmask, PC_WIDTH_P'(0)};
-    wire [(NUM_THREADS_P+PC_WIDTH_P)-1:0] ipdom_q1 = {split.else_tmask, split.next_pc};
+    wire [(NUM_THREADS_P+PC_WIDTH_P)-1:0] ipdom_q0 = {split_then_tmask | split_else_tmask, PC_WIDTH_P'(0)};
+    wire [(NUM_THREADS_P+PC_WIDTH_P)-1:0] ipdom_q1 = {split_else_tmask, split_next_pc};
 
-    wire sjoin_is_dvg = (sjoin.stack_ptr != ipdom_q_ptr[wid]);
+    wire sjoin_is_dvg = (sjoin_stack_ptr != ipdom_q_ptr[wid]);
 
-    wire ipdom_push = valid && split.valid && split.is_dvg;
-    wire ipdom_pop = valid && sjoin.valid && sjoin_is_dvg;
+    wire ipdom_push = vld && split_vld && split_is_dvg;
+    wire ipdom_pop = vld && sjoin_vld && sjoin_is_dvg;
 
     for (genvar i = 0; i < NUM_WARPS_P; ++i) begin : g_ipdom_stacks
         xrv_vx_ipdom_stack #(
@@ -73,15 +80,15 @@ module xrv_vx_split_join import amoeba_gpu_pkg::*; #(
     end
 
     xrv_pipe_register #(
-        .DATAW  (1 + 1 + 1 + WID_WIDTH_P + NUM_THREADS_P + PC_WIDTH_P),
-        .DEPTH  (1),
-        .RESETW (1)
+        .DATA_WIDTH_P   (1 + 1 + 1 + WID_WIDTH_P + NUM_THREADS_P + PC_WIDTH_P),
+        .DEPTH_P        (1),
+        .RESET_WIDTH_P  (1)
     ) pipe_reg (
         .clk_i      (clk_i),
         .rst_i      (rst_i),
-        .enable     (1'b1),
-        .data_in    ({valid && sjoin.valid, sjoin_is_dvg, ipdom_set[wid], wid, ipdom_data[wid]}),
-        .data_out   ({join_valid, join_is_dvg, join_is_else, join_wid, {join_tmask, join_pc}})
+        .en_i       (1'b1),
+        .data_i     ({vld && sjoin_vld, sjoin_is_dvg, ipdom_set[wid], wid, ipdom_data[wid]}),
+        .data_o     ({join_vld, join_is_dvg, join_is_else, join_wid, {join_tmask, join_pc}})
     );
 
     assign stack_ptr = ipdom_q_ptr[stack_wid];

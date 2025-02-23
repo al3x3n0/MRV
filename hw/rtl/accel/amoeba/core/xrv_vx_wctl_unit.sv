@@ -17,11 +17,15 @@ module xrv_vx_wctl_unit import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID       = "",
     parameter NUM_LANES_P               = 1,
     ////////////////////////////////////////////////////////////////////////////////
+    parameter UUID_WIDTH_P              = "inv",
+    parameter XLEN_P                    = "inv",
+    parameter PC_WIDTH_P                = XLEN_P,
     parameter NUM_THREADS_P             = "inv",
     parameter NUM_WARPS_P               = "inv",
+    parameter NUM_BARRIERS_P            = "inv",
     parameter WID_WIDTH_P               = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P               = `XM_CLOG2(NUM_THREADS_P),
-    parameter PC_WIDTH_P                = "inv",
+    parameter BAR_ID_WIDTH_P            = `XM_CLOG2(NUM_BARRIERS_P),
     parameter DV_STACK_SIZE_WIDTH_P     = "inv"
     ////////////////////////////////////////////////////////////////////////////////
 ) (
@@ -34,16 +38,41 @@ module xrv_vx_wctl_unit import amoeba_gpu_pkg::*; #(
 );
     `XM_UNUSED_SPARAM (INSTANCE_ID)
     localparam LANE_BITS        = `XM_CLOG2(NUM_LANES_P);
-    localparam WCTL_WIDTH_LP    = $bits(tmc_t) + $bits(wspawn_t) + $bits(split_t) + $bits(join_t) + $bits(barrier_t);
+    localparam TMC_BITS_LP      = 1 + NUM_THREADS_P;
+    localparam WSPAWN_BITS_LP   = 1 + NUM_WARPS_P + PC_WIDTH_P;
+    localparam SPLIT_BITS_LP    = 1 + 1 + NUM_THREADS_P + NUM_THREADS_P + PC_WIDTH_P;
+    localparam JOIN_BITS_LP     = 1 + DV_STACK_SIZE_WIDTH_P;
+    localparam BARRIER_BITS_LP  = 1 + BAR_ID_WIDTH_P + 1 + WID_WIDTH_P + 1; // FIXME
+    localparam WCTL_WIDTH_LP    = TMC_BITS_LP + WSPAWN_BITS_LP + SPLIT_BITS_LP + JOIN_BITS_LP + BARRIER_BITS_LP;
     localparam DATA_WIDTH_P     = UUID_WIDTH_P + WID_WIDTH_P + NUM_LANES_P + PC_WIDTH_P + VX_NR_BITS + 1 + WCTL_WIDTH_LP + DV_STACK_SIZE_WIDTH_P;
 
     `XM_UNUSED_VAR (execute_if.data.rs3_data)
 
-    tmc_t       tmc, tmc_r;
-    wspawn_t    wspawn, wspawn_r;
-    split_t     split, split_r;
-    join_t      sjoin, sjoin_r;
-    barrier_t   barrier, barrier_r;
+    logic tmc_vld, tmc_vld_r;
+    logic [NUM_THREADS_P-1:0] tmc_tmask, tmc_tmask_r;
+
+    logic wspawn_vld, wspawn_vld_r;
+    logic [NUM_WARPS_P-1:0] wspawn_wmask, wspawn_wmask_r;
+    logic [PC_WIDTH_P-1:0] wspawn_pc, wspawn_pc_r;
+
+    logic split_vld, split_vld_r;
+    logic split_is_dvg, split_is_dvg_r;
+    logic [NUM_THREADS_P-1:0] split_then_tmask, split_then_tmask_r;
+    logic [NUM_THREADS_P-1:0] split_else_tmask, split_else_tmask_r;
+    logic [PC_WIDTH_P-1:0] split_next_pc, split_next_pc_r;
+
+    logic sjoin_vld, sjoin_vld_r;
+    logic [DV_STACK_SIZE_WIDTH_P-1:0] sjoin_stack_ptr, sjoin_stack_ptr_r;
+
+    logic                   barrier_vld, barrier_vld_r;
+    logic [BAR_ID_WIDTH_P-1:0] barrier_id, barrier_id_r;
+    logic                   barrier_is_global, barrier_is_global_r;
+`ifdef GBAR_ENABLE
+    logic [`XM_MAX(WID_WIDTH_P, CORE_ID_WIDTH_P)-1:0] barrier_size_m1, barrier_size_m1_r;
+`else
+    logic [WID_WIDTH_P-1:0]   barrier_size_m1, barrier_size_m1_r;
+`endif
+    logic                   barrier_is_noop, barrier_is_noop_r;
 
     wire is_wspawn = (execute_if.data.op_type == VX_INST_SFU_WSPAWN);
     wire is_tmc    = (execute_if.data.op_type == VX_INST_SFU_TMC);
@@ -77,7 +106,7 @@ module xrv_vx_wctl_unit import amoeba_gpu_pkg::*; #(
         else_tmask_n = ~taken & execute_if.data.tmask;
     end
     always @(posedge clk_i) begin
-        if (execute_if.valid) begin
+        if (execute_if.vld) begin
             then_tmask_r <= then_tmask_n;
             else_tmask_r <= else_tmask_n;
         end
@@ -88,8 +117,8 @@ module xrv_vx_wctl_unit import amoeba_gpu_pkg::*; #(
     // tmc / pred
 
     wire [NUM_THREADS_P-1:0] pred_mask = has_then ? then_tmask_n : rs2_data[NUM_THREADS_P-1:0];
-    assign tmc.valid = (is_tmc || is_pred);
-    assign tmc.tmask = is_pred ? pred_mask : rs1_data[NUM_THREADS_P-1:0];
+    assign tmc_vld = (is_tmc || is_pred);
+    assign tmc_tmask = is_pred ? pred_mask : rs1_data[NUM_THREADS_P-1:0];
 
     // split
 
@@ -100,64 +129,114 @@ module xrv_vx_wctl_unit import amoeba_gpu_pkg::*; #(
     wire [NUM_THREADS_P-1:0] taken_tmask = then_first ? then_tmask_n : else_tmask_n;
     wire [NUM_THREADS_P-1:0] ntaken_tmask = then_first ? else_tmask_n : then_tmask_n;
 
-    assign split.valid      = is_split;
-    assign split.is_dvg     = has_then && has_else;
-    assign split.then_tmask = taken_tmask;
-    assign split.else_tmask = ntaken_tmask;
-    assign split.next_pc    = execute_if.data.PC + PC_WIDTH_P'(2);
+    assign split_vld      = is_split;
+    assign split_is_dvg     = has_then && has_else;
+    assign split_then_tmask = taken_tmask;
+    assign split_else_tmask = ntaken_tmask;
+    assign split_next_pc    = execute_if.data.PC + PC_WIDTH_P'(2);
 
     assign warp_ctl_if.dvstack_wid = execute_if.data.wid;
     wire [DV_STACK_SIZE_WIDTH_P-1:0] dvstack_ptr;
 
     // join
 
-    assign sjoin.valid      = is_join;
-    assign sjoin.stack_ptr  = rs1_data[DV_STACK_SIZE_WIDTH_P-1:0];
+    assign sjoin_vld      = is_join;
+    assign sjoin_stack_ptr  = rs1_data[DV_STACK_SIZE_WIDTH_P-1:0];
 
     // barrier
-    assign barrier.valid    = is_bar;
-    assign barrier.id       = rs1_data[BAR_ID_WIDTH_P-1:0];
+    assign barrier_vld    = is_bar;
+    assign barrier_id       = rs1_data[BAR_ID_WIDTH_P-1:0];
 `ifdef GBAR_ENABLE
-    assign barrier.is_global = rs1_data[31];
+    assign barrier_is_global = rs1_data[31];
 `else
-    assign barrier.is_global = 1'b0;
+    assign barrier_is_global = 1'b0;
 `endif
-    assign barrier.size_m1  = rs2_data[$bits(barrier.size_m1)-1:0] - $bits(barrier.size_m1)'(1);
-    assign barrier.is_noop  = (rs2_data[$bits(barrier.size_m1)-1:0] == $bits(barrier.size_m1)'(1));
+    assign barrier_size_m1  = rs2_data[$bits(barrier_size_m1)-1:0] - $bits(barrier_size_m1)'(1);
+    assign barrier_is_noop  = (rs2_data[$bits(barrier_size_m1)-1:0] == $bits(barrier_size_m1)'(1));
 
     // wspawn
 
-    wire [NUM_WARPS_P-1:0] wspawn_wmask;
     for (genvar i = 0; i < NUM_WARPS_P; ++i) begin : g_wspawn_wmask
         assign wspawn_wmask[i] = (i < rs1_data[WID_WIDTH_P:0]) && (i != execute_if.data.wid);
     end
-    assign wspawn.valid = is_wspawn;
-    assign wspawn.wmask = wspawn_wmask;
-    assign wspawn.pc    = rs2_data[1 +: PC_WIDTH_P];
+    assign wspawn_vld = is_wspawn;
+    assign wspawn_pc    = rs2_data[1 +: PC_WIDTH_P];
 
     // response
 
     xrv_elastic_buffer #(
         .DATA_WIDTH_P   (DATA_WIDTH_P),
-        .SIZE           (2)
+        .SIZE_P         (2)
     ) rsp_buf (
         .clk_i      (clk_i),
         .rst_i      (rst_i),
-        .valid_in   (execute_if.valid),
-        .ready_in   (execute_if.ready),
-        .data_in    ({execute_if.data.uuid, execute_if.data.wid, execute_if.data.tmask, execute_if.data.PC, execute_if.data.rd, execute_if.data.wb, {tmc, wspawn, split, sjoin, barrier}, warp_ctl_if.dvstack_ptr}),
-        .data_out   ({commit_if.data.uuid, commit_if.data.wid, commit_if.data.tmask, commit_if.data.PC, commit_if.data.rd, commit_if.data.wb, {tmc_r, wspawn_r, split_r, sjoin_r, barrier_r}, dvstack_ptr}),
-        .valid_out  (commit_if.valid),
-        .ready_out  (commit_if.ready)
+        .vld_i      (execute_if.vld),
+        .rdy_i      (execute_if.rdy),
+        .data_i     ({
+            execute_if.data.uuid,
+            execute_if.data.wid,
+            execute_if.data.tmask,
+            execute_if.data.PC,
+            execute_if.data.rd,
+            execute_if.data.wb,
+            {
+                tmc_vld, tmc_tmask,
+                wspawn_vld, wspawn_wmask, wspawn_pc,
+                split_vld, split_is_dvg, split_then_tmask, split_else_tmask, split_next_pc,
+                sjoin_vld, sjoin_stack_ptr,
+                {
+                    barrier_vld,
+                    barrier_id,
+                    barrier_is_global,
+                    barrier_size_m1,
+                    barrier_is_noop
+                }
+            },
+            warp_ctl_if.dvstack_ptr}),
+        .data_o     ({
+            commit_if.data.uuid,
+            commit_if.data.wid,
+            commit_if.data.tmask,
+            commit_if.data.PC,
+            commit_if.data.rd,
+            commit_if.data.wb,
+            {
+                tmc_vld_r, tmc_tmask_r,
+                wspawn_vld_r, wspawn_wmask_r, wspawn_pc_r,
+                split_vld_r, split_is_dvg_r, split_then_tmask_r, split_else_tmask_r, split_next_pc_r,
+                sjoin_vld_r, sjoin_stack_ptr_r,
+                {
+                    barrier_vld_r,
+                    barrier_id_r,
+                    barrier_is_global_r,
+                    barrier_size_m1_r,
+                    barrier_is_noop_r
+                }
+            },
+            dvstack_ptr}),
+        .vld_o      (commit_if.vld),
+        .rdy_o      (commit_if.rdy)
     );
 
-    assign warp_ctl_if.valid   = commit_if.valid && commit_if.ready;
-    assign warp_ctl_if.wid     = commit_if.data.wid;
-    assign warp_ctl_if.tmc     = tmc_r;
-    assign warp_ctl_if.wspawn  = wspawn_r;
-    assign warp_ctl_if.split   = split_r;
-    assign warp_ctl_if.sjoin   = sjoin_r;
-    assign warp_ctl_if.barrier = barrier_r;
+    assign warp_ctl_if.vld              = commit_if.vld && commit_if.rdy;
+    assign warp_ctl_if.wid              = commit_if.data.wid;
+    assign warp_ctl_if.tmc_vld          = tmc_vld_r;
+    assign warp_ctl_if.tmc_tmask        = tmc_tmask_r;
+    assign warp_ctl_if.wspawn_vld       = wspawn_vld_r;
+    assign warp_ctl_if.wspawn_wmask     = wspawn_wmask_r;
+    assign warp_ctl_if.wspawn_pc        = wspawn_pc_r;
+    assign warp_ctl_if.split_vld        = split_vld_r;
+    assign warp_ctl_if.split_is_dvg     = split_is_dvg_r;
+    assign warp_ctl_if.split_then_tmask = split_then_tmask_r;
+    assign warp_ctl_if.split_else_tmask = split_else_tmask_r;
+    assign warp_ctl_if.split_next_pc    = split_next_pc_r;    
+    assign warp_ctl_if.sjoin_vld        = sjoin_vld_r;
+    assign warp_ctl_if.sjoin_stack_ptr  = sjoin_stack_ptr_r;
+    assign warp_ctl_if.barrier_vld      = barrier_vld_r;
+    assign warp_ctl_if.barrier_id       = barrier_id_r;
+    assign warp_ctl_if.barrier_is_global = barrier_is_global_r;
+    assign warp_ctl_if.barrier_size_m1  = barrier_size_m1_r;
+    assign warp_ctl_if.barrier_is_noop  = barrier_is_noop_r;
 
     for (genvar i = 0; i < NUM_LANES_P; ++i) begin : g_commit_if
         assign commit_if.data.data[i] = XLEN_P'(dvstack_ptr);

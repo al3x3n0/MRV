@@ -17,11 +17,15 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID   = "",
     parameter CORE_ID               = 0,
     ////////////////////////////////////////////////////////////////////////////////
+    parameter XLEN_P                = "inv",
+    parameter PC_WIDTH_P            = XLEN_P,
     parameter NUM_THREADS_P         = "inv",
     parameter NUM_WARPS_P           = "inv",
+    parameter NUM_BARRIERS_P        = "inv",
     parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P           = `XM_CLOG2(NUM_THREADS_P),
-    parameter PC_WIDTH_P            = "inv",
+    parameter BAR_ID_WIDTH_P        = `XM_CLOG2(NUM_BARRIERS_P),
+    parameter UUID_WIDTH_P          = "inv",
     ////////////////////////////////////////////////////////////////////////////////
     parameter NUM_ALU_BLOCKS_P      = "inv"
 ) (
@@ -33,7 +37,7 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
 `endif
 
     // configuration
-    input base_dcrs_t       base_dcrs,
+    input xrv_vx_base_dcrs_if       base_dcrs,
 
     // inputsdecode_if
     xrv_vx_warp_ctl_if.slave        warp_ctl_if,
@@ -63,11 +67,11 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
     wire [WID_WIDTH_P-1:0]    schedule_wid;
     wire [NUM_THREADS_P-1:0] schedule_tmask;
     wire [PC_WIDTH_P-1:0]     schedule_pc;
-    wire                    schedule_valid;
-    wire                    schedule_ready;
+    wire                    schedule_vld;
+    wire                    schedule_rdy;
 
     // split/join
-    wire                    join_valid;
+    wire                    join_vld;
     wire                    join_is_dvg;
     wire                    join_is_else;
     wire [WID_WIDTH_P-1:0]    join_wid;
@@ -78,16 +82,16 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
 
     reg [NUM_WARPS_P-1:0][UUID_WIDTH_P-1:0] issued_instrs;
 
-    wire schedule_fire = schedule_valid && schedule_ready;
-    wire schedule_if_fire = schedule_if.valid && schedule_if.ready;
+    wire schedule_fire = schedule_vld && schedule_rdy;
+    wire schedule_if_fire = schedule_if.vld && schedule_if.rdy;
 
     // branch
-    wire [NUM_ALU_BLOCKS_P-1:0]                  branch_valid;
+    wire [NUM_ALU_BLOCKS_P-1:0]                  branch_vld;
     wire [NUM_ALU_BLOCKS_P-1:0][WID_WIDTH_P-1:0]   branch_wid;
     wire [NUM_ALU_BLOCKS_P-1:0]                  branch_taken;
     wire [NUM_ALU_BLOCKS_P-1:0][PC_WIDTH_P-1:0]    branch_dest;
     for (genvar i = 0; i < NUM_ALU_BLOCKS_P; ++i) begin : g_branch_init
-        assign branch_valid[i] = branch_ctl_if[i].valid;
+        assign branch_vld[i] = branch_ctl_if[i].vld;
         assign branch_wid[i]   = branch_ctl_if[i].wid;
         assign branch_taken[i] = branch_ctl_if[i].taken;
         assign branch_dest[i]  = branch_ctl_if[i].dest;
@@ -99,14 +103,16 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
     reg [NUM_WARPS_P-1:0] barrier_stalls, barrier_stalls_n;
     reg [NUM_WARPS_P-1:0] curr_barrier_mask_p1;
 `ifdef GBAR_ENABLE
-    reg gbar_req_valid;
+    reg gbar_req_vld;
     reg [`NB_WIDTH-1:0] gbar_req_id;
     reg [`NC_WIDTH-1:0] gbar_req_size_m1;
 `endif
 
     // wspawn
-    wspawn_t wspawn;
-    reg [WID_WIDTH_P-1:0] wspawn_wid;
+    logic                       wspawn_vld;
+    logic [NUM_WARPS_P-1:0]     wspawn_wmask;
+    logic [PC_WIDTH_P-1:0]      wspawn_pc;
+    reg [WID_WIDTH_P-1:0]       wspawn_wid;
     reg is_single_warp;
 
     wire [`XM_CLOG2(NUM_WARPS_P+1)-1:0] active_warps_cnt;
@@ -122,34 +128,34 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
         warp_pcs_n      = warp_pcs;
 
         // wspawn handling
-        if (wspawn.valid && is_single_warp) begin
-            active_warps_n |= wspawn.wmask;
+        if (wspawn_vld && is_single_warp) begin
+            active_warps_n |= wspawn_wmask;
             for (integer i = 0; i < NUM_WARPS_P; ++i) begin
-                if (wspawn.wmask[i]) begin
+                if (wspawn_wmask[i]) begin
                     thread_masks_n[i][0] = 1;
-                    warp_pcs_n[i] = wspawn.pc;
+                    warp_pcs_n[i] = wspawn_pc;
                 end
             end
             stalled_warps_n[wspawn_wid] = 0; // unlock warp
         end
 
         // TMC handling
-        if (warp_ctl_if.valid && warp_ctl_if.tmc.valid) begin
-            active_warps_n[warp_ctl_if.wid]  = (warp_ctl_if.tmc.tmask != 0);
-            thread_masks_n[warp_ctl_if.wid]  = warp_ctl_if.tmc.tmask;
+        if (warp_ctl_if.vld && warp_ctl_if.tmc_vld) begin
+            active_warps_n[warp_ctl_if.wid]  = (warp_ctl_if.tmc_tmask != 0);
+            thread_masks_n[warp_ctl_if.wid]  = warp_ctl_if.tmc_tmask;
             stalled_warps_n[warp_ctl_if.wid] = 0; // unlock warp
         end
 
         // split handling
-        if (warp_ctl_if.valid && warp_ctl_if.split.valid) begin
-            if (warp_ctl_if.split.is_dvg) begin
-                thread_masks_n[warp_ctl_if.wid] = warp_ctl_if.split.then_tmask;
+        if (warp_ctl_if.vld && warp_ctl_if.split_vld) begin
+            if (warp_ctl_if.split_is_dvg) begin
+                thread_masks_n[warp_ctl_if.wid] = warp_ctl_if.split_then_tmask;
             end
             stalled_warps_n[warp_ctl_if.wid] = 0; // unlock warp
         end
 
         // join handling
-        if (join_valid) begin
+        if (join_vld) begin
             if (join_is_dvg) begin
                 if (join_is_else) begin
                     warp_pcs_n[join_wid] = join_pc;
@@ -160,27 +166,27 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
         end
 
         // barrier handling
-        curr_barrier_mask_p1 = barrier_masks[warp_ctl_if.barrier.id];
+        curr_barrier_mask_p1 = barrier_masks[warp_ctl_if.barrier_id];
         curr_barrier_mask_p1[warp_ctl_if.wid] = 1;
-        if (warp_ctl_if.valid && warp_ctl_if.barrier.valid) begin
-            if (~warp_ctl_if.barrier.is_noop) begin
-                if (~warp_ctl_if.barrier.is_global
-                 && (barrier_ctrs[warp_ctl_if.barrier.id] == WID_WIDTH_P'(warp_ctl_if.barrier.size_m1))) begin
-                    barrier_ctrs_n[warp_ctl_if.barrier.id] = '0; // rst_i barrier counter
-                    barrier_masks_n[warp_ctl_if.barrier.id] = '0; // rst_i barrier mask
-                    stalled_warps_n &= ~barrier_masks[warp_ctl_if.barrier.id]; // unlock warps
+        if (warp_ctl_if.vld && warp_ctl_if.barrier_vld) begin
+            if (~warp_ctl_if.barrier_is_noop) begin
+                if (~warp_ctl_if.barrier_is_global
+                 && (barrier_ctrs[warp_ctl_if.barrier_id] == WID_WIDTH_P'(warp_ctl_if.barrier_size_m1))) begin
+                    barrier_ctrs_n[warp_ctl_if.barrier_id] = '0; // rst_i barrier counter
+                    barrier_masks_n[warp_ctl_if.barrier_id] = '0; // rst_i barrier mask
+                    stalled_warps_n &= ~barrier_masks[warp_ctl_if.barrier_id]; // unlock warps
                     stalled_warps_n[warp_ctl_if.wid] = 0; // unlock warp
                 end else begin
-                    barrier_ctrs_n[warp_ctl_if.barrier.id] = barrier_ctrs[warp_ctl_if.barrier.id] + WID_WIDTH_P'(1);
-                    barrier_masks_n[warp_ctl_if.barrier.id] = curr_barrier_mask_p1;
+                    barrier_ctrs_n[warp_ctl_if.barrier_id] = barrier_ctrs[warp_ctl_if.barrier_id] + WID_WIDTH_P'(1);
+                    barrier_masks_n[warp_ctl_if.barrier_id] = curr_barrier_mask_p1;
                 end
             end else begin
                 stalled_warps_n[warp_ctl_if.wid] = 0; // unlock warp
             end
         end
     `ifdef GBAR_ENABLE
-        if (gbar_bus_if.rsp_valid && (gbar_req_id == gbar_bus_if.rsp_data.id)) begin
-            barrier_ctrs_n[warp_ctl_if.barrier.id] = '0; // rst_i barrier counter
+        if (gbar_bus_if.rsp_vld && (gbar_req_id == gbar_bus_if.rsp_data.id)) begin
+            barrier_ctrs_n[warp_ctl_if.barrier_id] = '0; // rst_i barrier counter
             barrier_masks_n[gbar_bus_if.rsp_data.id] = '0; // rst_i barrier mask
             stalled_warps_n = '0; // unlock all warps
         end
@@ -188,7 +194,7 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
 
         // Branch handling
         for (integer i = 0; i < NUM_ALU_BLOCKS_P; ++i) begin
-            if (branch_valid[i]) begin
+            if (branch_vld[i]) begin
                 if (branch_taken[i]) begin
                     warp_pcs_n[branch_wid[i]] = branch_dest[i];
                 end
@@ -197,7 +203,7 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
         end
 
         // decode unlock
-        if (decode_sched_if.valid && decode_sched_if.unlock) begin
+        if (decode_sched_if.vld && decode_sched_if.unlock) begin
             stalled_warps_n[decode_sched_if.wid] = 0;
         end
 
@@ -224,7 +230,7 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
             barrier_masks   <= '0;
             barrier_ctrs    <= '0;
         `ifdef GBAR_ENABLE
-            gbar_req_valid  <= 0;
+            gbar_req_vld  <= 0;
         `endif
             stalled_warps   <= '0;
             warp_pcs        <= '0;
@@ -233,7 +239,7 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
             barrier_stalls  <= '0;
             issued_instrs   <= '0;
             cycles          <= '0;
-            wspawn.valid    <=  0;
+            wspawn_vld    <=  0;
 
             // activate first warp
             warp_pcs[0]     <= base_dcrs.startup_addr[1 +: PC_WIDTH_P];
@@ -251,28 +257,28 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
             is_single_warp <= (active_warps_cnt == $bits(active_warps_cnt)'(1));
 
             // wspawn handling
-            if (warp_ctl_if.valid && warp_ctl_if.wspawn.valid) begin
-                wspawn.valid <= 1;
-                wspawn.wmask <= warp_ctl_if.wspawn.wmask;
-                wspawn.pc    <= warp_ctl_if.wspawn.pc;
+            if (warp_ctl_if.vld && warp_ctl_if.wspawn_vld) begin
+                wspawn_vld <= 1;
+                wspawn_wmask <= warp_ctl_if.wspawn_wmask;
+                wspawn_pc    <= warp_ctl_if.wspawn_pc;
                 wspawn_wid   <= warp_ctl_if.wid;
             end
-            if (wspawn.valid && is_single_warp) begin
-                wspawn.valid <= 0;
+            if (wspawn_vld && is_single_warp) begin
+                wspawn_vld <= 0;
             end
 
             // global barrier scheduling
         `ifdef GBAR_ENABLE
-            if (warp_ctl_if.valid && warp_ctl_if.barrier.valid
-             && warp_ctl_if.barrier.is_global
-             && !warp_ctl_if.barrier.is_noop
+            if (warp_ctl_if.vld && warp_ctl_if.barrier_vld
+             && warp_ctl_if.barrier_is_global
+             && !warp_ctl_if.barrier_is_noop
              && (curr_barrier_mask_p1 == active_warps)) begin
-                gbar_req_valid <= 1;
-                gbar_req_id <= warp_ctl_if.barrier.id;
-                gbar_req_size_m1 <= `NC_WIDTH'(warp_ctl_if.barrier.size_m1);
+                gbar_req_vld <= 1;
+                gbar_req_id <= warp_ctl_if.barrier_id;
+                gbar_req_size_m1 <= `NC_WIDTH'(warp_ctl_if.barrier_size_m1);
             end
-            if (gbar_bus_if.req_valid && gbar_bus_if.req_ready) begin
-                gbar_req_valid <= 0;
+            if (gbar_bus_if.req_vld && gbar_bus_if.req_rdy) begin
+                gbar_req_vld <= 0;
             end
         `endif
 
@@ -289,7 +295,7 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
     // barrier handling
 
 `ifdef GBAR_ENABLE
-    assign gbar_bus_if.req_valid        = gbar_req_valid;
+    assign gbar_bus_if.req_vld        = gbar_req_vld;
     assign gbar_bus_if.req_data.id      = gbar_req_id;
     assign gbar_bus_if.req_data.size_m1 = gbar_req_size_m1;
     assign gbar_bus_if.req_data.core_id = `NC_WIDTH'(CORE_ID % `NUM_CORES);
@@ -300,33 +306,38 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
     xrv_vx_split_join #(
         .INSTANCE_ID (`SFORMATF(("%s-splitjoin", INSTANCE_ID)))
     ) split_join (
-        .clk_i        (clk_i),
-        .rst_i      (rst_i),
-        .valid      (warp_ctl_if.valid),
-        .wid        (warp_ctl_if.wid),
-        .split      (warp_ctl_if.split),
-        .sjoin      (warp_ctl_if.sjoin),
-        .join_valid (join_valid),
-        .join_is_dvg(join_is_dvg),
-        .join_is_else(join_is_else),
-        .join_wid   (join_wid),
-        .join_tmask (join_tmask),
-        .join_pc    (join_pc),
-        .stack_wid  (warp_ctl_if.dvstack_wid),
-        .stack_ptr  (warp_ctl_if.dvstack_ptr)
+        .clk_i          (clk_i),
+        .rst_i          (rst_i),
+        .vld            (warp_ctl_if.vld),
+        .wid            (warp_ctl_if.wid),
+        .split_vld          (warp_ctl_if.split_vld),
+        .split_is_dvg       (warp_ctl_if.split_is_dvg),
+        .split_then_tmask   (warp_ctl_if.split_then_tmask),
+        .split_else_tmask   (warp_ctl_if.split_else_tmask),
+        .split_next_pc      (warp_ctl_if.split_next_pc),
+        .sjoin_vld          (warp_ctl_if.sjoin_vld),
+        .sjoin_stack_ptr    (warp_ctl_if.sjoin_stack_ptr),
+        .join_vld       (join_vld),
+        .join_is_dvg    (join_is_dvg),
+        .join_is_else   (join_is_else),
+        .join_wid       (join_wid),
+        .join_tmask     (join_tmask),
+        .join_pc        (join_pc),
+        .stack_wid      (warp_ctl_if.dvstack_wid),
+        .stack_ptr      (warp_ctl_if.dvstack_ptr)
     );
 
-    // schedule the next ready warp
+    // schedule the next rdy warp
 
-    wire [NUM_WARPS_P-1:0] ready_warps = active_warps & ~stalled_warps;
+    wire [NUM_WARPS_P-1:0] rdy_warps = active_warps & ~stalled_warps;
 
     xrv_lzc #(
-        .N (NUM_WARPS_P),
-        .REVERSE (1)
+        .N              (NUM_WARPS_P),
+        .REVERSE_P      (1)
     ) wid_select (
-        .data_in   (ready_warps),
-        .data_out  (schedule_wid),
-        .valid_out (schedule_valid)
+        .data_i         (rdy_warps),
+        .data_o         (schedule_wid),
+        .vld_o          (schedule_vld)
     );
 
     wire [NUM_WARPS_P-1:0][(NUM_THREADS_P + PC_WIDTH_P)-1:0] schedule_data;
@@ -356,18 +367,18 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
 `endif
 
     xrv_elastic_buffer #(
-        .DATAW (NUM_THREADS_P + PC_WIDTH_P + WID_WIDTH_P + UUID_WIDTH_P),
-        .SIZE  (2),  // need to buffer out ready_in
-        .OUT_REG (1) // should be registered for BRAM acces in fetch unit
+        .DATA_WIDTH_P   (NUM_THREADS_P + PC_WIDTH_P + WID_WIDTH_P + UUID_WIDTH_P),
+        .SIZE_P         (2),  // need to buffer out rdy_in
+        .OUT_REG        (1) // should be registered for BRAM acces in fetch unit
     ) out_buf (
-        .clk_i       (clk_i),
-        .rst_i     (rst_i),
-        .valid_in  (schedule_valid),
-        .ready_in  (schedule_ready),
-        .data_in   ({schedule_tmask, schedule_pc, schedule_wid, instr_uuid}),
-        .data_out  ({schedule_if.data.tmask, schedule_if.data.PC, schedule_if.data.wid, schedule_if.data.uuid}),
-        .valid_out (schedule_if.valid),
-        .ready_out (schedule_if.ready)
+        .clk_i      (clk_i),
+        .rst_i      (rst_i),
+        .vld_i      (schedule_vld),
+        .rdy_i      (schedule_rdy),
+        .data_i     ({schedule_tmask, schedule_pc, schedule_wid, instr_uuid}),
+        .data_o     ({schedule_if.data.tmask, schedule_if.data.PC, schedule_if.data.wid, schedule_if.data.uuid}),
+        .vld_o      (schedule_if.vld),
+        .rdy_o      (schedule_if.rdy)
     );
 
     // Track pending instructions per warp
@@ -411,7 +422,7 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
             timeout_ctr    <= '0;
             timeout_enable <= 0;
         end else begin
-            if (decode_sched_if.valid && decode_sched_if.unlock) begin
+            if (decode_sched_if.vld && decode_sched_if.unlock) begin
                 timeout_enable <= 1;
             end
             if (timeout_enable && active_warps !=0 && active_warps == stalled_warps) begin
@@ -427,8 +438,8 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
     reg [`PERF_CTR_BITS-1:0] perf_sched_idles;
     reg [`PERF_CTR_BITS-1:0] perf_sched_stalls;
 
-    wire schedule_idle = ~schedule_valid;
-    wire schedule_stall = schedule_if.valid && ~schedule_if.ready;
+    wire schedule_idle = ~schedule_vld;
+    wire schedule_stall = schedule_if.vld && ~schedule_if.rdy;
 
     always @(posedge clk_i) begin
         if (rst_i) begin

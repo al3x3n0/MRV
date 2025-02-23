@@ -11,30 +11,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+`include "xm_macro.svh"
 
-interface xrv_vx_branch_ctl_if #(
-    parameter PC_WIDTH_P    = "inv",
+interface xrv_vx_decode_sched_if #(
     parameter NUM_WARPS_P   = "inv",
     parameter WID_WIDTH_P   = `XM_CLOG2(NUM_WARPS_P)
-) ();
+);
 
     wire                    vld;
+    wire                    unlock;
     wire [WID_WIDTH_P-1:0]  wid;
-    wire                    taken;
-    wire [PC_WIDTH_P-1:0]   dest;
 
     modport master (
         output vld,
-        output wid,
-        output taken,
-        output dest
+        output unlock,
+        output wid
     );
 
     modport slave (
         input vld,
-        input wid,
-        input taken,
-        input dest
+        input unlock,
+        input wid
     );
 
 endinterface

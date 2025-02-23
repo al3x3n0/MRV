@@ -12,29 +12,12 @@
 // limitations under the License.
 
 
-interface xrv_vx_branch_ctl_if #(
-    parameter PC_WIDTH_P    = "inv",
-    parameter NUM_WARPS_P   = "inv",
-    parameter WID_WIDTH_P   = `XM_CLOG2(NUM_WARPS_P)
-) ();
+interface xrv_vx_base_dcrs_if #(
+    parameter XLEN_P    = "inv"
+);
 
-    wire                    vld;
-    wire [WID_WIDTH_P-1:0]  wid;
-    wire                    taken;
-    wire [PC_WIDTH_P-1:0]   dest;
-
-    modport master (
-        output vld,
-        output wid,
-        output taken,
-        output dest
-    );
-
-    modport slave (
-        input vld,
-        input wid,
-        input taken,
-        input dest
-    );
+    logic [XLEN_P-1:0]  startup_addr;
+    logic [XLEN_P-1:0]  startup_arg;
+    logic [7:0]         mpm_class;
 
 endinterface

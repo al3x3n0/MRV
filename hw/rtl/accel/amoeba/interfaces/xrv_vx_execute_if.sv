@@ -38,20 +38,20 @@ interface xrv_vx_execute_if import amoeba_gpu_pkg::*; #(
         logic [NUM_LANES_P-1:0][XLEN_P-1:0] rs3_data;
     } data_t;
 
-    logic  valid;
+    logic  vld;
     data_t data;
-    logic  ready;
+    logic  rdy;
 
     modport master (
-        output valid,
+        output vld,
         output data,
-        input  ready
+        input  rdy
     );
 
     modport slave (
-        input  valid,
+        input  vld,
         input  data,
-        output ready
+        output rdy
     );
 
 endinterface

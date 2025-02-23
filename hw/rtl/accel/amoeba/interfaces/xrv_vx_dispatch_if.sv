@@ -14,15 +14,22 @@
 `include "xm_macro.svh"
 
 interface xrv_vx_dispatch_if import amoeba_gpu_pkg::*; #(
+    parameter XLEN_P        = "inv",
+    parameter PC_WIDTH_P    = XLEN_P,
     parameter NUM_THREADS_P = "inv",
+    parameter NUM_WARPS_P   = "inv",
     parameter TID_WIDTH_P   = `XM_LOG2UP(NUM_THREADS_P),
-    parameter PC_WIDTH_P    = "inv",
-    parameter UUID_WIDTH_P  = 1
+    parameter UUID_WIDTH_P  = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter ISSUE_WIDTH_P         = "inv",
+    parameter PER_ISSUE_WARPS_P     = (NUM_WARPS_P / ISSUE_WIDTH_P),
+    parameter ISSUE_WIS_P           = `XM_CLOG2(PER_ISSUE_WARPS_P),
+    parameter ISSUE_WIS_WIDTH_P     = `XM_UP(ISSUE_WIS_P)
 );
     // warning: this layout should not be modified without updating xrv_vx_dispatch_unit!!!
     typedef struct packed {
         logic [UUID_WIDTH_P-1:0]            uuid;
-        logic [ISSUE_WIS_W-1:0]             wis;
+        logic [ISSUE_WIS_WIDTH_P-1:0]       wis;
         logic [NUM_THREADS_P-1:0]           tmask;
         logic [PC_WIDTH_P-1:0]              PC;
         logic [VX_INST_ALU_BITS-1:0]        op_type;
@@ -35,20 +42,20 @@ interface xrv_vx_dispatch_if import amoeba_gpu_pkg::*; #(
         logic [NUM_THREADS_P-1:0][XLEN_P-1:0] rs3_data;
     } data_t;
 
-    logic  valid;
+    logic  vld;
     data_t data;
-    logic  ready;
+    logic  rdy;
 
     modport master (
-        output valid,
+        output vld,
         output data,
-        input  ready
+        input  rdy
     );
 
     modport slave (
-        input  valid,
+        input  vld,
         input  data,
-        output ready
+        output rdy
     );
 
 endinterface

@@ -17,26 +17,32 @@
 module xrv_vx_commit import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID   = "",
     ////////////////////////////////////////////////////////////////////////////////
+    parameter XLEN_P                = "inv",
+    parameter PC_WIDTH_P            = XLEN_P,
     parameter NUM_THREADS_P         = "inv",
     parameter NUM_WARPS_P           = "inv",
     parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P           = `XM_CLOG2(NUM_THREADS_P),
-    parameter PC_WIDTH_P            = "inv",
     ////////////////////////////////////////////////////////////////////////////////
-    parameter ISSUE_WIDTH_P         = "inv",
-    parameter NUM_EX_UNITS_P        = "inv",
+    parameter UUID_WIDTH_P          = "inv",
     ////////////////////////////////////////////////////////////////////////////////
-    parameter UUID_WIDTH_P          = "inv"
-    ////////////////////////////////////////////////////////////////////////////////
+    parameter ISSUE_WIDTH_P     = "inv",
+    parameter PER_ISSUE_WARPS_P = (NUM_WARPS_P / ISSUE_WIDTH_P),
+    parameter ISSUE_WIS_P       = `XM_CLOG2(PER_ISSUE_WARPS_P),
+    parameter ISSUE_WIS_WIDTH_P = `XM_UP(ISSUE_WIS_P),
+    parameter ISSUE_ISW_P       = `XM_CLOG2(ISSUE_WIDTH_P),
+    parameter ISSUE_ISW_WIDTH_P = `XM_UP(ISSUE_ISW_P)
 ) (
     input wire                      clk_i,
     input wire                      rst_i,
     ////////////////////////////////////////////////////////////////////////////////
-    xrv_vx_commit_if.slave          commit_if [NUM_EX_UNITS_P * ISSUE_WIDTH_P],
+    xrv_vx_commit_if.slave          commit_if [VX_NUM_EX_UNITS * ISSUE_WIDTH_P],
     xrv_vx_writeback_if.master      writeback_if [ISSUE_WIDTH_P],
     xrv_vx_commit_csr_if.master     commit_csr_if,
     xrv_vx_commit_sched_if.master   commit_sched_if
 );
+    `include "accel/vortex/issue_utils.svh"
+
     `XM_UNUSED_SPARAM (INSTANCE_ID)
     localparam DATA_WIDTH_P = UUID_WIDTH_P + WID_WIDTH_P + NUM_THREADS_P + PC_WIDTH_P + 1 + VX_NR_BITS + NUM_THREADS_P * XLEN_P + 1 + 1 + 1;
     localparam COMMIT_SIZEW = `XM_CLOG2(NUM_THREADS_P + 1);
@@ -52,20 +58,20 @@ module xrv_vx_commit import amoeba_gpu_pkg::*; #(
 
     for (genvar i = 0; i < ISSUE_WIDTH_P; ++i) begin : g_commit_arbs
 
-        wire [NUM_EX_UNITS_P-1:0]            vld_in;
-        wire [NUM_EX_UNITS_P-1:0][DATA_WIDTH_P-1:0] data_in;
-        wire [NUM_EX_UNITS_P-1:0]            rdy_in;
+        wire [VX_NUM_EX_UNITS-1:0]            vld_in;
+        wire [VX_NUM_EX_UNITS-1:0][DATA_WIDTH_P-1:0] data_in;
+        wire [VX_NUM_EX_UNITS-1:0]            rdy_in;
 
-        for (genvar j = 0; j < NUM_EX_UNITS_P; ++j) begin : g_data_in
+        for (genvar j = 0; j < VX_NUM_EX_UNITS; ++j) begin : g_data_in
             assign vld_in[j] = commit_if[j * ISSUE_WIDTH_P + i].vld;
             assign data_in[j]  = commit_if[j * ISSUE_WIDTH_P + i].data;
             assign commit_if[j * ISSUE_WIDTH_P + i].rdy = rdy_in[j];
         end
 
         xrv_stream_arb #(
-            .NUM_INPUTS_P   (NUM_EX_UNITS_P),
+            .NUM_INPUTS_P   (VX_NUM_EX_UNITS),
             .DATA_WIDTH_P   (DATA_WIDTH_P),
-            .ARBITER        ("P"),
+            .ARBITER_TYPE_P ("P"),
             .OUT_BUF        (1)
         ) commit_arb (
             .clk_i      (clk_i),
@@ -181,7 +187,7 @@ module xrv_vx_commit import amoeba_gpu_pkg::*; #(
 
 `ifdef DBG_TRACE_PIPELINE
     for (genvar i = 0; i < ISSUE_WIDTH_P; ++i) begin : g_trace
-        for (genvar j = 0; j < NUM_EX_UNITS_P; ++j) begin : g_j
+        for (genvar j = 0; j < VX_NUM_EX_UNITS; ++j) begin : g_j
             always @(posedge clk_i) begin
                 if (commit_if[j * ISSUE_WIDTH_P + i].vld && commit_if[j * ISSUE_WIDTH_P + i].rdy) begin
                     `TRACE(1, ("%t: %s: wid=%0d, PC=0x%0h, ex=", $time, INSTANCE_ID, commit_if[j * ISSUE_WIDTH_P + i].data.wid, {commit_if[j * ISSUE_WIDTH_P + i].data.PC, 1'b0}))

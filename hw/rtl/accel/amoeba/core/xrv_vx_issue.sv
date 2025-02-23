@@ -14,8 +14,23 @@
 `include "xm_macro.svh"
 
 module xrv_vx_issue import amoeba_gpu_pkg::*; #(
-    parameter `STRING INSTANCE_ID   = ""
+    parameter `STRING INSTANCE_ID   = "",
     ////////////////////////////////////////////////////////////////////////////////
+    parameter XLEN_P                = "inv",
+    parameter PC_WIDTH_P            = "inv",
+    parameter NUM_THREADS_P         = "inv",
+    parameter NUM_WARPS_P           = "inv",
+    parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P),
+    parameter TID_WIDTH_P           = `XM_CLOG2(NUM_THREADS_P),
+    parameter UUID_WIDTH_P          = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter ISSUE_WIDTH_P         = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter PER_ISSUE_WARPS_P     = (NUM_WARPS_P / ISSUE_WIDTH_P),
+    parameter ISSUE_WIS_P           = `XM_CLOG2(PER_ISSUE_WARPS_P),
+    parameter ISSUE_WIS_WIDTH_P     = `XM_UP(ISSUE_WIS_P),
+    parameter ISSUE_ISW_P           = `XM_CLOG2(ISSUE_WIDTH_P),
+    parameter ISSUE_ISW_WIDTH_P     = `XM_UP(ISSUE_ISW_P)
 ) (
     `SCOPE_IO_DECL
 
@@ -30,7 +45,9 @@ module xrv_vx_issue import amoeba_gpu_pkg::*; #(
     xrv_vx_writeback_if.slave   writeback_if [ISSUE_WIDTH_P],
     xrv_vx_dispatch_if.master   dispatch_if [VX_NUM_EX_UNITS * ISSUE_WIDTH_P]
 );
-    `STATIC_ASSERT ((ISSUE_WIDTH_P <= NUM_WARPS_P), ("invalid parameter"))
+    `include "accel/vortex/issue_utils.svh"
+
+    `STATIC_ASSERT ((ISSUE_WIDTH_P <= NUM_WARPS_P), ("invld parameter"))
 
 `ifdef PERF_ENABLE
     issue_perf_t per_issue_perf [ISSUE_WIDTH_P];
@@ -45,22 +62,22 @@ module xrv_vx_issue import amoeba_gpu_pkg::*; #(
     end
 `endif
 
-    wire [ISSUE_ISW_W-1:0] decode_isw = wid_to_isw(decode_if.data.wid);
-    wire [ISSUE_WIS_W-1:0] decode_wis = wid_to_wis(decode_if.data.wid);
+    wire [ISSUE_ISW_WIDTH_P-1:0] decode_isw = wid_to_isw(decode_if.data.wid);
+    wire [ISSUE_WIS_WIDTH_P-1:0] decode_wis = wid_to_wis(decode_if.data.wid);
 
-    wire [ISSUE_WIDTH_P-1:0] decode_ready_in;
-    assign decode_if.ready = decode_ready_in[decode_isw];
+    wire [ISSUE_WIDTH_P-1:0] decode_rdy_in;
+    assign decode_if.rdy = decode_rdy_in[decode_isw];
 
     `SCOPE_IO_SWITCH (ISSUE_WIDTH_P);
 
     for (genvar issue_id = 0; issue_id < ISSUE_WIDTH_P; ++issue_id) begin : g_slices
         xrv_vx_decode_if #(
-            .NUM_WARPS (PER_ISSUE_WARPS)
+            .NUM_WARPS_P (PER_ISSUE_WARPS_P)
         ) per_issue_decode_if();
 
         xrv_vx_dispatch_if per_issue_dispatch_if[VX_NUM_EX_UNITS]();
 
-        assign per_issue_decode_if.valid = decode_if.valid && (decode_isw == ISSUE_ISW_W'(issue_id));
+        assign per_issue_decode_if.vld = decode_if.vld && (decode_isw == ISSUE_ISW_WIDTH_P'(issue_id));
         assign per_issue_decode_if.data.uuid = decode_if.data.uuid;
         assign per_issue_decode_if.data.wid = decode_wis;
         assign per_issue_decode_if.data.tmask = decode_if.data.tmask;
@@ -73,9 +90,9 @@ module xrv_vx_issue import amoeba_gpu_pkg::*; #(
         assign per_issue_decode_if.data.rs1 = decode_if.data.rs1;
         assign per_issue_decode_if.data.rs2 = decode_if.data.rs2;
         assign per_issue_decode_if.data.rs3 = decode_if.data.rs3;
-        assign decode_ready_in[issue_id] = per_issue_decode_if.ready;
+        assign decode_rdy_in[issue_id] = per_issue_decode_if.rdy;
     `ifndef L1_ENABLE
-        assign decode_if.ibuf_pop[issue_id * PER_ISSUE_WARPS +: PER_ISSUE_WARPS] = per_issue_decode_if.ibuf_pop;
+        assign decode_if.ibuf_pop[issue_id * PER_ISSUE_WARPS_P +: PER_ISSUE_WARPS_P] = per_issue_decode_if.ibuf_pop;
     `endif
 
         xrv_vx_issue_slice #(

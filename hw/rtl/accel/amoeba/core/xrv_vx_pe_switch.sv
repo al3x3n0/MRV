@@ -14,8 +14,16 @@
 `include "xm_macro.svh"
 
 module xrv_vx_pe_switch import amoeba_gpu_pkg::*; #(
+    parameter XLEN_P            = "inv",
+    parameter PC_WIDTH_P        = XLEN_P,
+    parameter NUM_WARPS_P       = "inv",
+    parameter NUM_THREADS_P     = "inv",
+    parameter WID_WIDTH_P       = `XM_CLOG2(NUM_WARPS_P),
+    parameter TID_WIDTH_P       = `XM_CLOG2(NUM_THREADS_P),
+    parameter UUID_WIDTH_P      = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
     parameter PE_COUNT          = 0,
-    parameter NUM_LANES_P         = 0,
+    parameter NUM_LANES_P       = 0,
     parameter REQ_OUT_BUF       = 0,
     parameter RSP_OUT_BUF       = 0,
     parameter `STRING ARBITER   = "R",
@@ -34,9 +42,9 @@ module xrv_vx_pe_switch import amoeba_gpu_pkg::*; #(
     localparam REQ_DATA_WIDTH_P   = UUID_WIDTH_P+ WID_WIDTH_P + NUM_LANES_P + PC_WIDTH_P+ VX_INST_ALU_BITS + $bits(op_args_t) + 1 + VX_NR_BITS + TID_WIDTH_P+ (3 * NUM_LANES_P * XLEN_P) + PID_WIDTH + 1 + 1;
     localparam RSP_DATA_WIDTH_P   = UUID_WIDTH_P+ WID_WIDTH_P + NUM_LANES_P + PC_WIDTH_P+ VX_NR_BITS + 1 + NUM_LANES_P * XLEN_P + PID_WIDTH + 1 + 1;
 
-    wire [PE_COUNT-1:0] pe_req_valid;
+    wire [PE_COUNT-1:0] pe_req_vld;
     wire [PE_COUNT-1:0][REQ_DATA_WIDTH_P-1:0] pe_req_data;
-    wire [PE_COUNT-1:0] pe_req_ready;
+    wire [PE_COUNT-1:0] pe_req_rdy;
 
     xrv_tream_switch #(
         .DATA_WIDTH_P       (REQ_DATA_WIDTH_P),
@@ -47,30 +55,30 @@ module xrv_vx_pe_switch import amoeba_gpu_pkg::*; #(
         .clk_i       (clk_i),
         .rst_i     (rst_i),
         .sel_in    (pe_sel),
-        .valid_in  (execute_in_if.valid),
-        .ready_in  (execute_in_if.ready),
+        .vld_in  (execute_in_if.vld),
+        .rdy_in  (execute_in_if.rdy),
         .data_in   (execute_in_if.data),
         .data_out  (pe_req_data),
-        .valid_out (pe_req_valid),
-        .ready_out (pe_req_ready)
+        .vld_out (pe_req_vld),
+        .rdy_out (pe_req_rdy)
     );
 
     for (genvar i = 0; i < PE_COUNT; ++i) begin : g_execute_out_if
-        assign execute_out_if[i].valid = pe_req_valid[i];
+        assign execute_out_if[i].vld = pe_req_vld[i];
         assign execute_out_if[i].data = pe_req_data[i];
-        assign pe_req_ready[i] = execute_out_if[i].ready;
+        assign pe_req_rdy[i] = execute_out_if[i].rdy;
     end
 
     ///////////////////////////////////////////////////////////////////////////
 
-    wire [PE_COUNT-1:0] pe_rsp_valid;
+    wire [PE_COUNT-1:0] pe_rsp_vld;
     wire [PE_COUNT-1:0][RSP_DATA_WIDTH_P-1:0] pe_rsp_data;
-    wire [PE_COUNT-1:0] pe_rsp_ready;
+    wire [PE_COUNT-1:0] pe_rsp_rdy;
 
     for (genvar i = 0; i < PE_COUNT; ++i) begin : g_commit_in_if
-        assign pe_rsp_valid[i] = commit_in_if[i].valid;
+        assign pe_rsp_vld[i] = commit_in_if[i].vld;
         assign pe_rsp_data[i] = commit_in_if[i].data;
-        assign commit_in_if[i].ready = pe_rsp_ready[i];
+        assign commit_in_if[i].rdy = pe_rsp_rdy[i];
     end
 
     xrv_vx_stream_arb #(
@@ -81,12 +89,12 @@ module xrv_vx_pe_switch import amoeba_gpu_pkg::*; #(
     ) rsp_arb (
         .clk_i       (clk_i),
         .rst_i     (rst_i),
-        .valid_in  (pe_rsp_valid),
-        .ready_in  (pe_rsp_ready),
+        .vld_in  (pe_rsp_vld),
+        .rdy_in  (pe_rsp_rdy),
         .data_in   (pe_rsp_data),
         .data_out  (commit_out_if.data),
-        .valid_out (commit_out_if.valid),
-        .ready_out (commit_out_if.ready),
+        .vld_out (commit_out_if.vld),
+        .rdy_out (commit_out_if.rdy),
         `XM_UNUSED_PIN (sel_out)
     );
 

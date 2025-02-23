@@ -15,8 +15,18 @@
 `include "accel/vortex/xrv_vx_scope.vh"
 
 module xrv_vx_issue_slice import amoeba_gpu_pkg::*; #(
-    parameter `STRING INSTANCE_ID = "",
-    parameter ISSUE_ID = 0
+    parameter `STRING INSTANCE_ID   = "",
+    parameter ISSUE_ID              = 0,
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter XLEN_P                = "inv",
+    parameter PC_WIDTH_P            = "inv",
+    parameter NUM_THREADS_P         = "inv",
+    parameter NUM_WARPS_P           = "inv",
+    parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P),
+    parameter TID_WIDTH_P           = `XM_CLOG2(NUM_THREADS_P),
+    parameter UUID_WIDTH_P          = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter PER_ISSUE_WARPS_P     = "inv"
 ) (
     `SCOPE_IO_DECL
 
@@ -33,7 +43,7 @@ module xrv_vx_issue_slice import amoeba_gpu_pkg::*; #(
 );
     `XM_UNUSED_PARAM (ISSUE_ID)
 
-    xrv_vx_ibuffer_if ibuffer_if [PER_ISSUE_WARPS]();
+    xrv_vx_ibuffer_if ibuffer_if [PER_ISSUE_WARPS_P]();
     xrv_vx_scoreboard_if scoreboard_if();
 
     xrv_vx_operands_if #(

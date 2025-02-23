@@ -14,8 +14,11 @@
 `include "xm_macro.svh"
 
 interface xrv_vx_commit_if import amoeba_gpu_pkg::*; #(
-    parameter PC_WIDTH_P    = "inv",
+    parameter XLEN_P        = "inv",
+    parameter PC_WIDTH_P    = XLEN_P,
     parameter NUM_THREADS_P = "inv",
+    parameter NUM_WARPS_P   = "inv",
+    parameter WID_WIDTH_P   = `XM_CLOG2(NUM_WARPS_P),
     parameter NUM_LANES_P   = NUM_THREADS_P,
     parameter UUID_WIDTH_P  = 1
 );
@@ -30,20 +33,20 @@ interface xrv_vx_commit_if import amoeba_gpu_pkg::*; #(
         logic [NUM_LANES_P-1:0][XLEN_P-1:0] data;
     } data_t;
 
-    logic  valid;
+    logic  vld;
     data_t data;
-    logic  ready;
+    logic  rdy;
 
     modport master (
-        output valid,
+        output vld,
         output data,
-        input  ready
+        input  rdy
     );
 
     modport slave (
-        input  valid,
+        input  vld,
         input  data,
-        output ready
+        output rdy
     );
 
 endinterface

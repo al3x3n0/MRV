@@ -16,8 +16,12 @@
 
 module xrv_vx_execute import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID   = "",
-    parameter CORE_ID               = 0
+    parameter CORE_ID               = 0,
     ////////////////////////////////////////////////////////////////////////////////
+    parameter NUM_ALU_BLOCKS_P      = "inv",
+    parameter NUM_LSU_BLOCKS_P      = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter ISSUE_WIDTH_P         = "inv"
 ) (
     `SCOPE_IO_DECL
 
@@ -31,7 +35,7 @@ module xrv_vx_execute import amoeba_gpu_pkg::*; #(
     xrv_vx_pipeline_perf_if.slave pipeline_perf_if,
 `endif
 
-    input base_dcrs_t       base_dcrs,
+    input xrv_vx_base_dcrs_if   base_dcrs,
 
     // Dcache interface
     xrv_vx_lsu_mem_if.master    lsu_mem_if [NUM_LSU_BLOCKS_P],
@@ -74,7 +78,7 @@ module xrv_vx_execute import amoeba_gpu_pkg::*; #(
         ////////////////////////////////////////////////////////////////////////////////
         .vx_lsu_dispatch_if (dispatch_if[VX_EX_LSU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
         .vx_lsu_commit_if   (commit_if[VX_EX_LSU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
-        .vx_lsu_mem_if      (lsu_mem_if),
+        .vx_lsu_mem_if      (lsu_mem_if)
         ////////////////////////////////////////////////////////////////////////////////
 `ifdef EXT_F_ENABLE
         .vx_fpu_dispatch_if (dispatch_if[VX_EX_FPU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),

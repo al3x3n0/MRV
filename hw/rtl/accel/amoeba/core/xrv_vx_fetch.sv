@@ -17,9 +17,24 @@
 module xrv_vx_fetch import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID   = "",
     ////////////////////////////////////////////////////////////////////////////////
+    parameter XLEN_P                = "inv",
+    parameter PC_WIDTH_P            = XLEN_P,
+    parameter MEM_ADDR_WIDTH_P      = (XLEN_P == 32 ? 32 : 48),
     parameter NUM_THREADS_P         = "inv",
     parameter NUM_WARPS_P           = "inv",
-    parameter PC_WIDTH_P            = "inv"
+    parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P),
+    parameter TID_WIDTH_P           = `XM_CLOG2(NUM_THREADS_P),
+    parameter UUID_WIDTH_P          = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter IBUF_SIZE_P           = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
+    // ICache 
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter ICACHE_WORD_SIZE_P	= 4,
+    parameter ICACHE_ADDR_WIDTH_P	= (MEM_ADDR_WIDTH_P - `XM_CLOG2(ICACHE_WORD_SIZE_P)),
+    parameter ICACHE_TAG_ID_BITS_P	= WID_WIDTH_P,
+    parameter ICACHE_TAG_WIDTH_P	= (UUID_WIDTH_P + ICACHE_TAG_ID_BITS_P)
+    ////////////////////////////////////////////////////////////////////////////////
 ) (
     `SCOPE_IO_DECL
 
@@ -36,22 +51,22 @@ module xrv_vx_fetch import amoeba_gpu_pkg::*; #(
     `XM_UNUSED_SPARAM (INSTANCE_ID)
     `XM_UNUSED_VAR (rst_i)
 
-    wire icache_req_valid;
-    wire [ICACHE_ADDR_WIDTH-1:0] icache_req_addr;
-    wire [ICACHE_TAG_WIDTH-1:0] icache_req_tag;
-    wire icache_req_ready;
+    wire icache_req_vld;
+    wire [ICACHE_ADDR_WIDTH_P-1:0] icache_req_addr;
+    wire [ICACHE_TAG_WIDTH_P-1:0] icache_req_tag;
+    wire icache_req_rdy;
 
-    wire [UUID_WIDTH_P-1:0] rsp_uuid;
-    wire [WID_WIDTH_P-1:0] req_tag, rsp_tag;
+    wire [UUID_WIDTH_P-1:0] resp_uuid;
+    wire [WID_WIDTH_P-1:0] req_tag, resp_tag;
 
-    wire icache_req_fire = icache_req_valid && icache_req_ready;
+    wire icache_req_fire = icache_req_vld && icache_req_rdy;
 
     assign req_tag = schedule_if.data.wid;
 
-    assign {rsp_uuid, rsp_tag} = icache_bus_if.rsp_data.tag;
+    assign {resp_uuid, resp_tag} = icache_bus_if.resp_data.tag;
 
-    wire [PC_WIDTH_P-1:0] rsp_PC;
-    wire [NUM_THREADS_P-1:0] rsp_tmask;
+    wire [PC_WIDTH_P-1:0] resp_PC;
+    wire [NUM_THREADS_P-1:0] resp_tmask;
 
     xrv_vx_dp_ram #(
         .DATAW      (PC_WIDTH_P + NUM_THREADS_P),
@@ -65,8 +80,8 @@ module xrv_vx_fetch import amoeba_gpu_pkg::*; #(
         .wren       (1'b1),
         .waddr      (req_tag),
         .wdata      ({schedule_if.data.PC, schedule_if.data.tmask}),
-        .raddr      (rsp_tag),
-        .rdata      ({rsp_PC, rsp_tmask})
+        .raddr      (resp_tag),
+        .rdata      ({resp_PC, resp_tmask})
     );
 
 `ifndef L1_ENABLE
@@ -77,7 +92,7 @@ module xrv_vx_fetch import amoeba_gpu_pkg::*; #(
     generate
     for (genvar i = 0; i < NUM_WARPS_P; ++i) begin : g_pending_reads
         xrv_pending_size #(
-            .SIZE (IBUF_SIZE_P)
+            .SIZE_P (IBUF_SIZE_P)
         ) pending_reads (
             .clk_i  (clk_i),
             .rst_i  (rst_i),
@@ -91,34 +106,34 @@ module xrv_vx_fetch import amoeba_gpu_pkg::*; #(
         );
     end
     endgenerate
-    wire ibuf_ready = ~pending_ibuf_full[schedule_if.data.wid];
+    wire ibuf_rdy = ~pending_ibuf_full[schedule_if.data.wid];
 `else
-    wire ibuf_ready = 1'b1;
+    wire ibuf_rdy = 1'b1;
 `endif
 
-    `RUNTIME_ASSERT((!schedule_if.valid || schedule_if.data.PC != 0),
-        ("%t: *** %s invalid PC=0x%0h, wid=%0d, tmask=%b (#%0d)", $time, INSTANCE_ID, {schedule_if.data.PC, 1'b0}, schedule_if.data.wid, schedule_if.data.tmask, schedule_if.data.uuid))
+    `RUNTIME_ASSERT((!schedule_if.vld || schedule_if.data.PC != 0),
+        ("%t: *** %s invld PC=0x%0h, wid=%0d, tmask=%b (#%0d)", $time, INSTANCE_ID, {schedule_if.data.PC, 1'b0}, schedule_if.data.wid, schedule_if.data.tmask, schedule_if.data.uuid))
 
     // Icache Request
 
-    assign icache_req_valid = schedule_if.valid && ibuf_ready;
-    assign icache_req_addr  = schedule_if.data.PC[1 +: ICACHE_ADDR_WIDTH];
+    assign icache_req_vld = schedule_if.vld && ibuf_rdy;
+    assign icache_req_addr  = schedule_if.data.PC[1 +: ICACHE_ADDR_WIDTH_P];
     assign icache_req_tag   = {schedule_if.data.uuid, req_tag};
-    assign schedule_if.ready = icache_req_ready && ibuf_ready;
+    assign schedule_if.rdy = icache_req_rdy && ibuf_rdy;
 
     xrv_elastic_buffer #(
-        .DATAW   (ICACHE_ADDR_WIDTH + ICACHE_TAG_WIDTH),
-        .SIZE    (2),
-        .OUT_REG (1) // external bus should be registered
+        .DATA_WIDTH_P   (ICACHE_ADDR_WIDTH_P + ICACHE_TAG_WIDTH_P),
+        .SIZE_P         (2),
+        .OUT_REG        (1) // external bus should be registered
     ) req_buf (
         .clk_i      (clk_i),
         .rst_i      (rst_i),
-        .valid_in   (icache_req_valid),
-        .ready_in   (icache_req_ready),
-        .data_in    ({icache_req_addr, icache_req_tag}),
-        .data_out   ({icache_bus_if.req_data.addr, icache_bus_if.req_data.tag}),
-        .valid_out  (icache_bus_if.req_valid),
-        .ready_out  (icache_bus_if.req_ready)
+        .vld_i      (icache_req_vld),
+        .rdy_i      (icache_req_rdy),
+        .data_i     ({icache_req_addr, icache_req_tag}),
+        .data_o     ({icache_bus_if.req_data.addr, icache_bus_if.req_data.tag}),
+        .vld_o      (icache_bus_if.req_vld),
+        .rdy_o      (icache_bus_if.req_rdy)
     );
 
     assign icache_bus_if.req_data.flags  = '0;
@@ -128,40 +143,40 @@ module xrv_vx_fetch import amoeba_gpu_pkg::*; #(
 
     // Icache Response
 
-    assign fetch_if.valid = icache_bus_if.rsp_valid;
-    assign fetch_if.data.tmask = rsp_tmask;
-    assign fetch_if.data.wid   = rsp_tag;
-    assign fetch_if.data.PC    = rsp_PC;
-    assign fetch_if.data.instr = icache_bus_if.rsp_data.data;
-    assign fetch_if.data.uuid  = rsp_uuid;
-    assign icache_bus_if.rsp_ready = fetch_if.ready;
+    assign fetch_if.vld = icache_bus_if.resp_vld;
+    assign fetch_if.data.tmask = resp_tmask;
+    assign fetch_if.data.wid   = resp_tag;
+    assign fetch_if.data.PC    = resp_PC;
+    assign fetch_if.data.instr = icache_bus_if.resp_data.data;
+    assign fetch_if.data.uuid  = resp_uuid;
+    assign icache_bus_if.resp_rdy = fetch_if.rdy;
 
 `ifdef SCOPE
 `ifdef DBG_SCOPE_FETCH
     `SCOPE_IO_SWITCH (1);
-    wire schedule_fire = schedule_if.valid && schedule_if.ready;
-    wire icache_bus_req_fire = icache_bus_if.req_valid && icache_bus_if.req_ready;
-    wire icache_bus_rsp_fire = icache_bus_if.rsp_valid && icache_bus_if.rsp_ready;
+    wire schedule_fire = schedule_if.vld && schedule_if.rdy;
+    wire icache_bus_req_fire = icache_bus_if.req_vld && icache_bus_if.req_rdy;
+    wire icache_bus_resp_fire = icache_bus_if.resp_vld && icache_bus_if.resp_rdy;
     `NEG_EDGE (rst_i_negedge, rst_i);
     `SCOPE_TAP_EX (0, 1, 6, 3, (
             UUID_WIDTH_P + WID_WIDTH_P+ NUM_THREADS_P + PC_WIDTH_P +
-            UUID_WIDTH_P + ICACHE_WORD_SIZE + ICACHE_ADDR_WIDTH +
-            UUID_WIDTH_P + (ICACHE_WORD_SIZE * 8)
+            UUID_WIDTH_P + ICACHE_WORD_SIZE_P + ICACHE_ADDR_WIDTH_P +
+            UUID_WIDTH_P + (ICACHE_WORD_SIZE_P * 8)
         ), {
-            schedule_if.valid,
-            schedule_if.ready,
-            icache_bus_if.req_valid,
-            icache_bus_if.req_ready,
-            icache_bus_if.rsp_valid,
-            icache_bus_if.rsp_ready
+            schedule_if.vld,
+            schedule_if.rdy,
+            icache_bus_if.req_vld,
+            icache_bus_if.req_rdy,
+            icache_bus_if.resp_vld,
+            icache_bus_if.resp_rdy
         }, {
             schedule_fire,
             icache_bus_req_fire,
-            icache_bus_rsp_fire
+            icache_bus_resp_fire
         },{
             schedule_if.data.uuid, schedule_if.data.wid, schedule_if.data.tmask, schedule_if.data.PC,
             icache_bus_if.req_data.tag.uuid, icache_bus_if.req_data.byteen, icache_bus_if.req_data.addr,
-            icache_bus_if.rsp_data.tag.uuid, icache_bus_if.rsp_data.data
+            icache_bus_if.resp_data.tag.uuid, icache_bus_if.resp_data.data
         },
         rst_i_negedge, 1'b0, 4096
     );
@@ -174,20 +189,20 @@ module xrv_vx_fetch import amoeba_gpu_pkg::*; #(
 `ifdef DBG_SCOPE_FETCH
     ila_fetch ila_fetch_inst (
         .clk_i    (clk_i),
-        .probe0 ({schedule_if.valid, schedule_if.data, schedule_if.ready}),
-        .probe1 ({icache_bus_if.req_valid, icache_bus_if.req_data, icache_bus_if.req_ready}),
-        .probe2 ({icache_bus_if.rsp_valid, icache_bus_if.rsp_data, icache_bus_if.rsp_ready})
+        .probe0 ({schedule_if.vld, schedule_if.data, schedule_if.rdy}),
+        .probe1 ({icache_bus_if.req_vld, icache_bus_if.req_data, icache_bus_if.req_rdy}),
+        .probe2 ({icache_bus_if.resp_vld, icache_bus_if.resp_data, icache_bus_if.resp_rdy})
     );
 `endif
 `endif
 
 `ifdef DBG_TRACE_MEM
     always @(posedge clk_i) begin
-        if (schedule_if.valid && schedule_if.ready) begin
+        if (schedule_if.vld && schedule_if.rdy) begin
             `TRACE(1, ("%t: %s req: wid=%0d, PC=0x%0h, tmask=%b (#%0d)\n", $time, INSTANCE_ID, schedule_if.data.wid, {schedule_if.data.PC, 1'b0}, schedule_if.data.tmask, schedule_if.data.uuid))
         end
-        if (fetch_if.valid && fetch_if.ready) begin
-            `TRACE(1, ("%t: %s rsp: wid=%0d, PC=0x%0h, tmask=%b, instr=0x%0h (#%0d)\n", $time, INSTANCE_ID, fetch_if.data.wid, {fetch_if.data.PC, 1'b0}, fetch_if.data.tmask, fetch_if.data.instr, fetch_if.data.uuid))
+        if (fetch_if.vld && fetch_if.rdy) begin
+            `TRACE(1, ("%t: %s resp: wid=%0d, PC=0x%0h, tmask=%b, instr=0x%0h (#%0d)\n", $time, INSTANCE_ID, fetch_if.data.wid, {fetch_if.data.PC, 1'b0}, fetch_if.data.tmask, fetch_if.data.instr, fetch_if.data.uuid))
         end
     end
 `endif

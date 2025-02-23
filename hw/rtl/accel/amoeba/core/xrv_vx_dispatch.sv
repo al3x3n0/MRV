@@ -14,7 +14,20 @@
 `include "xm_macro.svh"
 
 module xrv_vx_dispatch import amoeba_gpu_pkg::*; #(
-    parameter `STRING INSTANCE_ID = ""
+    parameter `STRING INSTANCE_ID   = "",
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter XLEN_P        = "inv",
+    parameter PC_WIDTH_P    = PC_WIDTH_P,
+    parameter NUM_THREADS_P = "inv",
+    parameter NUM_WARPS_P   = "inv",
+    parameter WID_WIDTH_P   = `XM_CLOG2(NUM_WARPS_P),
+    parameter TID_WIDTH_P   = `XM_CLOG2(NUM_THREADS_P),
+    parameter UUID_WIDTH_P  = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter ISSUE_WIDTH_P     = "inv",
+    parameter PER_ISSUE_WARPS_P = (NUM_WARPS_P / ISSUE_WIDTH_P),
+    parameter ISSUE_WIS_P       = `XM_CLOG2(PER_ISSUE_WARPS_P),
+    parameter ISSUE_WIS_WIDTH_P = `XM_UP(ISSUE_WIS_P)
 ) (
     input wire              clk_i,
     input wire              rst_i,
@@ -30,40 +43,40 @@ module xrv_vx_dispatch import amoeba_gpu_pkg::*; #(
 );
     `XM_UNUSED_SPARAM (INSTANCE_ID)
 
-    localparam DATAW = UUID_WIDTH_P + ISSUE_WIS_W + NUM_THREADS_P + PC_WIDTH_P + VX_INST_OP_BITS + VX_INST_ARGS_BITS + 1 + RF_ADDR_WIDTH_P + (3 * NUM_THREADS_P * XLEN_P) + TID_WIDTH_LP;
+    localparam DATAW = UUID_WIDTH_P + ISSUE_WIS_WIDTH_P + NUM_THREADS_P + PC_WIDTH_P + VX_INST_OP_BITS + VX_INST_ARGS_BITS + 1 + VX_NR_BITS + (3 * NUM_THREADS_P * XLEN_P) + TID_WIDTH_P;
 
-    wire [NUM_THREADS_P-1:0][TID_WIDTH_LP-1:0] tids;
+    wire [NUM_THREADS_P-1:0][TID_WIDTH_P-1:0] tids;
     for (genvar i = 0; i < NUM_THREADS_P; ++i) begin : g_tids
-        assign tids[i] = TID_WIDTH_LP'(i);
+        assign tids[i] = TID_WIDTH_P'(i);
     end
 
-    wire [TID_WIDTH_LP-1:0] last_active_tid;
+    wire [TID_WIDTH_P-1:0] last_active_tid;
 
     xrv_find_first #(
-        .N          (NUM_THREADS_P),
-        .DATAW      (TID_WIDTH_LP),
-        .REVERSE    (1)
+        .N              (NUM_THREADS_P),
+        .DATA_WIDTH_P   (TID_WIDTH_P),
+        .REVERSE_P      (1)
     ) last_tid_select (
-        .valid_in   (operands_if.data.tmask),
-        .data_in    (tids),
-        .data_out   (last_active_tid),
-        `XM_UNUSED_PIN (valid_out)
+        .vld_i      (operands_if.data.tmask),
+        .data_i     (tids),
+        .data_o     (last_active_tid),
+        `XM_UNUSED_PIN (vld_o)
     );
 
-    wire [VX_NUM_EX_UNITS-1:0] operands_ready_in;
-    assign operands_if.ready = operands_ready_in[operands_if.data.ex_type];
+    wire [VX_NUM_EX_UNITS-1:0] operands_rdy_in;
+    assign operands_if.rdy = operands_rdy_in[operands_if.data.ex_type];
 
     for (genvar i = 0; i < VX_NUM_EX_UNITS; ++i) begin : g_buffers
         xrv_elastic_buffer #(
-            .DATAW          (DATAW),
-            .SIZE           (2),
+            .DATA_WIDTH_P   (DATAW),
+            .SIZE_P         (2),
             .OUT_REG        (1)
         ) buffer (
             .clk_i          (clk_i),
             .rst_i          (rst_i),
-            .valid_in       (operands_if.valid && (operands_if.data.ex_type == VX_EX_BITS'(i))),
-            .ready_in       (operands_ready_in[i]),
-            .data_in    ({
+            .vld_i          (operands_if.vld && (operands_if.data.ex_type == VX_EX_BITS'(i))),
+            .rdy_i          (operands_rdy_in[i]),
+            .data_i         ({
                 operands_if.data.uuid,
                 operands_if.data.wis,
                 operands_if.data.tmask,
@@ -77,16 +90,16 @@ module xrv_vx_dispatch import amoeba_gpu_pkg::*; #(
                 operands_if.data.rs2_data,
                 operands_if.data.rs3_data
             }),
-            .data_out   (dispatch_if[i].data),
-            .valid_out  (dispatch_if[i].valid),
-            .ready_out  (dispatch_if[i].ready)
+            .data_o         (dispatch_if[i].data),
+            .vld_o          (dispatch_if[i].vld),
+            .rdy_o          (dispatch_if[i].rdy)
         );
     end
 
 `ifdef PERF_ENABLE
     reg [VX_NUM_EX_UNITS-1:0][`PERF_CTR_BITS-1:0] perf_stalls_r;
 
-    wire operands_if_stall = operands_if.valid && ~operands_if.ready;
+    wire operands_if_stall = operands_if.vld && ~operands_if.rdy;
 
     for (genvar i = 0; i < VX_NUM_EX_UNITS; ++i) begin : g_perf_stalls
         always @(posedge clk_i) begin

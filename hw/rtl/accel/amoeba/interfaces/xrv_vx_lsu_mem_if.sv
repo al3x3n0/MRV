@@ -42,34 +42,34 @@ interface xrv_vx_lsu_mem_if import amoeba_gpu_pkg::*; #(
         logic [NUM_LANES_P-1:0]                     mask;
         logic [NUM_LANES_P-1:0][DATA_SIZE_P*8-1:0]  data;
         tag_t                                       tag;
-    } rsp_data_t;
+    } resp_data_t;
 
-    logic  req_valid;
+    logic  req_vld;
     req_data_t req_data;
-    logic  req_ready;
+    logic  req_rdy;
 
-    logic  rsp_valid;
-    rsp_data_t rsp_data;
-    logic  rsp_ready;
+    logic  resp_vld;
+    resp_data_t resp_data;
+    logic  resp_rdy;
 
     modport master (
-        output req_valid,
+        output req_vld,
         output req_data,
-        input  req_ready,
+        input  req_rdy,
 
-        input  rsp_valid,
-        input  rsp_data,
-        output rsp_ready
+        input  resp_vld,
+        input  resp_data,
+        output resp_rdy
     );
 
     modport slave (
-        input  req_valid,
+        input  req_vld,
         input  req_data,
-        output req_ready,
+        output req_rdy,
 
-        output rsp_valid,
-        output rsp_data,
-        input  rsp_ready
+        output resp_vld,
+        output resp_data,
+        input  resp_rdy
     );
 
 endinterface

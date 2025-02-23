@@ -14,7 +14,18 @@
 `include "xm_macro.svh"
 
 module xrv_vx_scoreboard import amoeba_gpu_pkg::*; #(
-    parameter `STRING INSTANCE_ID = ""
+    parameter `STRING INSTANCE_ID   = "",
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter XLEN_P                = "inv",
+    parameter PC_WIDTH_P            = XLEN_P,
+    parameter NUM_THREADS_P         = "inv",
+    parameter NUM_WARPS_P           = "inv",
+    parameter UUID_WIDTH_P          = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter ISSUE_WIDTH_P         = "inv",
+    parameter PER_ISSUE_WARPS_P     = (NUM_WARPS_P / ISSUE_WIDTH_P),
+    parameter ISSUE_WIS_P           = `XM_CLOG2(PER_ISSUE_WARPS_P),
+    parameter ISSUE_WIS_WIDTH_P     = `XM_UP(ISSUE_WIS_P)
 ) (
     input wire              clk_i,
     input wire              rst_i,
@@ -26,7 +37,7 @@ module xrv_vx_scoreboard import amoeba_gpu_pkg::*; #(
 `endif
 
     xrv_vx_writeback_if.slave   writeback_if,
-    xrv_vx_ibuffer_if.slave     ibuffer_if [PER_ISSUE_WARPS],
+    xrv_vx_ibuffer_if.slave     ibuffer_if [PER_ISSUE_WARPS_P],
     xrv_vx_scoreboard_if.master scoreboard_if
 );
     `XM_UNUSED_SPARAM (INSTANCE_ID)
@@ -34,19 +45,19 @@ module xrv_vx_scoreboard import amoeba_gpu_pkg::*; #(
     localparam NUM_OPDS = NUM_SRC_OPDS + 1;
     localparam DATAW = UUID_WIDTH_P + NUM_THREADS_P + PC_WIDTH_P + VX_EX_BITS + VX_INST_OP_BITS + VX_INST_ARGS_BITS + (VX_NR_BITS * 4) + 1;
 
-    xrv_vx_ibuffer_if staging_if [PER_ISSUE_WARPS]();
-    reg [PER_ISSUE_WARPS-1:0] operands_ready;
+    xrv_vx_ibuffer_if staging_if [PER_ISSUE_WARPS_P]();
+    reg [PER_ISSUE_WARPS_P-1:0] operands_rdy;
 
 `ifdef PERF_ENABLE
-    reg [PER_ISSUE_WARPS-1:0][VX_NUM_EX_UNITS-1:0] perf_inuse_units_per_cycle;
+    reg [PER_ISSUE_WARPS_P-1:0][VX_NUM_EX_UNITS-1:0] perf_inuse_units_per_cycle;
     wire [VX_NUM_EX_UNITS-1:0] perf_units_per_cycle, perf_units_per_cycle_r;
 
-    reg [PER_ISSUE_WARPS-1:0][VX_NUM_SFU_UNITS-1:0] perf_inuse_sfu_per_cycle;
+    reg [PER_ISSUE_WARPS_P-1:0][VX_NUM_SFU_UNITS-1:0] perf_inuse_sfu_per_cycle;
     wire [VX_NUM_SFU_UNITS-1:0] perf_sfu_per_cycle, perf_sfu_per_cycle_r;
 
     xrv_reduce #(
         .DATAW_IN (VX_NUM_EX_UNITS),
-        .N  (PER_ISSUE_WARPS),
+        .N  (PER_ISSUE_WARPS_P),
         .OP ("|")
     ) perf_units_reduce (
         .data_in  (perf_inuse_units_per_cycle),
@@ -55,22 +66,22 @@ module xrv_vx_scoreboard import amoeba_gpu_pkg::*; #(
 
     xrv_reduce #(
         .DATAW_IN (VX_NUM_SFU_UNITS),
-        .N  (PER_ISSUE_WARPS),
+        .N  (PER_ISSUE_WARPS_P),
         .OP ("|")
     ) perf_sfu_reduce (
         .data_in  (perf_inuse_sfu_per_cycle),
         .data_out (perf_sfu_per_cycle)
     );
 
-    `BUFFER_EX(perf_units_per_cycle_r, perf_units_per_cycle, 1'b1, 0, `CDIV(PER_ISSUE_WARPS, `MAX_FANOUT));
-    `BUFFER_EX(perf_sfu_per_cycle_r, perf_sfu_per_cycle, 1'b1, 0, `CDIV(PER_ISSUE_WARPS, `MAX_FANOUT));
+    `BUFFER_EX(perf_units_per_cycle_r, perf_units_per_cycle, 1'b1, 0, `CDIV(PER_ISSUE_WARPS_P, `MAX_FANOUT));
+    `BUFFER_EX(perf_sfu_per_cycle_r, perf_sfu_per_cycle, 1'b1, 0, `CDIV(PER_ISSUE_WARPS_P, `MAX_FANOUT));
 
-    wire [PER_ISSUE_WARPS-1:0] stg_valid_in;
-    for (genvar w = 0; w < PER_ISSUE_WARPS; ++w) begin : g_stg_valid_in
-        assign stg_valid_in[w] = staging_if[w].valid;
+    wire [PER_ISSUE_WARPS_P-1:0] stg_vld_in;
+    for (genvar w = 0; w < PER_ISSUE_WARPS_P; ++w) begin : g_stg_vld_in
+        assign stg_vld_in[w] = staging_if[w].vld;
     end
 
-    wire perf_stall_per_cycle = (|stg_valid_in) && ~(|(stg_valid_in & operands_ready));
+    wire perf_stall_per_cycle = (|stg_vld_in) && ~(|(stg_vld_in & operands_rdy));
 
     always @(posedge clk_i) begin : g_perf_stalls
         if (rst_i) begin
@@ -101,32 +112,32 @@ module xrv_vx_scoreboard import amoeba_gpu_pkg::*; #(
     end
 `endif
 
-    for (genvar w = 0; w < PER_ISSUE_WARPS; ++w) begin : g_stanging_bufs
+    for (genvar w = 0; w < PER_ISSUE_WARPS_P; ++w) begin : g_staging_bufs
         xrv_pipe_buffer #(
-            .DATAW (DATAW)
-        ) stanging_buf (
+            .DATA_WIDTH_P (DATAW)
+        ) staging_buf (
             .clk_i      (clk_i),
-            .rst_i    (rst_i),
-            .valid_in (ibuffer_if[w].valid),
-            .data_in  (ibuffer_if[w].data),
-            .ready_in (ibuffer_if[w].ready),
-            .valid_out(staging_if[w].valid),
-            .data_out (staging_if[w].data),
-            .ready_out(staging_if[w].ready)
+            .rst_i      (rst_i),
+            .vld_i      (ibuffer_if[w].vld),
+            .data_i     (ibuffer_if[w].data),
+            .rdy_i      (ibuffer_if[w].rdy),
+            .vld_o      (staging_if[w].vld),
+            .data_o     (staging_if[w].data),
+            .rdy_o      (staging_if[w].rdy)
         );
     end
 
-    for (genvar w = 0; w < PER_ISSUE_WARPS; ++w) begin : g_scoreboard
+    for (genvar w = 0; w < PER_ISSUE_WARPS_P; ++w) begin : g_scoreboard
         reg [VX_NUM_REGS-1:0] inuse_regs;
 
         reg [NUM_OPDS-1:0] operands_busy, operands_busy_n;
 
-        wire ibuffer_fire = ibuffer_if[w].valid && ibuffer_if[w].ready;
+        wire ibuffer_fire = ibuffer_if[w].vld && ibuffer_if[w].rdy;
 
-        wire staging_fire = staging_if[w].valid && staging_if[w].ready;
+        wire staging_fire = staging_if[w].vld && staging_if[w].rdy;
 
-        wire writeback_fire = writeback_if.valid
-                           && (writeback_if.data.wis == ISSUE_WIS_W'(w));
+        wire writeback_fire = writeback_if.vld
+                           && (writeback_if.data.wis == ISSUE_WIS_WIDTH_P'(w));
 
         wire [NUM_OPDS-1:0][VX_NR_BITS-1:0] ibuf_opds, stg_opds;
         assign ibuf_opds = {ibuffer_if[w].data.rs3, ibuffer_if[w].data.rs2, ibuffer_if[w].data.rs1, ibuffer_if[w].data.rd};
@@ -140,7 +151,7 @@ module xrv_vx_scoreboard import amoeba_gpu_pkg::*; #(
             perf_inuse_units_per_cycle[w] = '0;
             perf_inuse_sfu_per_cycle[w] = '0;
             for (integer i = 0; i < NUM_OPDS; ++i) begin
-                if (staging_if[w].valid && operands_busy[i]) begin
+                if (staging_if[w].vld && operands_busy[i]) begin
                     perf_inuse_units_per_cycle[w][inuse_units[stg_opds[i]]] = 1;
                     if (inuse_units[stg_opds[i]] == `EX_SFU) begin
                         perf_inuse_sfu_per_cycle[w][inuse_sfu[stg_opds[i]]] = 1;
@@ -185,7 +196,7 @@ module xrv_vx_scoreboard import amoeba_gpu_pkg::*; #(
                 end
             end
             operands_busy <= operands_busy_n;
-            operands_ready[w] <= ~(| operands_busy_n);
+            operands_rdy[w] <= ~(| operands_busy_n);
         `ifdef PERF_ENABLE
             if (staging_fire && staging_if[w].data.wb) begin
                 inuse_units[staging_if[w].data.rd] <= staging_if[w].data.ex_type;
@@ -203,7 +214,7 @@ module xrv_vx_scoreboard import amoeba_gpu_pkg::*; #(
             if (rst_i) begin
                 timeout_ctr <= '0;
             end else begin
-                if (staging_if[w].valid && ~staging_if[w].ready) begin
+                if (staging_if[w].vld && ~staging_if[w].rdy) begin
                 `ifdef DBG_TRACE_PIPELINE
                     `TRACE(4, ("%t: *** %s-stall: wid=%0d, PC=0x%0h, tmask=%b, cycles=%0d, inuse=%b (#%0d)\n",
                         $time, INSTANCE_ID, w, {staging_if[w].data.PC, 1'b0}, staging_if[w].data.tmask, timeout_ctr,
@@ -222,34 +233,34 @@ module xrv_vx_scoreboard import amoeba_gpu_pkg::*; #(
                             operands_busy, staging_if[w].data.uuid))
 
         `RUNTIME_ASSERT(~writeback_fire || inuse_regs[writeback_if.data.rd] != 0,
-            ("%t: *** %s invalid writeback register: wid=%0d, PC=0x%0h, tmask=%b, rd=%0d (#%0d)",
+            ("%t: *** %s invld writeback register: wid=%0d, PC=0x%0h, tmask=%b, rd=%0d (#%0d)",
                 $time, INSTANCE_ID, w, {writeback_if.data.PC, 1'b0}, writeback_if.data.tmask, writeback_if.data.rd, writeback_if.data.uuid))
     `endif
 
     end
 
-    wire [PER_ISSUE_WARPS-1:0] arb_valid_in;
-    wire [PER_ISSUE_WARPS-1:0][DATAW-1:0] arb_data_in;
-    wire [PER_ISSUE_WARPS-1:0] arb_ready_in;
+    wire [PER_ISSUE_WARPS_P-1:0] arb_vld_in;
+    wire [PER_ISSUE_WARPS_P-1:0][DATAW-1:0] arb_data_in;
+    wire [PER_ISSUE_WARPS_P-1:0] arb_rdy_in;
 
-    for (genvar w = 0; w < PER_ISSUE_WARPS; ++w) begin : g_arb_data_in
-        assign arb_valid_in[w] = staging_if[w].valid && operands_ready[w];
+    for (genvar w = 0; w < PER_ISSUE_WARPS_P; ++w) begin : g_arb_data_in
+        assign arb_vld_in[w] = staging_if[w].vld && operands_rdy[w];
         assign arb_data_in[w] = staging_if[w].data;
-        assign staging_if[w].ready = arb_ready_in[w] && operands_ready[w];
+        assign staging_if[w].rdy = arb_rdy_in[w] && operands_rdy[w];
     end
 
     xrv_stream_arb #(
-        .NUM_INPUTS (PER_ISSUE_WARPS),
-        .DATAW      (DATAW),
-        .ARBITER    ("C"),
-        .OUT_BUF    (3)
+        .NUM_INPUTS_P   (PER_ISSUE_WARPS_P),
+        .DATA_WIDTH_P   (DATAW),
+        .ARBITER_TYPE_P ("C"),
+        .OUT_BUF        (3)
     ) out_arb (
-        .clk_i      (clk_i),
-        .rst_i    (rst_i),
-        .valid_in (arb_valid_in),
-        .ready_in (arb_ready_in),
-        .data_in  (arb_data_in),
-        .data_out ({
+        .clk_i  (clk_i),
+        .rst_i  (rst_i),
+        .vld_i  (arb_vld_in),
+        .rdy_i  (arb_rdy_in),
+        .data_i (arb_data_in),
+        .data_o ({
             scoreboard_if.data.uuid,
             scoreboard_if.data.tmask,
             scoreboard_if.data.PC,
@@ -262,9 +273,9 @@ module xrv_vx_scoreboard import amoeba_gpu_pkg::*; #(
             scoreboard_if.data.rs2,
             scoreboard_if.data.rs3
         }),
-        .valid_out (scoreboard_if.valid),
-        .ready_out (scoreboard_if.ready),
-        .sel_out   (scoreboard_if.data.wis)
+        .vld_o  (scoreboard_if.vld),
+        .rdy_o  (scoreboard_if.rdy),
+        .sel_o  (scoreboard_if.data.wis)
     );
 
 endmodule

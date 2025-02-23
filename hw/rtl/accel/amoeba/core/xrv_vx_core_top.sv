@@ -33,12 +33,27 @@ module xrv_vx_core_top import amoeba_gpu_pkg::*; #(
     ////////////////////////////////////////////////////////////////////////////////
     parameter ISSUE_WIDTH_P     = 2,
     ////////////////////////////////////////////////////////////////////////////////
+    parameter NUM_LSU_BLOCKS_P  = 1,
+    parameter NUM_ALU_BLOCKS_P  = 1,
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter NUM_LSU_LANES_P   = NUM_THREADS_P,
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter L1_LINE_SIZE_P    = 64,
+    ////////////////////////////////////////////////////////////////////////////////
+    // LSU 
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter LSU_WORD_SIZE_P       = XLEN_P / 8,
     // LSU line size
-    parameter LSU_LINE_SIZE_P   = `XM_MIN(NUM_LSU_LANES_P * (XLEN_P / 8), L1_LINE_SIZE_P),
+    parameter LSU_LINE_SIZE_P       = `XM_MIN(NUM_LSU_LANES_P * (XLEN_P / 8), L1_LINE_SIZE_P),
     // Size of LSU Core Request Queue
-    parameter LSUQ_IN_SIZE_P    = (2 * (NUM_THREADS_P / NUM_LSU_LANES_P)),
+    parameter LSUQ_IN_SIZE_P        = (2 * (NUM_THREADS_P / NUM_LSU_LANES_P)),
     // Size of LSU Memory Request Queue
-    parameter LSUQ_OUT_SIZE_P   =  `XM_MAX(LSUQ_IN_SIZE_P, LSU_LINE_SIZE_P / (XLEN_P / 8)),
+    parameter LSUQ_OUT_SIZE_P       =  `XM_MAX(LSUQ_IN_SIZE_P, LSU_LINE_SIZE_P / (XLEN_P / 8)),
+    parameter LSU_ADDR_WIDTH_P	    = (MEM_ADDR_WIDTH_P - `XM_CLOG2(LSU_WORD_SIZE_P)),
+    parameter LSU_MEM_BATCHES_P     = 1,
+    parameter LSU_TAG_ID_BITS_P     = (`XM_CLOG2(LSUQ_IN_SIZE_P) + `XM_CLOG2(LSU_MEM_BATCHES_P)),
+    parameter LSU_TAG_WIDTH_P       = (UUID_WIDTH_P + LSU_TAG_ID_BITS_P),
+    parameter LSU_NUM_REQS_P        = NUM_LSU_BLOCKS_P * NUM_LSU_LANES_P,
     ////////////////////////////////////////////////////////////////////////////////
     // ICache 
     ////////////////////////////////////////////////////////////////////////////////
@@ -54,7 +69,7 @@ module xrv_vx_core_top import amoeba_gpu_pkg::*; #(
     ////////////////////////////////////////////////////////////////////////////////
     // DCache 
     ////////////////////////////////////////////////////////////////////////////////
-    parameter DCACHE_WORD_SIZE	    = LSU_LINE_SIZE_P,
+    parameter DCACHE_WORD_SIZE_P    = LSU_LINE_SIZE_P,
     parameter DCACHE_ADDR_WIDTH_P	= (MEM_ADDR_WIDTH_P - `XM_CLOG2(DCACHE_WORD_SIZE_P)),
     // Block size in bytes
     localparam DCACHE_LINE_SIZE_P 	= L1_LINE_SIZE_P,
@@ -64,7 +79,7 @@ module xrv_vx_core_top import amoeba_gpu_pkg::*; #(
     // Core request tag Id bits
     parameter DCACHE_MERGED_REQS_P  = (NUM_LSU_LANES_P * LSU_WORD_SIZE_P) / DCACHE_WORD_SIZE_P,
     parameter DCACHE_MEM_BATCHES_P  = `XM_CDIV(DCACHE_MERGED_REQS_P, DCACHE_CHANNELS_P),
-    parameter DCACHE_TAG_ID_BITS_P  = (`XM_CLOG2(LSUQ_OUT_SIZE_P) + `XM_CLOG2(DCACHE_MEM_BATCHES)),
+    parameter DCACHE_TAG_ID_BITS_P  = (`XM_CLOG2(LSUQ_OUT_SIZE_P) + `XM_CLOG2(DCACHE_MEM_BATCHES_P)),
     // Core request tag bits
     parameter DCACHE_TAG_WIDTH_P    = (UUID_WIDTH_P + DCACHE_TAG_ID_BITS_P)
     ////////////////////////////////////////////////////////////////////////////////
@@ -72,6 +87,8 @@ module xrv_vx_core_top import amoeba_gpu_pkg::*; #(
     // Clock
     input wire                                                      clk_i,
     input wire                                                      rst_i,
+    ////////////////////////////////////////////////////////////////////////////////
+    input wire                                                      vx_mode_en_i,
     ////////////////////////////////////////////////////////////////////////////////
     input wire                                                      dcr_write_vld,
     input wire [VX_DCR_ADDR_WIDTH-1:0]                              dcr_write_addr,
@@ -204,8 +221,10 @@ module xrv_vx_core_top import amoeba_gpu_pkg::*; #(
         ////////////////////////////////////////////////////////////////////////////////
     ) core (
         `SCOPE_IO_BIND (0)
-        .clk_i            (clk_i),
-        .rst_i          (rst_i),
+        .clk_i              (clk_i),
+        .rst_i              (rst_i),
+
+        .vx_mode_en_i       (vx_mode_en_i),
 
     `ifdef PERF_ENABLE
         .mem_perf_if    (mem_perf_if),

@@ -16,28 +16,35 @@
 interface xrv_vx_writeback_if import amoeba_gpu_pkg::*; #(
     parameter XLEN_P            = "inv",
     parameter PC_WIDTH_P        = XLEN_P,
-    parameter UUID_WIDTH_P      = 0
+    parameter NUM_THREADS_P     = "inv",
+    parameter NUM_WARPS_P       = "inv",
+    parameter UUID_WIDTH_P      = 0,
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter ISSUE_WIDTH_P         = "inv",
+    parameter PER_ISSUE_WARPS_P     = (NUM_WARPS_P / ISSUE_WIDTH_P),
+    parameter ISSUE_WIS_P           = `XM_CLOG2(PER_ISSUE_WARPS_P),
+    parameter ISSUE_WIS_WIDTH_P     = `XM_UP(ISSUE_WIS_P)
 ) ();
 
     typedef struct packed {
         logic [UUID_WIDTH_P-1:0]                uuid;
-        logic [ISSUE_WIS_W-1:0]                 wis;
+        logic [ISSUE_WIS_WIDTH_P-1:0]           wis;
         logic [NUM_THREADS_P-1:0]               tmask;
         logic [PC_WIDTH_P-1:0]                  PC;
         logic [VX_NR_BITS-1:0]                  rd;
         logic [NUM_THREADS_P-1:0][XLEN_P-1:0]   data;
     } data_t;
 
-    logic  valid;
+    logic  vld;
     data_t data;
 
     modport master (
-        output valid,
+        output vld,
         output data
     );
 
     modport slave (
-        input valid,
+        input vld,
         input data
     );
 

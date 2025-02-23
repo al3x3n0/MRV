@@ -23,8 +23,8 @@ module xrv_vx_lsu_unit import amoeba_gpu_pkg::*; #(
 ) (
     `SCOPE_IO_DECL
 
-    input wire              clk,
-    input wire              reset,
+    input wire              clk_i,
+    input wire              rst_i,
 
     // Inputs
     xrv_vx_dispatch_if.slave    dispatch_if [ISSUE_WIDTH_P],
@@ -47,8 +47,8 @@ module xrv_vx_lsu_unit import amoeba_gpu_pkg::*; #(
         .NUM_LANES  (NUM_LANES),
         .OUT_BUF    (3)
     ) dispatch_unit (
-        .clk        (clk),
-        .reset      (reset),
+        .clk_i        (clk_i),
+        .rst_i      (rst_i),
         .dispatch_if(dispatch_if),
         .execute_if (per_block_execute_if)
     );
@@ -62,8 +62,8 @@ module xrv_vx_lsu_unit import amoeba_gpu_pkg::*; #(
             .INSTANCE_ID (`SFORMATF(("%s%0d", INSTANCE_ID, block_idx)))
         ) lsu_slice(
             `SCOPE_IO_BIND  (block_idx)
-            .clk        (clk),
-            .reset      (reset),
+            .clk_i        (clk_i),
+            .rst_i      (rst_i),
             .execute_if (per_block_execute_if[block_idx]),
             .commit_if  (per_block_commit_if[block_idx]),
             .lsu_mem_if (lsu_mem_if[block_idx])
@@ -75,8 +75,8 @@ module xrv_vx_lsu_unit import amoeba_gpu_pkg::*; #(
         .NUM_LANES  (NUM_LANES),
         .OUT_BUF    (3)
     ) gather_unit (
-        .clk           (clk),
-        .reset         (reset),
+        .clk_i           (clk_i),
+        .rst_i         (rst_i),
         .commit_in_if  (per_block_commit_if),
         .commit_out_if (commit_if)
     );

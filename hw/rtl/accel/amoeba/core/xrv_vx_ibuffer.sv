@@ -14,7 +14,22 @@
 `include "xm_macro.svh"
 
 module xrv_vx_ibuffer import amoeba_gpu_pkg::*; #(
-    parameter `STRING INSTANCE_ID = ""
+    parameter `STRING INSTANCE_ID   = "",
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter IBUF_SIZE_P       = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter XLEN_P            = "inv",
+    parameter PC_WIDTH_P        = XLEN_P,
+    parameter NUM_WARPS_P       = "inv",
+    parameter NUM_THREADS_P     = "inv",
+    parameter WID_WIDTH_P       = `XM_CLOG2(NUM_WARPS_P),
+    parameter TID_WIDTH_P       = `XM_CLOG2(NUM_THREADS_P),
+    parameter UUID_WIDTH_P      = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter ISSUE_WIDTH_P     = "inv",
+    parameter PER_ISSUE_WARPS_P = (NUM_WARPS_P / ISSUE_WIDTH_P),
+    parameter ISSUE_WIS_P       = `XM_CLOG2(PER_ISSUE_WARPS_P),
+    parameter ISSUE_WIS_WIDTH_P = `XM_UP(ISSUE_WIS_P)
 ) (
     input wire          clk_i,
     input wire          rst_i,
@@ -27,24 +42,24 @@ module xrv_vx_ibuffer import amoeba_gpu_pkg::*; #(
     xrv_vx_decode_if.slave  decode_if,
 
     // outputs
-    xrv_vx_ibuffer_if.master ibuffer_if [PER_ISSUE_WARPS]
+    xrv_vx_ibuffer_if.master ibuffer_if [PER_ISSUE_WARPS_P]
 );
     `XM_UNUSED_SPARAM (INSTANCE_ID)
     localparam DATAW = UUID_WIDTH_P+ NUM_THREADS_P + PC_WIDTH_P + 1 + VX_EX_BITS + VX_INST_OP_BITS + VX_INST_ARGS_BITS + (VX_NR_BITS * 4);
 
-    wire [PER_ISSUE_WARPS-1:0] ibuf_ready_in;
-    assign decode_if.ready = ibuf_ready_in[decode_if.data.wid];
+    wire [PER_ISSUE_WARPS_P-1:0] ibuf_rdy_in;
+    assign decode_if.rdy = ibuf_rdy_in[decode_if.data.wid];
 
-    for (genvar w = 0; w < PER_ISSUE_WARPS; ++w) begin : g_instr_bufs
+    for (genvar w = 0; w < PER_ISSUE_WARPS_P; ++w) begin : g_instr_bufs
         xrv_elastic_buffer #(
-            .DATAW   (DATAW),
-            .SIZE    (IBUF_SIZE_P),
-            .OUT_REG (1)
+            .DATA_WIDTH_P   (DATAW),
+            .SIZE_P         (IBUF_SIZE_P),
+            .OUT_REG        (1)
         ) instr_buf (
             .clk_i      (clk_i),
             .rst_i      (rst_i),
-            .valid_in   (decode_if.valid && decode_if.data.wid == ISSUE_WIS_W'(w)),
-            .data_in    ({
+            .vld_i      (decode_if.vld && decode_if.data.wid == ISSUE_WIS_WIDTH_P'(w)),
+            .data_i     ({
                 decode_if.data.uuid,
                 decode_if.data.tmask,
                 decode_if.data.PC,
@@ -57,20 +72,20 @@ module xrv_vx_ibuffer import amoeba_gpu_pkg::*; #(
                 decode_if.data.rs2,
                 decode_if.data.rs3
             }),
-            .ready_in (ibuf_ready_in[w]),
-            .valid_out(ibuffer_if[w].valid),
-            .data_out (ibuffer_if[w].data),
-            .ready_out(ibuffer_if[w].ready)
+            .rdy_i      (ibuf_rdy_in[w]),
+            .vld_o      (ibuffer_if[w].vld),
+            .data_o     (ibuffer_if[w].data),
+            .rdy_o      (ibuffer_if[w].rdy)
         );
     `ifndef L1_ENABLE
-        assign decode_if.ibuf_pop[w] = ibuffer_if[w].valid && ibuffer_if[w].ready;
+        assign decode_if.ibuf_pop[w] = ibuffer_if[w].vld && ibuffer_if[w].rdy;
     `endif
     end
 
 `ifdef PERF_ENABLE
     reg [VX_PERF_CTR_BITS-1:0] perf_ibf_stalls;
 
-    wire decode_if_stall = decode_if.valid && ~decode_if.ready;
+    wire decode_if_stall = decode_if.vld && ~decode_if.rdy;
 
     always @(posedge clk_i) begin
         if (rst_i) begin

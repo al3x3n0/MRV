@@ -31,10 +31,10 @@ module xrv_vx_csr_unit import amoeba_gpu_pkg::*; #(
     parameter NUM_FPU_BLOCKS_P  = "inv"
 
 ) (
-    input wire                  clk_i,
-    input wire                  rst_i,
+    input wire                      clk_i,
+    input wire                      rst_i,
 
-    input base_dcrs_t           base_dcrs,
+    input xrv_vx_base_dcrs_if       base_dcrs,
 
 `ifdef PERF_ENABLE
     xrv_vx_mem_perf_if.slave        mem_perf_if,
@@ -51,7 +51,7 @@ module xrv_vx_csr_unit import amoeba_gpu_pkg::*; #(
     xrv_vx_commit_if.master         commit_if
 );
     `XM_UNUSED_SPARAM (INSTANCE_ID)
-    localparam DATA_WIDTH_P = UUID_WIDTH_P + WID_WIDTH_P + NUM_LANES_P + PC_WIDTH_P + RF_ADDR_WIDTH_P + 1 + NUM_LANES_P * XLEN_P;
+    localparam DATA_WIDTH_P = UUID_WIDTH_P + WID_WIDTH_P + NUM_LANES_P + PC_WIDTH_P + VX_NR_BITS + 1 + NUM_LANES_P * XLEN_P;
 
     `XM_UNUSED_VAR (execute_if.data.rs3_data)
 
@@ -61,7 +61,7 @@ module xrv_vx_csr_unit import amoeba_gpu_pkg::*; #(
     wire [XLEN_P-1:0]                csr_req_data;
     reg                             csr_rd_enable;
     wire                            csr_wr_enable;
-    wire                            csr_req_ready;
+    wire                            csr_req_rdy;
 
     wire [VX_CSR_ADDR_BITS-1:0] csr_addr = execute_if.data.op_args.csr.addr;
     wire [VX_NRI_BITS-1:0] csr_imm = execute_if.data.op_args.csr.imm;
@@ -72,8 +72,8 @@ module xrv_vx_csr_unit import amoeba_gpu_pkg::*; #(
     assign sched_csr_if.alm_empty_wid = execute_if.data.wid;
     wire no_pending_instr = sched_csr_if.alm_empty || ~is_fpu_csr;
 
-    wire csr_req_valid = execute_if.valid && no_pending_instr;
-    assign execute_if.ready = csr_req_ready && no_pending_instr;
+    wire csr_req_vld = execute_if.vld && no_pending_instr;
+    assign execute_if.rdy = csr_req_rdy && no_pending_instr;
 
     wire [NUM_LANES_P-1:0][XLEN_P-1:0] rs1_data;
     `XM_UNUSED_VAR (rs1_data)
@@ -106,14 +106,14 @@ module xrv_vx_csr_unit import amoeba_gpu_pkg::*; #(
         .fpu_csr_if     (fpu_csr_if),
     `endif
 
-        .read_enable    (csr_req_valid && csr_rd_enable),
+        .read_enable    (csr_req_vld && csr_rd_enable),
         .read_uuid      (execute_if.data.uuid),
         .read_wid       (execute_if.data.wid),
         .read_addr      (csr_addr),
         .read_data_ro   (csr_read_data_ro),
         .read_data_rw   (csr_read_data_rw),
 
-        .write_enable   (csr_req_valid && csr_wr_enable),
+        .write_enable   (csr_req_vld && csr_wr_enable),
         .write_uuid     (execute_if.data.uuid),
         .write_wid      (execute_if.data.wid),
         .write_addr     (csr_addr),
@@ -165,21 +165,21 @@ module xrv_vx_csr_unit import amoeba_gpu_pkg::*; #(
     end
 
     // unlock the warp
-    assign sched_csr_if.unlock_warp = csr_req_valid && csr_req_ready && is_fpu_csr;
+    assign sched_csr_if.unlock_warp = csr_req_vld && csr_req_rdy && is_fpu_csr;
     assign sched_csr_if.unlock_wid = execute_if.data.wid;
 
     xrv_elastic_buffer #(
-        .DATA_WIDTH_P (DATA_WIDTH_P),
-        .SIZE  (2)
+        .DATA_WIDTH_P   (DATA_WIDTH_P),
+        .SIZE_P         (2)
     ) rsp_buf (
         .clk_i      (clk_i),
         .rst_i      (rst_i),
-        .valid_in   (csr_req_valid),
-        .ready_in   (csr_req_ready),
-        .data_in    ({execute_if.data.uuid, execute_if.data.wid, execute_if.data.tmask, execute_if.data.PC, execute_if.data.rd, execute_if.data.wb, csr_read_data}),
-        .data_out   ({commit_if.data.uuid,  commit_if.data.wid,  commit_if.data.tmask,  commit_if.data.PC,  commit_if.data.rd,  commit_if.data.wb,  commit_if.data.data}),
-        .valid_out  (commit_if.valid),
-        .ready_out  (commit_if.ready)
+        .vld_i      (csr_req_vld),
+        .rdy_i      (csr_req_rdy),
+        .data_i     ({execute_if.data.uuid, execute_if.data.wid, execute_if.data.tmask, execute_if.data.PC, execute_if.data.rd, execute_if.data.wb, csr_read_data}),
+        .data_o     ({commit_if.data.uuid,  commit_if.data.wid,  commit_if.data.tmask,  commit_if.data.PC,  commit_if.data.rd,  commit_if.data.wb,  commit_if.data.data}),
+        .vld_o      (commit_if.vld),
+        .rdy_o      (commit_if.rdy)
     );
 
 endmodule
