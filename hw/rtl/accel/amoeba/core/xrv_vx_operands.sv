@@ -25,15 +25,15 @@ module xrv_vx_operands import amoeba_gpu_pkg::*; #(
     parameter NUM_BANKS_P           = 4,
     parameter OUT_BUF               = 3,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter XLEN_P                = "inv",
-    parameter PC_WIDTH_P            = "inv",
-    parameter NUM_THREADS_P         = "inv",
-    parameter NUM_WARPS_P           = "inv",
+    parameter XLEN_P                = 64,
+    parameter PC_WIDTH_P            = XLEN_P - 1,
+    parameter NUM_THREADS_P         = 4,
+    parameter NUM_WARPS_P           = 4,
     parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P           = `XM_CLOG2(NUM_THREADS_P),
-    parameter UUID_WIDTH_P          = "inv",
+    parameter UUID_WIDTH_P          = 1,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter ISSUE_WIDTH_P         = "inv",
+    parameter ISSUE_WIDTH_P         = 1,
     parameter PER_ISSUE_WARPS_P     = (NUM_WARPS_P / ISSUE_WIDTH_P),
     parameter ISSUE_WIS_P           = `XM_CLOG2(PER_ISSUE_WARPS_P),
     parameter ISSUE_WIS_WIDTH_P     = `XM_UP(ISSUE_WIS_P)
@@ -274,26 +274,22 @@ module xrv_vx_operands import amoeba_gpu_pkg::*; #(
             assign wren[i*XLEN_SIZE+:XLEN_SIZE] = {XLEN_SIZE{writeback_if.data.tmask[i]}};
         end
 
-        xrv_vx_dp_ram #(
-            .DATAW (REGS_DATAW),
-            .SIZE  (PER_BANK_REGS * PER_ISSUE_WARPS_P),
-            .WRENW (BYTEENW),
-         `ifdef GPR_RESET
-            .RESET_RAM (1),
-         `endif
-            .OUT_REG (1),
-            .RDW_MODE ("U")
+        xrv_mem_r1w1_wren_bytemask_sync #(
+            .DATA_WIDTH_P       (REGS_DATAW),
+            .DEPTH_P            (PER_BANK_REGS * PER_ISSUE_WARPS_P)
+            //.RDW_MODE           ("U")
         ) gpr_ram (
-            .clk_i   (clk_i),
-            .rst_i (rst_i),
-            .read  (pipe_fire_st1),
-            .wren  (wren),
-            .write (gpr_wr_enabled),
-            .waddr (gpr_wr_addr),
-            .wdata (writeback_if.data.data),
-            .raddr (gpr_rd_addr_st1[b]),
-            .rdata (gpr_rd_data_st2[b])
+            .clk_i              (clk_i),
+            .rst_i              (rst_i),
+            //.do_rd_i            (pipe_fire_st1),
+            .do_wr_i            (gpr_wr_enabled),
+            .wr_mask_i          (wren),
+            .wr_addr_i          (gpr_wr_addr),
+            .wr_data_i          (writeback_if.data.data),
+            .rd_addr_i          (gpr_rd_addr_st1[b]),
+            .rd_data_o          (gpr_rd_data_st2[b])
         );
+        
     end
 
 `ifdef PERF_ENABLE

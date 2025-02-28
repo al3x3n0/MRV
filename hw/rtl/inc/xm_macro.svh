@@ -19,6 +19,12 @@
 
 `define XM_CDIV(n,d)   ((n + d - 1) / (d))
 
+`define XM_RTRIM(x, s) x[$bits(x)-1:($bits(x)-s)]
+
+`define XM_LTRIM(x, s) x[s-1:0]
+
+`define XM_SEXT(len, x) {{(len-$bits(x)+1){x[$bits(x)-1]}}, x[$bits(x)-2:0]}
+
 // size(x): 0 -> 0, 1 -> 1, 2 -> 2, 3 -> 2, 4-> 2, 5 -> 2
 `define XM_TO_OUT_BUF_SIZE(s)    `XM_MIN(s & 7, 2)
 

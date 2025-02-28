@@ -23,9 +23,10 @@ module xrv_vx_core_top import amoeba_gpu_pkg::*; #(
     ////////////////////////////////////////////////////////////////////////////////
     parameter XLEN_P            = 64,
     parameter MEM_ADDR_WIDTH_P  = (XLEN_P == 64 ? 48 : 32),
-    parameter PC_WIDTH_P        = XLEN_P,
+    parameter PC_WIDTH_P        = XLEN_P - 1,
     parameter NUM_WARPS_P       = 4,
     parameter NUM_THREADS_P     = 4,
+    parameter NUM_BARRIERS_P    = 4,
     parameter WID_WIDTH_P       = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P       = `XM_CLOG2(NUM_THREADS_P),
     ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +97,7 @@ module xrv_vx_core_top import amoeba_gpu_pkg::*; #(
     ////////////////////////////////////////////////////////////////////////////////
     output wire [DCACHE_NUM_REQS_P-1:0]                             dcache_req_vld,
     output wire [DCACHE_NUM_REQS_P-1:0]                             dcache_req_rw,
-    output wire [DCACHE_NUM_REQS_P-1:0][DCACHE_WORD_SIZE_P-1:0]     dcache_req_byteen,
+    output wire [DCACHE_NUM_REQS_P-1:0][DCACHE_WORD_SIZE_P-1:0]     dcache_req_be,
     output wire [DCACHE_NUM_REQS_P-1:0][DCACHE_ADDR_WIDTH_P-1:0]    dcache_req_addr,
     output wire [DCACHE_NUM_REQS_P-1:0][VX_MEM_REQ_FLAGS_WIDTH-1:0] dcache_req_flags,
     output wire [DCACHE_NUM_REQS_P-1:0][DCACHE_WORD_SIZE_P*8-1:0]   dcache_req_data,
@@ -110,7 +111,7 @@ module xrv_vx_core_top import amoeba_gpu_pkg::*; #(
     ////////////////////////////////////////////////////////////////////////////////
     output wire                                 icache_req_vld,
     output wire                                 icache_req_rw,
-    output wire [ICACHE_WORD_SIZE_P-1:0]        icache_req_byteen,
+    output wire [ICACHE_WORD_SIZE_P-1:0]        icache_req_be,
     output wire [ICACHE_ADDR_WIDTH_P-1:0]       icache_req_addr,
     output wire [ICACHE_WORD_SIZE_P*8-1:0]      icache_req_data,
     output wire [ICACHE_TAG_WIDTH_P-1:0]        icache_req_tag,
@@ -153,14 +154,15 @@ module xrv_vx_core_top import amoeba_gpu_pkg::*; #(
     assign dcr_bus_if.write_data = dcr_write_data;
 
     xrv_cache_if #(
-        .DATA_SIZE_P    (DCACHE_WORD_SIZE_P),
-        .TAG_WIDTH_P    (DCACHE_TAG_WIDTH_P)
+        .DATA_SIZE_P        (DCACHE_WORD_SIZE_P),
+        .TAG_WIDTH_P        (DCACHE_TAG_WIDTH_P),
+        .MEM_ADDR_WIDTH_P   (MEM_ADDR_WIDTH_P)
     ) dcache_bus_if[DCACHE_NUM_REQS_P]();
 
     for (genvar i = 0; i < DCACHE_NUM_REQS_P; ++i) begin
         assign dcache_req_vld[i] = dcache_bus_if[i].req_vld;
         assign dcache_req_rw[i] = dcache_bus_if[i].req_data.rw;
-        assign dcache_req_byteen[i] = dcache_bus_if[i].req_data.byteen;
+        assign dcache_req_be[i] = dcache_bus_if[i].req_data.be;
         assign dcache_req_addr[i] = dcache_bus_if[i].req_data.addr;
         assign dcache_req_flags[i] = dcache_bus_if[i].req_data.flags;
         assign dcache_req_data[i] = dcache_bus_if[i].req_data.data;
@@ -174,13 +176,14 @@ module xrv_vx_core_top import amoeba_gpu_pkg::*; #(
     end
 
     xrv_cache_if #(
-        .DATA_SIZE_P    (ICACHE_WORD_SIZE_P),
-        .TAG_WIDTH_P    (ICACHE_TAG_WIDTH_P)
+        .DATA_SIZE_P        (ICACHE_WORD_SIZE_P),
+        .TAG_WIDTH_P        (ICACHE_TAG_WIDTH_P),
+        .MEM_ADDR_WIDTH_P   (MEM_ADDR_WIDTH_P)
     ) icache_bus_if();
 
     assign icache_req_vld = icache_bus_if.req_vld;
     assign icache_req_rw = icache_bus_if.req_data.rw;
-    assign icache_req_byteen = icache_bus_if.req_data.byteen;
+    assign icache_req_be = icache_bus_if.req_data.be;
     assign icache_req_addr = icache_bus_if.req_data.addr;
     assign icache_req_data = icache_bus_if.req_data.data;
     assign icache_req_tag = icache_bus_if.req_data.tag;
@@ -216,6 +219,8 @@ module xrv_vx_core_top import amoeba_gpu_pkg::*; #(
         .XLEN_P             (XLEN_P),
         .NUM_WARPS_P        (NUM_WARPS_P),
         .NUM_THREADS_P      (NUM_THREADS_P),
+        .NUM_BARRIERS_P     (NUM_BARRIERS_P),
+        .UUID_WIDTH_P       (UUID_WIDTH_P),
         ////////////////////////////////////////////////////////////////////////////////
         .ISSUE_WIDTH_P      (ISSUE_WIDTH_P)
         ////////////////////////////////////////////////////////////////////////////////

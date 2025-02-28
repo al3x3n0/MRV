@@ -17,16 +17,16 @@
 module xrv_vx_fetch import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID   = "",
     ////////////////////////////////////////////////////////////////////////////////
-    parameter XLEN_P                = "inv",
-    parameter PC_WIDTH_P            = XLEN_P,
+    parameter XLEN_P                = 64,
+    parameter PC_WIDTH_P            = XLEN_P - 1,
     parameter MEM_ADDR_WIDTH_P      = (XLEN_P == 32 ? 32 : 48),
-    parameter NUM_THREADS_P         = "inv",
-    parameter NUM_WARPS_P           = "inv",
+    parameter NUM_THREADS_P         = 4,
+    parameter NUM_WARPS_P           = 4,
     parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P           = `XM_CLOG2(NUM_THREADS_P),
-    parameter UUID_WIDTH_P          = "inv",
+    parameter UUID_WIDTH_P          = 1,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter IBUF_SIZE_P           = "inv",
+    parameter IBUF_SIZE_P           = 4,
     ////////////////////////////////////////////////////////////////////////////////
     // ICache 
     ////////////////////////////////////////////////////////////////////////////////
@@ -68,20 +68,20 @@ module xrv_vx_fetch import amoeba_gpu_pkg::*; #(
     wire [PC_WIDTH_P-1:0] resp_PC;
     wire [NUM_THREADS_P-1:0] resp_tmask;
 
-    xrv_vx_dp_ram #(
-        .DATAW      (PC_WIDTH_P + NUM_THREADS_P),
-        .SIZE       (NUM_WARPS_P),
-        .RDW_MODE   ("R")
+    xrv_mem_r1w1 #(
+        .DATA_WIDTH_P   (PC_WIDTH_P + NUM_THREADS_P),
+        .DEPTH_P        (NUM_WARPS_P)
+        //.RDW_MODE   ("R") TODO
     ) tag_store (
-        .clk_i      (clk_i),
-        .rst_i      (rst_i),
-        .read       (1'b1),
-        .write      (icache_req_fire),
-        .wren       (1'b1),
-        .waddr      (req_tag),
-        .wdata      ({schedule_if.data.PC, schedule_if.data.tmask}),
-        .raddr      (resp_tag),
-        .rdata      ({resp_PC, resp_tmask})
+        .clk_i          (clk_i),
+        .rst_i          (rst_i),
+        //.read         (1'b1),
+        .do_wr_i        (icache_req_fire),
+        //.wren         (1'b1),
+        .wr_addr_i      (req_tag),
+        .wr_data_i      ({schedule_if.data.PC, schedule_if.data.tmask}),
+        .rd_addr_i      (resp_tag),
+        .rd_data_o      ({resp_PC, resp_tmask})
     );
 
 `ifndef L1_ENABLE
@@ -138,7 +138,7 @@ module xrv_vx_fetch import amoeba_gpu_pkg::*; #(
 
     assign icache_bus_if.req_data.flags  = '0;
     assign icache_bus_if.req_data.rw     = 0;
-    assign icache_bus_if.req_data.byteen = '1;
+    assign icache_bus_if.req_data.be    = '1;
     assign icache_bus_if.req_data.data   = '0;
 
     // Icache Response
@@ -175,7 +175,7 @@ module xrv_vx_fetch import amoeba_gpu_pkg::*; #(
             icache_bus_resp_fire
         },{
             schedule_if.data.uuid, schedule_if.data.wid, schedule_if.data.tmask, schedule_if.data.PC,
-            icache_bus_if.req_data.tag.uuid, icache_bus_if.req_data.byteen, icache_bus_if.req_data.addr,
+            icache_bus_if.req_data.tag.uuid, icache_bus_if.req_data.be, icache_bus_if.req_data.addr,
             icache_bus_if.resp_data.tag.uuid, icache_bus_if.resp_data.data
         },
         rst_i_negedge, 1'b0, 4096

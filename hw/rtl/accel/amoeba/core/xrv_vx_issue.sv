@@ -16,15 +16,15 @@
 module xrv_vx_issue import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID   = "",
     ////////////////////////////////////////////////////////////////////////////////
-    parameter XLEN_P                = "inv",
-    parameter PC_WIDTH_P            = "inv",
-    parameter NUM_THREADS_P         = "inv",
-    parameter NUM_WARPS_P           = "inv",
+    parameter XLEN_P                = 64,
+    parameter PC_WIDTH_P            = XLEN_P - 1,
+    parameter NUM_THREADS_P         = 4,
+    parameter NUM_WARPS_P           = 4,
     parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P           = `XM_CLOG2(NUM_THREADS_P),
-    parameter UUID_WIDTH_P          = "inv",
+    parameter UUID_WIDTH_P          = 1,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter ISSUE_WIDTH_P         = "inv",
+    parameter ISSUE_WIDTH_P         = 1,
     ////////////////////////////////////////////////////////////////////////////////
     parameter PER_ISSUE_WARPS_P     = (NUM_WARPS_P / ISSUE_WIDTH_P),
     parameter ISSUE_WIS_P           = `XM_CLOG2(PER_ISSUE_WARPS_P),
@@ -72,10 +72,18 @@ module xrv_vx_issue import amoeba_gpu_pkg::*; #(
 
     for (genvar issue_id = 0; issue_id < ISSUE_WIDTH_P; ++issue_id) begin : g_slices
         xrv_vx_decode_if #(
-            .NUM_WARPS_P (PER_ISSUE_WARPS_P)
+            .NUM_WARPS_P (PER_ISSUE_WARPS_P),
+            .PC_WIDTH_P     (PC_WIDTH_P),
+            .NUM_THREADS_P  (NUM_THREADS_P),
+            .UUID_WIDTH_P   (UUID_WIDTH_P)
         ) per_issue_decode_if();
 
-        xrv_vx_dispatch_if per_issue_dispatch_if[VX_NUM_EX_UNITS]();
+        xrv_vx_dispatch_if #(
+            .XLEN_P         (XLEN_P),
+            .NUM_WARPS_P    (PER_ISSUE_WARPS_P),
+            .NUM_THREADS_P  (NUM_THREADS_P),
+            .UUID_WIDTH_P   (UUID_WIDTH_P)
+        ) per_issue_dispatch_if [VX_NUM_EX_UNITS]();
 
         assign per_issue_decode_if.vld = decode_if.vld && (decode_isw == ISSUE_ISW_WIDTH_P'(issue_id));
         assign per_issue_decode_if.data.uuid = decode_if.data.uuid;
@@ -96,8 +104,16 @@ module xrv_vx_issue import amoeba_gpu_pkg::*; #(
     `endif
 
         xrv_vx_issue_slice #(
-            .INSTANCE_ID (`SFORMATF(("%s%0d", INSTANCE_ID, issue_id))),
-            .ISSUE_ID (issue_id)
+            .INSTANCE_ID    (`SFORMATF(("%s%0d", INSTANCE_ID, issue_id))),
+            .ISSUE_ID       (issue_id),
+            ////////////////////////////////////////////////////////////////////////////////
+            .XLEN_P         (XLEN_P),
+            .NUM_THREADS_P  (NUM_THREADS_P),
+            .NUM_WARPS_P    (NUM_WARPS_P),
+            .UUID_WIDTH_P   (UUID_WIDTH_P),
+            ////////////////////////////////////////////////////////////////////////////////
+            .ISSUE_WIDTH_P  (ISSUE_WIDTH_P),
+            .PER_ISSUE_WARPS_P(PER_ISSUE_WARPS_P)
         ) issue_slice (
             `SCOPE_IO_BIND(issue_id)
             .clk_i          (clk_i),

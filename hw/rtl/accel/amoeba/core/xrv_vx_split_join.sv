@@ -16,9 +16,10 @@
 module xrv_vx_split_join import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID   = "",
     ////////////////////////////////////////////////////////////////////////////////
-    parameter NUM_THREADS_P         = "inv",
-    parameter NUM_WARPS_P           = "inv",
-    parameter PC_WIDTH_P            = "inv",
+    parameter XLEN_P                = 64,
+    parameter PC_WIDTH_P            = XLEN_P - 1,
+    parameter NUM_THREADS_P         = 4,
+    parameter NUM_WARPS_P           = 4,
     ////////////////////////////////////////////////////////////////////////////////
     parameter TID_WIDTH_P           = `XM_CLOG2(NUM_THREADS_P),
     parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P),

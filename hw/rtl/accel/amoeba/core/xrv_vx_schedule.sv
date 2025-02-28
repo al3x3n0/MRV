@@ -17,17 +17,17 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID   = "",
     parameter CORE_ID               = 0,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter XLEN_P                = "inv",
-    parameter PC_WIDTH_P            = XLEN_P,
-    parameter NUM_THREADS_P         = "inv",
-    parameter NUM_WARPS_P           = "inv",
-    parameter NUM_BARRIERS_P        = "inv",
+    parameter XLEN_P                = 64,
+    parameter PC_WIDTH_P            = XLEN_P - 1,
+    parameter NUM_THREADS_P         = 4,
+    parameter NUM_WARPS_P           = 4,
+    parameter NUM_BARRIERS_P        = 4,
     parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P           = `XM_CLOG2(NUM_THREADS_P),
     parameter BAR_ID_WIDTH_P        = `XM_CLOG2(NUM_BARRIERS_P),
-    parameter UUID_WIDTH_P          = "inv",
+    parameter UUID_WIDTH_P          = 1,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter NUM_ALU_BLOCKS_P      = "inv"
+    parameter NUM_ALU_BLOCKS_P      = 1
 ) (
     input wire              clk_i,
     input wire              rst_i,
@@ -223,7 +223,9 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
         end
     end
 
-    `XM_UNUSED_VAR (base_dcrs)
+    `XM_UNUSED_VAR (base_dcrs.startup_addr)
+    `XM_UNUSED_VAR (base_dcrs.startup_arg)
+    `XM_UNUSED_VAR (base_dcrs.mpm_class)
 
     always @(posedge clk_i) begin
         if (rst_i) begin
@@ -387,11 +389,11 @@ module xrv_vx_schedule import amoeba_gpu_pkg::*; #(
     wire [NUM_WARPS_P-1:0] pending_warp_alm_empty;
 
     for (genvar i = 0; i < NUM_WARPS_P; ++i) begin : g_pending_sizes
-        xrv_vx_pending_size #(
-            .SIZE      (4096),
-            .ALM_EMPTY (1)
+        xrv_pending_size #(
+            .SIZE_P      (4096),
+            .ALM_EMPTY_P (1)
         ) counter (
-            .clk_i       (clk_i),
+            .clk_i     (clk_i),
             .rst_i     (rst_i),
             .incr      (schedule_if_fire && (schedule_if.data.wid == WID_WIDTH_P'(i))),
             .decr      (commit_sched_if.committed_warps[i]),

@@ -17,14 +17,20 @@ module xrv_vx_sfu_unit import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID       = "",
     parameter CORE_ID                   = 0,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter PC_WIDTH_P                = "inv",
-    parameter NUM_THREADS_P             = "inv",
-    parameter NUM_WARPS_P               = "inv",
+    parameter XLEN_P                    = 64,
+    parameter PC_WIDTH_P                = XLEN_P - 1,
+    parameter NUM_THREADS_P             = 4,
+    parameter NUM_WARPS_P               = 4,
     parameter WID_WIDTH_P               = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P               = `XM_CLOG2(NUM_THREADS_P),
-    parameter DV_STACK_SIZE_WIDTH_P     = "inv",
+    parameter UUID_WIDTH_P              = "inv",
     ////////////////////////////////////////////////////////////////////////////////
-    parameter ISSUE_WIDTH_P             = "inv"
+    parameter NUM_LANES_P               = NUM_THREADS_P,
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter DV_STACK_SIZE_P           = `XM_UP(NUM_THREADS_P-1),
+    parameter DV_STACK_SIZE_WIDTH_P     = `XM_UP(`XM_CLOG2(DV_STACK_SIZE_P)),
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter ISSUE_WIDTH_P             = 1
 ) (
     input wire              clk_i,
     input wire              rst_i,
@@ -51,37 +57,59 @@ module xrv_vx_sfu_unit import amoeba_gpu_pkg::*; #(
 );
     `XM_UNUSED_SPARAM (INSTANCE_ID)
     localparam BLOCK_SIZE   = 1;
-    localparam NUM_LANES_P    = VX_NUM_SFU_UNITS;
     localparam PE_COUNT     = 2;
     localparam PE_SEL_BITS  = `XM_CLOG2(PE_COUNT);
     localparam PE_IDX_WCTL  = 0;
     localparam PE_IDX_CSRS  = 1;
 
     xrv_vx_execute_if #(
-        .NUM_LANES_P (NUM_LANES_P)
+        .NUM_LANES_P    (NUM_LANES_P),
+        .XLEN_P         (XLEN_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P)
     ) per_block_execute_if[BLOCK_SIZE]();
 
     xrv_vx_commit_if #(
-        .NUM_LANES_P (NUM_LANES_P)
+        .NUM_LANES_P    (NUM_LANES_P),
+        .XLEN_P         (XLEN_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P)
     ) per_block_commit_if[BLOCK_SIZE]();
 
     xrv_vx_dispatch_unit #(
-        .BLOCK_SIZE (BLOCK_SIZE),
-        .NUM_LANES  (NUM_LANES_P),
-        .OUT_BUF    (3)
+        .BLOCK_SIZE     (BLOCK_SIZE),
+        .NUM_LANES      (NUM_LANES_P),
+        .OUT_BUF        (3),
+        ////////////////////////////////////////////////////////////////////////////////
+        .XLEN_P         (XLEN_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .ISSUE_WIDTH_P  (ISSUE_WIDTH_P)
     ) dispatch_unit (
-        .clk_i        (clk_i),
-        .rst_i      (rst_i),
-        .dispatch_if(dispatch_if),
-        .execute_if (per_block_execute_if)
+        .clk_i          (clk_i),
+        .rst_i          (rst_i),
+        .dispatch_if    (dispatch_if),
+        .execute_if     (per_block_execute_if)
     );
 
     xrv_vx_execute_if #(
-        .NUM_LANES_P (NUM_LANES_P)
+        .NUM_LANES_P (NUM_LANES_P),
+        .XLEN_P         (XLEN_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P)
     ) pe_execute_if[PE_COUNT]();
 
     xrv_vx_commit_if#(
-        .NUM_LANES_P (NUM_LANES_P)
+        .NUM_LANES_P    (NUM_LANES_P),
+        .XLEN_P         (XLEN_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P)
     ) pe_commit_if[PE_COUNT]();
 
     reg [PE_SEL_BITS-1:0] pe_select;
@@ -124,9 +152,17 @@ module xrv_vx_sfu_unit import amoeba_gpu_pkg::*; #(
     );
 
     xrv_vx_csr_unit #(
-        .INSTANCE_ID (`SFORMATF(("%s-csr", INSTANCE_ID))),
-        .CORE_ID   (CORE_ID),
-        .NUM_LANES_P (NUM_LANES_P)
+        .INSTANCE_ID    (`SFORMATF(("%s-csr", INSTANCE_ID))),
+        .CORE_ID        (CORE_ID),
+        .NUM_LANES_P    (NUM_LANES_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .XLEN_P         (XLEN_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .UUID_WIDTH_P   (UUID_WIDTH_P)
+
     ) csr_unit (
         .clk_i          (clk_i),
         .rst_i          (rst_i),
@@ -153,10 +189,12 @@ module xrv_vx_sfu_unit import amoeba_gpu_pkg::*; #(
         .NUM_LANES_P    (NUM_LANES_P),
         .OUT_BUF        (3),
         ////////////////////////////////////////////////////////////////////////////////
-        .PC_WIDTH_P     (PC_WIDTH_P),
+        .XLEN_P         (XLEN_P),
         .NUM_THREADS_P  (NUM_THREADS_P),
-        .NUM_WARPS_P    (NUM_WARPS_P)
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P),
         ////////////////////////////////////////////////////////////////////////////////
+        .ISSUE_WIDTH_P  (ISSUE_WIDTH_P)
     ) gather_unit (
         .clk_i          (clk_i),
         .rst_i          (rst_i),

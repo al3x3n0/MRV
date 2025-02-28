@@ -15,7 +15,7 @@
 
 interface xrv_vx_operands_if import amoeba_gpu_pkg::*; #(
     parameter XLEN_P            = "inv",
-    parameter PC_WIDTH_P        = "inv",
+    parameter PC_WIDTH_P        = XLEN_P - 1,
     parameter NUM_THREADS_P     = "inv",
     parameter NUM_WARPS_P       = "inv",
     parameter UUID_WIDTH_P      = "inv",

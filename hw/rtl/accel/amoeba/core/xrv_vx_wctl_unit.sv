@@ -17,17 +17,18 @@ module xrv_vx_wctl_unit import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID       = "",
     parameter NUM_LANES_P               = 1,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter UUID_WIDTH_P              = "inv",
-    parameter XLEN_P                    = "inv",
-    parameter PC_WIDTH_P                = XLEN_P,
-    parameter NUM_THREADS_P             = "inv",
-    parameter NUM_WARPS_P               = "inv",
-    parameter NUM_BARRIERS_P            = "inv",
+    parameter UUID_WIDTH_P              = 1,
+    parameter XLEN_P                    = 64,
+    parameter PC_WIDTH_P                = XLEN_P - 1,
+    parameter NUM_THREADS_P             = 4,
+    parameter NUM_WARPS_P               = 4,
+    parameter NUM_BARRIERS_P            = 4,
     parameter WID_WIDTH_P               = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P               = `XM_CLOG2(NUM_THREADS_P),
     parameter BAR_ID_WIDTH_P            = `XM_CLOG2(NUM_BARRIERS_P),
-    parameter DV_STACK_SIZE_WIDTH_P     = "inv"
     ////////////////////////////////////////////////////////////////////////////////
+    parameter DV_STACK_SIZE_P           = `XM_UP(NUM_THREADS_P-1),
+    parameter DV_STACK_SIZE_WIDTH_P     = `XM_UP(`XM_CLOG2(DV_STACK_SIZE_P))
 ) (
     input wire              clk_i,
     input wire              rst_i,

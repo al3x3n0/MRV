@@ -18,15 +18,15 @@ module xrv_vx_gather_unit import amoeba_gpu_pkg::*; #(
     parameter NUM_LANES_P   = 1,
     parameter OUT_BUF       = 0,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter XLEN_P        = "inv",
-    parameter PC_WIDTH_P    = XLEN_P,
-    parameter NUM_THREADS_P = "inv",
-    parameter NUM_WARPS_P   = "inv",
+    parameter XLEN_P        = 64,
+    parameter PC_WIDTH_P    = XLEN_P - 1,
+    parameter NUM_THREADS_P = 4,
+    parameter NUM_WARPS_P   = 4,
     parameter WID_WIDTH_P   = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P   = `XM_CLOG2(NUM_THREADS_P),
-    parameter UUID_WIDTH_P  = "inv",
+    parameter UUID_WIDTH_P  = 1,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter ISSUE_WIDTH_P = "inv",
+    parameter ISSUE_WIDTH_P     = 1,
     parameter ISSUE_ISW_P       = `XM_CLOG2(ISSUE_WIDTH_P),
     parameter ISSUE_ISW_WIDTH_P = `XM_UP(ISSUE_ISW_P)
 ) (
@@ -41,7 +41,7 @@ module xrv_vx_gather_unit import amoeba_gpu_pkg::*; #(
     localparam BLOCK_SIZE_W = `XM_LOG2UP(BLOCK_SIZE);
     localparam PID_BITS     = `XM_CLOG2(NUM_THREADS_P / NUM_LANES_P);
     localparam PID_WIDTH    = `XM_UP(PID_BITS);
-    localparam DATA_WIDTH_P = UUID_WIDTH_P + WID_WIDTH_P + NUM_LANES_P + PC_WIDTH_P + 1 + VX_NR_BITS + NUM_LANES_P * XLEN_P + PID_WIDTH + 1 + 1;
+    localparam DATA_WIDTH_P = UUID_WIDTH_P + WID_WIDTH_P + NUM_LANES_P + PC_WIDTH_P + 1 + VX_NR_BITS + NUM_LANES_P * XLEN_P;// FIXME + PID_WIDTH + 1 + 1;
     localparam DATA_WIS_OFF = DATA_WIDTH_P - (UUID_WIDTH_P + WID_WIDTH_P);
 
     wire [BLOCK_SIZE-1:0] commit_in_vld;
@@ -85,7 +85,11 @@ module xrv_vx_gather_unit import amoeba_gpu_pkg::*; #(
 
     for (genvar i = 0; i < ISSUE_WIDTH_P; ++i) begin: g_out_bufs
         xrv_vx_commit_if #(
-            .NUM_LANES_P (NUM_LANES_P)
+            .NUM_LANES_P    (NUM_LANES_P),
+            .XLEN_P         (XLEN_P),
+            .NUM_THREADS_P  (NUM_THREADS_P),
+            .NUM_WARPS_P    (NUM_WARPS_P),
+            .UUID_WIDTH_P   (UUID_WIDTH_P)
         ) commit_tmp_if();
 
         xrv_elastic_buffer #(

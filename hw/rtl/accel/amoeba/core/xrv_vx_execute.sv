@@ -18,6 +18,12 @@ module xrv_vx_execute import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID   = "",
     parameter CORE_ID               = 0,
     ////////////////////////////////////////////////////////////////////////////////
+    parameter XLEN_P                = "inv",
+    parameter PC_WIDTH_P            = XLEN_P - 1,
+    parameter NUM_THREADS_P         = "inv",
+    parameter NUM_WARPS_P           = "inv",
+    parameter UUID_WIDTH_P          = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
     parameter NUM_ALU_BLOCKS_P      = "inv",
     parameter NUM_LSU_BLOCKS_P      = "inv",
     ////////////////////////////////////////////////////////////////////////////////
@@ -88,10 +94,17 @@ module xrv_vx_execute import amoeba_gpu_pkg::*; #(
     );
 
     xrv_vx_sfu_unit #(
-        .INSTANCE_ID (`SFORMATF(("%s-sfu", INSTANCE_ID))),
-        .CORE_ID (CORE_ID)
+        .INSTANCE_ID    (`SFORMATF(("%s-sfu", INSTANCE_ID))),
+        .CORE_ID        (CORE_ID),
         ////////////////////////////////////////////////////////////////////////////////
-
+        //.NUM_LANES_P    (NUM_THREADS_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .XLEN_P         (XLEN_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .ISSUE_WIDTH_P  (ISSUE_WIDTH_P)
     ) sfu_unit (
         .clk_i          (clk_i),
         .rst_i          (rst_i),

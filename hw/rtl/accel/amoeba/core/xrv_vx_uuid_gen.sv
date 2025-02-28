@@ -17,7 +17,7 @@ module xrv_vx_uuid_gen import amoeba_gpu_pkg::*; #(
     parameter CORE_ID       = 0,
     parameter UUID_WIDTH_P  = 48,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter NUM_WARPS_P   = "inv",
+    parameter NUM_WARPS_P   = 4,
     parameter WID_WIDTH_P   = `XM_CLOG2(NUM_WARPS_P)
 ) (
     input wire clk_i,

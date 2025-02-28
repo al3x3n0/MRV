@@ -21,13 +21,13 @@ module xrv_vx_mem_unit import amoeba_gpu_pkg::*; #(
     ////////////////////////////////////////////////////////////////////////////////
     parameter XLEN_P                = "inv",
     parameter MEM_ADDR_WIDTH_P      = (XLEN_P == 32 ? 32 : 48),
-    parameter NUM_THREADS_P         = "inv",
-    parameter NUM_WARPS_P           = "inv",
+    parameter NUM_THREADS_P         = 4,
+    parameter NUM_WARPS_P           = 4,
     parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P           = `XM_CLOG2(NUM_THREADS_P),
     parameter UUID_WIDTH_P          = "inv",
     ////////////////////////////////////////////////////////////////////////////////
-    parameter NUM_LSU_BLOCKS_P      = "inv",
+    parameter NUM_LSU_BLOCKS_P      = 1,
     ////////////////////////////////////////////////////////////////////////////////
     // LSU 
     ////////////////////////////////////////////////////////////////////////////////
@@ -69,22 +69,26 @@ module xrv_vx_mem_unit import amoeba_gpu_pkg::*; #(
     xrv_cache_if.master     dcache_bus_if [DCACHE_NUM_REQS_P]
 );
     xrv_vx_lsu_mem_if #(
-        .NUM_LANES_P  (NUM_LSU_LANES_P),
-        .DATA_SIZE_P  (LSU_WORD_SIZE_P),
-        .TAG_WIDTH_P  (LSU_TAG_WIDTH_P)
+        .NUM_LANES_P        (NUM_LSU_LANES_P),
+        .DATA_SIZE_P        (LSU_WORD_SIZE_P),
+        .TAG_WIDTH_P        (LSU_TAG_WIDTH_P),
+        .MEM_ADDR_WIDTH_P   (MEM_ADDR_WIDTH_P),
+        .UUID_WIDTH_P       (UUID_WIDTH_P)
     ) lsu_dcache_if[NUM_LSU_BLOCKS_P]();
 
 `ifdef LMEM_ENABLE
 
-    `STATIC_ASSERT(`IS_DIVISBLE((1 << `LMEM_LOG_SIZE), `MEM_BLOCK_SIZE), ("invalid parameter"))
-    `STATIC_ASSERT(0 == (`LMEM_BASE_ADDR % (1 << `LMEM_LOG_SIZE)), ("invalid parameter"))
+    `STATIC_ASSERT(`IS_DIVISBLE((1 << `LMEM_LOG_SIZE), `MEM_BLOCK_SIZE), ("invld parameter"))
+    `STATIC_ASSERT(0 == (`LMEM_BASE_ADDR % (1 << `LMEM_LOG_SIZE)), ("invld parameter"))
 
     localparam LMEM_ADDR_WIDTH = `LMEM_LOG_SIZE - `CLOG2(LSU_WORD_SIZE_P);
 
      xrv_vx_lsu_mem_if #(
-        .NUM_LANES_P  (NUM_LSU_LANES_P),
-        .DATA_SIZE_P  (LSU_WORD_SIZE_P),
-        .TAG_WIDTH_P  (LSU_TAG_WIDTH_P)
+        .NUM_LANES_P        (NUM_LSU_LANES_P),
+        .DATA_SIZE_P        (LSU_WORD_SIZE_P),
+        .TAG_WIDTH_P        (LSU_TAG_WIDTH_P),
+        .MEM_ADDR_WIDTH_P   (MEM_ADDR_WIDTH_P),
+        .UUID_WIDTH_P       (UUID_WIDTH_P)
     ) lsu_lmem_if[NUM_LSU_BLOCKS_P]();
 
     for (genvar i = 0; i < NUM_LSU_BLOCKS_P; ++i) begin : g_lmem_switches
@@ -164,22 +168,24 @@ module xrv_vx_mem_unit import amoeba_gpu_pkg::*; #(
 `endif
 
     xrv_vx_lsu_mem_if #(
-        .NUM_LANES_P    (DCACHE_CHANNELS_P),
-        .DATA_SIZE_P    (DCACHE_WORD_SIZE_P),
-        .TAG_WIDTH_P    (DCACHE_TAG_WIDTH_P)
+        .NUM_LANES_P        (DCACHE_CHANNELS_P),
+        .DATA_SIZE_P        (DCACHE_WORD_SIZE_P),
+        .TAG_WIDTH_P        (DCACHE_TAG_WIDTH_P),
+        .MEM_ADDR_WIDTH_P   (MEM_ADDR_WIDTH_P),
+        .UUID_WIDTH_P       (UUID_WIDTH_P)
     ) dcache_coalesced_if[NUM_LSU_BLOCKS_P]();
 
     if ((NUM_LSU_LANES_P > 1) && (LSU_WORD_SIZE_P != DCACHE_WORD_SIZE_P)) begin : g_enabled
 
         for (genvar i = 0; i < NUM_LSU_BLOCKS_P; ++i) begin : g_coalescers
-            xrv_vx_mem_coalescer #(
+            xrv_mem_coalescer #(
                 .INSTANCE_ID    (`SFORMATF(("%s-coalescer%0d", INSTANCE_ID, i))),
                 .NUM_REQS       (NUM_LSU_LANES_P),
                 .DATA_IN_SIZE   (LSU_WORD_SIZE_P),
                 .DATA_OUT_SIZE  (DCACHE_WORD_SIZE_P),
-                .ADDR_WIDTH     (LSU_ADDR_WIDTH),
+                .ADDR_WIDTH     (LSU_ADDR_WIDTH_P),
                 .FLAGS_WIDTH    (VX_MEM_REQ_FLAGS_WIDTH),
-                .TAG_WIDTH      (LSU_TAG_WIDTH),
+                .TAG_WIDTH      (LSU_TAG_WIDTH_P),
                 .UUID_WIDTH     (UUID_WIDTH_P),
                 .QUEUE_SIZE     (LSUQ_OUT_SIZE_P)
             ) mem_coalescer (
@@ -187,40 +193,40 @@ module xrv_vx_mem_unit import amoeba_gpu_pkg::*; #(
                 .rst_i          (rst_i),
 
                 // Input request
-                .in_req_valid   (lsu_dcache_if[i].req_valid),
+                .in_req_vld   (lsu_dcache_if[i].req_vld),
                 .in_req_mask    (lsu_dcache_if[i].req_data.mask),
                 .in_req_rw      (lsu_dcache_if[i].req_data.rw),
-                .in_req_byteen  (lsu_dcache_if[i].req_data.byteen),
+                .in_req_be  (lsu_dcache_if[i].req_data.be),
                 .in_req_addr    (lsu_dcache_if[i].req_data.addr),
                 .in_req_flags   (lsu_dcache_if[i].req_data.flags),
                 .in_req_data    (lsu_dcache_if[i].req_data.data),
                 .in_req_tag     (lsu_dcache_if[i].req_data.tag),
-                .in_req_ready   (lsu_dcache_if[i].req_ready),
+                .in_req_rdy   (lsu_dcache_if[i].req_rdy),
 
                 // Input response
-                .in_rsp_valid   (lsu_dcache_if[i].rsp_valid),
-                .in_rsp_mask    (lsu_dcache_if[i].rsp_data.mask),
-                .in_rsp_data    (lsu_dcache_if[i].rsp_data.data),
-                .in_rsp_tag     (lsu_dcache_if[i].rsp_data.tag),
-                .in_rsp_ready   (lsu_dcache_if[i].rsp_ready),
+                .in_resp_vld   (lsu_dcache_if[i].resp_vld),
+                .in_resp_mask    (lsu_dcache_if[i].resp_data.mask),
+                .in_resp_data    (lsu_dcache_if[i].resp_data.data),
+                .in_resp_tag     (lsu_dcache_if[i].resp_data.tag),
+                .in_resp_rdy   (lsu_dcache_if[i].resp_rdy),
 
                 // Output request
-                .out_req_valid  (dcache_coalesced_if[i].req_valid),
+                .out_req_vld  (dcache_coalesced_if[i].req_vld),
                 .out_req_mask   (dcache_coalesced_if[i].req_data.mask),
                 .out_req_rw     (dcache_coalesced_if[i].req_data.rw),
-                .out_req_byteen (dcache_coalesced_if[i].req_data.byteen),
+                .out_req_be (dcache_coalesced_if[i].req_data.be),
                 .out_req_addr   (dcache_coalesced_if[i].req_data.addr),
                 .out_req_flags  (dcache_coalesced_if[i].req_data.flags),
                 .out_req_data   (dcache_coalesced_if[i].req_data.data),
                 .out_req_tag    (dcache_coalesced_if[i].req_data.tag),
-                .out_req_ready  (dcache_coalesced_if[i].req_ready),
+                .out_req_rdy  (dcache_coalesced_if[i].req_rdy),
 
                 // Output response
-                .out_rsp_valid  (dcache_coalesced_if[i].rsp_valid),
-                .out_rsp_mask   (dcache_coalesced_if[i].rsp_data.mask),
-                .out_rsp_data   (dcache_coalesced_if[i].rsp_data.data),
-                .out_rsp_tag    (dcache_coalesced_if[i].rsp_data.tag),
-                .out_rsp_ready  (dcache_coalesced_if[i].rsp_ready)
+                .out_resp_vld  (dcache_coalesced_if[i].resp_vld),
+                .out_resp_mask   (dcache_coalesced_if[i].resp_data.mask),
+                .out_resp_data   (dcache_coalesced_if[i].resp_data.data),
+                .out_resp_tag    (dcache_coalesced_if[i].resp_data.tag),
+                .out_resp_rdy  (dcache_coalesced_if[i].resp_rdy)
             );
         end
 
@@ -235,23 +241,25 @@ module xrv_vx_mem_unit import amoeba_gpu_pkg::*; #(
     for (genvar i = 0; i < NUM_LSU_BLOCKS_P; ++i) begin : g_dcache_adapters
 
         xrv_cache_if #(
-            .DATA_SIZE_P    (DCACHE_WORD_SIZE_P),
-            .TAG_WIDTH_P    (DCACHE_TAG_WIDTH_P)
+            .DATA_SIZE_P        (DCACHE_WORD_SIZE_P),
+            .TAG_WIDTH_P        (DCACHE_TAG_WIDTH_P),
+            .MEM_ADDR_WIDTH_P   (MEM_ADDR_WIDTH_P)
         ) dcache_bus_tmp_if[DCACHE_CHANNELS_P]();
 
         xrv_vx_lsu_adapter #(
-            .NUM_LANES    (DCACHE_CHANNELS_P),
-            .DATA_SIZE    (DCACHE_WORD_SIZE_P),
-            .TAG_WIDTH    (DCACHE_TAG_WIDTH_P),
-            .TAG_SEL_BITS (DCACHE_TAG_WIDTH_P - UUID_WIDTH_P),
-            .ARBITER      ("P"),
-            .REQ_OUT_BUF  (0),
-            .RSP_OUT_BUF  (0)
+            .MEM_ADDR_WIDTH_P   (MEM_ADDR_WIDTH_P),
+            .NUM_LANES          (DCACHE_CHANNELS_P),
+            .DATA_SIZE          (DCACHE_WORD_SIZE_P),
+            .TAG_WIDTH          (DCACHE_TAG_WIDTH_P),
+            .TAG_SEL_BITS       (DCACHE_TAG_WIDTH_P - UUID_WIDTH_P),
+            .ARBITER            ("P"),
+            .REQ_OUT_BUF        (0),
+            .RSP_OUT_BUF        (0)
         ) dcache_adapter (
-            .clk_i        (clk_i),
-            .rst_i      (rst_i),
-            .lsu_mem_if (dcache_coalesced_if[i]),
-            .mem_bus_if (dcache_bus_tmp_if)
+            .clk_i          (clk_i),
+            .rst_i          (rst_i),
+            .lsu_mem_if     (dcache_coalesced_if[i]),
+            .mem_bus_if     (dcache_bus_tmp_if)
         );
 
         for (genvar j = 0; j < DCACHE_CHANNELS_P; ++j) begin : g_dcache_bus_if

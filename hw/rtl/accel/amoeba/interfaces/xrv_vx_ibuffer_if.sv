@@ -15,7 +15,7 @@
 
 interface xrv_vx_ibuffer_if import amoeba_gpu_pkg::*; #(
     parameter XLEN_P        = "inv",
-    parameter PC_WIDTH_P    = XLEN_P,
+    parameter PC_WIDTH_P    = XLEN_P - 1,
     parameter NUM_THREADS_P = "inv",
     parameter UUID_WIDTH_P  = "inv"
 );

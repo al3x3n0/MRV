@@ -45,6 +45,36 @@ package amoeba_gpu_pkg;
     localparam VX_MEM_REQ_FLAG_LOCAL      = 2; // shoud be last since optional
     localparam VX_MEM_REQ_FLAGS_WIDTH     = (VX_MEM_REQ_FLAG_LOCAL + VX_LMEM_ENABLED);
 
+
+    function logic [25:0] VX_MISA_STD();
+        VX_MISA_STD = (1 /*`EXT_A_ENABLED*/ <<  0) /* A - Atomic Instructions extension */ 
+                | (0 <<  1) /* B - Tentatively reserved for Bit operations extension */ 
+                | (0 /*`EXT_C_ENABLED*/ <<  2) /* C - Compressed extension */ 
+                | (0 /*`EXT_D_ENABLED*/ <<  3) /* D - Double precsision floating-point extension */ 
+                | (0 <<  4) /* E - RV32E base ISA */ 
+                | (0 /*`EXT_F_ENABLED*/ << 5) /* F - Single precsision floating-point extension */ 
+                | (0 <<  6) /* G - Additional standard extensions present */ 
+                | (0 <<  7) /* H - Hypervisor mode implemented */ 
+                | (1 <<  8) /* I - RV32I/64I/128I base ISA */ 
+                | (0 <<  9) /* J - Reserved */ 
+                | (0 << 10) /* K - Reserved */ 
+                | (0 << 11) /* L - Tentatively reserved for Bit operations extension */ 
+                | (/* `EXT_M_ENABLED */ 1 << 12) /* M - Integer Multiply/Divide extension */ 
+                | (0 << 13) /* N - User level interrupts supported */ 
+                | (0 << 14) /* O - Reserved */ 
+                | (0 << 15) /* P - Tentatively reserved for Packed-SIMD extension */ 
+                | (0 << 16) /* Q - Quad-precision floating-point extension */ 
+                | (0 << 17) /* R - Reserved */ 
+                | (0 << 18) /* S - Supervisor mode implemented */ 
+                | (0 << 19) /* T - Tentatively reserved for Transactional Memory extension */ 
+                | (1 << 20) /* U - User mode implemented */ 
+                | (/* `EXT_V_ENABLED */ 0 << 21) /* V - Tentatively reserved for Vector extension */ 
+                | (0 << 22) /* W - Reserved */ 
+                | (1 << 23) /* X - Non-standard extensions present */ 
+                | (0 << 24) /* Y - Reserved */ 
+                | (0 << 25); /* Z - Reserved */
+    endfunction
+
     // Device identification //////////////////////////////////////////////////////
 
     localparam VX_VENDOR_ID           = 0;

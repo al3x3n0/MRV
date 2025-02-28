@@ -17,16 +17,17 @@
 `include "VX_fpu_define.vh"
 `endif
 
-`ifdef XLEN_64
-    `define CSR_READ_64(addr, dst, src) \
-        addr : dst = XLEN_P'(src)
-`else
-    `define CSR_READ_64(addr, dst, src) \
-        addr : dst = src[31:0]; \
-        addr+12'h80 : dst = 32'(src[$bits(src)-1:32])
-`endif
 
-module VX_csr_data
+`define CSR_READ_64(addr, dst, src) \
+    addr : dst = XLEN_P'(src)
+
+/* FIXME
+`define CSR_READ_64(addr, dst, src) \
+    addr : dst = src[31:0]; \
+    addr+12'h80 : dst = 32'(src[$bits(src)-1:32])
+*/
+
+module xrv_vx_csr_data
 import amoeba_gpu_pkg::*;
 `ifdef EXT_F_ENABLE
 import VX_fpu_pkg::*;
@@ -35,6 +36,11 @@ import VX_fpu_pkg::*;
     parameter `STRING INSTANCE_ID   = "",
     parameter CORE_ID               = 0,
     ////////////////////////////////////////////////////////////////////////////////
+    parameter XLEN_P                = 64,
+    parameter NUM_THREADS_P         = 4,
+    parameter NUM_WARPS_P           = 4,
+    parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P),
+    parameter TID_WIDTH_P           = `XM_CLOG2(NUM_THREADS_P),
     parameter UUID_WIDTH_P          = "inv",
     ////////////////////////////////////////////////////////////////////////////////
     parameter NUM_FPU_BLOCKS_P      = "inv"
@@ -43,14 +49,14 @@ import VX_fpu_pkg::*;
     input wire                          clk_i,
     input wire                          rst_i,
 
-    input base_dcrs_t                   base_dcrs,
+    input xrv_vx_base_dcrs_if           base_dcrs,
 
 `ifdef PERF_ENABLE
     VX_mem_perf_if.slave                mem_perf_if,
     VX_pipeline_perf_if.slave           pipeline_perf_if,
 `endif
 
-    VX_commit_csr_if.slave              commit_csr_if,
+    xrv_vx_commit_csr_if.slave              commit_csr_if,
 
 `ifdef EXT_F_ENABLE
     VX_fpu_csr_if.slave                 fpu_csr_if [NUM_FPU_BLOCKS_P],
@@ -172,7 +178,7 @@ import VX_fpu_pkg::*;
             VX_CSR_MVENDORID  : read_data_ro_w = XLEN_P'(VX_VENDOR_ID);
             VX_CSR_MARCHID    : read_data_ro_w = XLEN_P'(VX_ARCHITECTURE_ID);
             VX_CSR_MIMPID     : read_data_ro_w = XLEN_P'(VX_IMPLEMENTATION_ID);
-            VX_CSR_MISA       : read_data_ro_w = XLEN_P'({2'(`XM_CLOG2(XLEN_P/16)), 30'(VX_MISA_STD)});
+            VX_CSR_MISA       : read_data_ro_w = XLEN_P'({2'(`XM_CLOG2(XLEN_P/16)), 30'(VX_MISA_STD())});
         `ifdef EXT_F_ENABLE
             VX_CSR_FFLAGS     : read_data_rw_w = XLEN_P'(fcsr[read_wid][`FP_FLAGS_BITS-1:0]);
             VX_CSR_FRM        : read_data_rw_w = XLEN_P'(fcsr[read_wid][VX_INST_FRM_BITS+`FP_FLAGS_BITS-1:`FP_FLAGS_BITS]);
@@ -290,7 +296,9 @@ import VX_fpu_pkg::*;
     assign read_data_ro = read_data_ro_w;
     assign read_data_rw = read_data_rw_w;
 
-    `XM_UNUSED_VAR (base_dcrs)
+    `XM_UNUSED_VAR (base_dcrs.startup_addr)
+    `XM_UNUSED_VAR (base_dcrs.startup_arg)
+    `XM_UNUSED_VAR (base_dcrs.mpm_class)
 
     `RUNTIME_ASSERT(~read_enable || read_addr_valid_w, ("%t: *** invalid CSR read address: 0x%0h (#%0d)", $time, read_addr, read_uuid))
 

@@ -18,8 +18,8 @@ interface xrv_vx_lsu_mem_if import amoeba_gpu_pkg::*; #(
     parameter DATA_SIZE_P       = 1,
     parameter TAG_WIDTH_P       = 1,
     parameter FLAGS_WIDTH       = VX_MEM_REQ_FLAGS_WIDTH,
-    parameter MEM_ADDR_WIDTH    = "inv",
-    parameter ADDR_WIDTH        = MEM_ADDR_WIDTH - `XM_CLOG2(DATA_SIZE_P),
+    parameter MEM_ADDR_WIDTH_P  = "inv",
+    parameter ADDR_WIDTH        = MEM_ADDR_WIDTH_P - `XM_CLOG2(DATA_SIZE_P),
     parameter UUID_WIDTH_P      = "inv"
 ) ();
 
@@ -33,7 +33,7 @@ interface xrv_vx_lsu_mem_if import amoeba_gpu_pkg::*; #(
         logic                                       rw;
         logic [NUM_LANES_P-1:0][ADDR_WIDTH-1:0]     addr;
         logic [NUM_LANES_P-1:0][DATA_SIZE_P*8-1:0]  data;
-        logic [NUM_LANES_P-1:0][DATA_SIZE_P-1:0]    byteen;
+        logic [NUM_LANES_P-1:0][DATA_SIZE_P-1:0]    be;
         logic [NUM_LANES_P-1:0][FLAGS_WIDTH-1:0]    flags;
         tag_t                                       tag;
     } req_data_t;

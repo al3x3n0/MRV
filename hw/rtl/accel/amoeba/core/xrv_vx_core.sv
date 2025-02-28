@@ -24,19 +24,20 @@ module xrv_vx_core import amoeba_gpu_pkg::*; #(
     ////////////////////////////////////////////////////////////////////////////////
     parameter XLEN_P                = 64,
     parameter MEM_ADDR_WIDTH_P      = (XLEN_P == 32 ? 32 : 48),
-    parameter PC_WIDTH_P            = XLEN_P,
+    parameter PC_WIDTH_P            = XLEN_P - 1,
     parameter NUM_WARPS_P           = "inv",
     parameter NUM_THREADS_P         = "inv",
+    parameter NUM_BARRIERS_P        = "inv",
     parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P           = `XM_CLOG2(NUM_THREADS_P),
     parameter UUID_WIDTH_P          = "inv",
     ////////////////////////////////////////////////////////////////////////////////
-    parameter NUM_ALU_BLOCKS_P      = "inv",
-    parameter NUM_LSU_BLOCKS_P      = "inv",
+    parameter NUM_ALU_BLOCKS_P      = 1,
+    parameter NUM_LSU_BLOCKS_P      = 1,
     ////////////////////////////////////////////////////////////////////////////////
     parameter NUM_LSU_LANES_P       = NUM_THREADS_P,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter ISSUE_WIDTH_P         = "inv",
+    parameter ISSUE_WIDTH_P         = (NUM_WARPS_P / 8),
     parameter L1_LINE_SIZE_P        = "inv",
     ////////////////////////////////////////////////////////////////////////////////
     // LSU 
@@ -116,23 +117,78 @@ module xrv_vx_core import amoeba_gpu_pkg::*; #(
         .UUID_WIDTH_P   (UUID_WIDTH_P)
     ) schedule_if();
 
-    xrv_vx_fetch_if         fetch_if();
-    xrv_vx_decode_if        decode_if();
-    xrv_vx_sched_csr_if     sched_csr_if();
-    xrv_vx_decode_sched_if  decode_sched_if();
-    xrv_vx_commit_sched_if  commit_sched_if();
-    xrv_vx_commit_csr_if    commit_csr_if();
-    xrv_vx_branch_ctl_if    branch_ctl_if[NUM_ALU_BLOCKS_P]();
-    xrv_vx_warp_ctl_if      warp_ctl_if();
+    xrv_vx_fetch_if #(
+        .XLEN_P         (XLEN_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P)
+    ) fetch_if();
 
-    xrv_vx_dispatch_if      dispatch_if[VX_NUM_EX_UNITS * ISSUE_WIDTH_P]();
-    xrv_vx_commit_if        commit_if[VX_NUM_EX_UNITS * ISSUE_WIDTH_P]();
-    xrv_vx_writeback_if     writeback_if[ISSUE_WIDTH_P]();
+    xrv_vx_decode_if  #(
+        .PC_WIDTH_P     (PC_WIDTH_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P)
+    ) decode_if();
+
+    xrv_vx_sched_csr_if #(
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .NUM_THREADS_P  (NUM_THREADS_P)
+    ) sched_csr_if();
+
+    xrv_vx_decode_sched_if #(
+        .NUM_WARPS_P    (NUM_WARPS_P)
+    ) decode_sched_if();
+
+    xrv_vx_commit_sched_if #(
+        .NUM_WARPS_P    (NUM_WARPS_P)
+    ) commit_sched_if();
+    
+    xrv_vx_commit_csr_if  commit_csr_if();
+
+    xrv_vx_branch_ctl_if #(
+        .XLEN_P         (XLEN_P),
+        .NUM_WARPS_P    (NUM_WARPS_P)
+    ) branch_ctl_if[NUM_ALU_BLOCKS_P]();
+
+    xrv_vx_warp_ctl_if #(
+        .XLEN_P         (XLEN_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .NUM_BARRIERS_P (NUM_BARRIERS_P)
+    ) warp_ctl_if();
+
+    xrv_vx_dispatch_if #(
+        .XLEN_P         (XLEN_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .ISSUE_WIDTH_P  (ISSUE_WIDTH_P)
+    )dispatch_if[VX_NUM_EX_UNITS * ISSUE_WIDTH_P]();
+
+    xrv_vx_commit_if #(
+        .XLEN_P         (XLEN_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P)
+    ) commit_if[VX_NUM_EX_UNITS * ISSUE_WIDTH_P]();
+
+    xrv_vx_writeback_if #(
+        .XLEN_P         (XLEN_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .ISSUE_WIDTH_P  (ISSUE_WIDTH_P)
+    ) writeback_if[ISSUE_WIDTH_P]();
 
     xrv_vx_lsu_mem_if #(
-        .NUM_LANES_P    (NUM_LSU_LANES_P),
-        .DATA_SIZE_P    (LSU_WORD_SIZE_P),
-        .TAG_WIDTH_P    (LSU_TAG_WIDTH_P)
+        .NUM_LANES_P        (NUM_LSU_LANES_P),
+        .DATA_SIZE_P        (LSU_WORD_SIZE_P),
+        .TAG_WIDTH_P        (LSU_TAG_WIDTH_P),
+        .MEM_ADDR_WIDTH_P   (MEM_ADDR_WIDTH_P),
+        .UUID_WIDTH_P       (UUID_WIDTH_P)
     ) lsu_mem_if[NUM_LSU_BLOCKS_P]();
 
 `ifdef PERF_ENABLE
@@ -164,6 +220,7 @@ module xrv_vx_core import amoeba_gpu_pkg::*; #(
         .CORE_ID        (CORE_ID),
         .NUM_THREADS_P  (NUM_THREADS_P),
         .NUM_WARPS_P    (NUM_WARPS_P),
+        .NUM_BARRIERS_P (NUM_BARRIERS_P),
         .PC_WIDTH_P     (PC_WIDTH_P)
     ) schedule (
         .clk_i          (clk_i),
@@ -206,7 +263,12 @@ module xrv_vx_core import amoeba_gpu_pkg::*; #(
     );
 
     xrv_vx_decode #(
-        .INSTANCE_ID (`SFORMATF(("%s-decode", INSTANCE_ID)))
+        .INSTANCE_ID (`SFORMATF(("%s-decode", INSTANCE_ID))),
+        ////////////////////////////////////////////////////////////////////////////////
+        .XLEN_P             (XLEN_P),
+        .NUM_THREADS_P      (NUM_THREADS_P),
+        .NUM_WARPS_P        (NUM_WARPS_P),
+        .UUID_WIDTH_P       (UUID_WIDTH_P)
     ) decode (
         .clk_i              (clk_i),
         .rst_i              (rst_i),
@@ -216,7 +278,14 @@ module xrv_vx_core import amoeba_gpu_pkg::*; #(
     );
 
     xrv_vx_issue #(
-        .INSTANCE_ID (`SFORMATF(("%s-issue", INSTANCE_ID)))
+        .INSTANCE_ID        (`SFORMATF(("%s-issue", INSTANCE_ID))),
+        ////////////////////////////////////////////////////////////////////////////////
+        .XLEN_P             (XLEN_P),
+        .NUM_THREADS_P      (NUM_THREADS_P),
+        .NUM_WARPS_P        (NUM_WARPS_P),
+        .UUID_WIDTH_P       (UUID_WIDTH_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .ISSUE_WIDTH_P      (ISSUE_WIDTH_P)
     ) issue (
         `SCOPE_IO_BIND  (1)
 
@@ -233,8 +302,18 @@ module xrv_vx_core import amoeba_gpu_pkg::*; #(
     );
 
     xrv_vx_execute #(
-        .INSTANCE_ID    (`SFORMATF(("%s-execute", INSTANCE_ID))),
-        .CORE_ID        (CORE_ID)
+        .INSTANCE_ID        (`SFORMATF(("%s-execute", INSTANCE_ID))),
+        .CORE_ID            (CORE_ID),
+        ////////////////////////////////////////////////////////////////////////////////
+        .XLEN_P             (XLEN_P),
+        .NUM_THREADS_P      (NUM_THREADS_P),
+        .NUM_WARPS_P        (NUM_WARPS_P),
+        .UUID_WIDTH_P       (UUID_WIDTH_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .NUM_ALU_BLOCKS_P   (NUM_ALU_BLOCKS_P),
+        .NUM_LSU_BLOCKS_P   (NUM_LSU_BLOCKS_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .ISSUE_WIDTH_P      (ISSUE_WIDTH_P)
     ) execute (
         `SCOPE_IO_BIND  (2)
 
@@ -265,9 +344,9 @@ module xrv_vx_core import amoeba_gpu_pkg::*; #(
     xrv_vx_commit #(
         .INSTANCE_ID (`SFORMATF(("%s-commit", INSTANCE_ID))),
         ////////////////////////////////////////////////////////////////////////////////
+        .XLEN_P             (XLEN_P),
         .NUM_THREADS_P      (NUM_THREADS_P),
         .NUM_WARPS_P        (NUM_WARPS_P),
-        .PC_WIDTH_P         (PC_WIDTH_P),
         .ISSUE_WIDTH_P      (ISSUE_WIDTH_P),
         .UUID_WIDTH_P       (UUID_WIDTH_P)
     ) commit (
@@ -283,7 +362,16 @@ module xrv_vx_core import amoeba_gpu_pkg::*; #(
     );
 
     xrv_vx_mem_unit #(
-        .INSTANCE_ID (INSTANCE_ID)
+        .INSTANCE_ID        (INSTANCE_ID),
+        ////////////////////////////////////////////////////////////////////////////////
+        .XLEN_P             (XLEN_P),
+        .NUM_THREADS_P      (NUM_THREADS_P),
+        .NUM_WARPS_P        (NUM_WARPS_P),
+        .UUID_WIDTH_P       (UUID_WIDTH_P),
+        .NUM_LSU_LANES_P    (NUM_THREADS_P),
+        .NUM_LSU_BLOCKS_P   (NUM_LSU_BLOCKS_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .LSU_LINE_SIZE_P    (LSU_LINE_SIZE_P)
     ) mem_unit (
         .clk_i          (clk_i),
         .rst_i          (rst_i),

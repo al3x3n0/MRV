@@ -16,13 +16,13 @@
 module xrv_vx_dispatch import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID   = "",
     ////////////////////////////////////////////////////////////////////////////////
-    parameter XLEN_P        = "inv",
-    parameter PC_WIDTH_P    = PC_WIDTH_P,
-    parameter NUM_THREADS_P = "inv",
-    parameter NUM_WARPS_P   = "inv",
+    parameter XLEN_P        = 64,
+    parameter PC_WIDTH_P    = XLEN_P - 1,
+    parameter NUM_THREADS_P = 4,
+    parameter NUM_WARPS_P   = 4,
     parameter WID_WIDTH_P   = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P   = `XM_CLOG2(NUM_THREADS_P),
-    parameter UUID_WIDTH_P  = "inv",
+    parameter UUID_WIDTH_P  = 1,
     ////////////////////////////////////////////////////////////////////////////////
     parameter ISSUE_WIDTH_P     = "inv",
     parameter PER_ISSUE_WARPS_P = (NUM_WARPS_P / ISSUE_WIDTH_P),

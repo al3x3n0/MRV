@@ -18,14 +18,13 @@ module xrv_vx_csr_unit import amoeba_gpu_pkg::*; #(
     parameter CORE_ID = 0,
     ////////////////////////////////////////////////////////////////////////////////
     parameter XLEN_P            = 64,
+    parameter PC_WIDTH_P        = XLEN_P - 1,
     parameter NUM_LANES_P       = 1,
     ////////////////////////////////////////////////////////////////////////////////
     parameter NUM_WARPS_P       = "inv",
     parameter NUM_THREADS_P     = "inv",
     parameter WID_WIDTH_P       = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P       = `XM_CLOG2(NUM_THREADS_P),
-    ////////////////////////////////////////////////////////////////////////////////
-    parameter PC_WIDTH_P        = "inv",
     ////////////////////////////////////////////////////////////////////////////////
     parameter UUID_WIDTH_P      = "inv",
     parameter NUM_FPU_BLOCKS_P  = "inv"
@@ -84,8 +83,13 @@ module xrv_vx_csr_unit import amoeba_gpu_pkg::*; #(
     wire csr_write_enable = (execute_if.data.op_type == VX_INST_SFU_CSRRW);
 
     xrv_vx_csr_data #(
-        .INSTANCE_ID (INSTANCE_ID),
-        .CORE_ID     (CORE_ID)
+        .INSTANCE_ID    (INSTANCE_ID),
+        .CORE_ID        (CORE_ID),
+        ////////////////////////////////////////////////////////////////////////////////
+        .XLEN_P         (XLEN_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P)
     ) csr_data (
         .clk_i          (clk_i),
         .rst_i          (rst_i),

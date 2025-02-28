@@ -18,7 +18,7 @@ module xrv_vx_commit import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID   = "",
     ////////////////////////////////////////////////////////////////////////////////
     parameter XLEN_P                = "inv",
-    parameter PC_WIDTH_P            = XLEN_P,
+    parameter PC_WIDTH_P            = XLEN_P - 1,
     parameter NUM_THREADS_P         = "inv",
     parameter NUM_WARPS_P           = "inv",
     parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P),
@@ -44,13 +44,19 @@ module xrv_vx_commit import amoeba_gpu_pkg::*; #(
     `include "accel/vortex/issue_utils.svh"
 
     `XM_UNUSED_SPARAM (INSTANCE_ID)
-    localparam DATA_WIDTH_P = UUID_WIDTH_P + WID_WIDTH_P + NUM_THREADS_P + PC_WIDTH_P + 1 + VX_NR_BITS + NUM_THREADS_P * XLEN_P + 1 + 1 + 1;
+    localparam DATA_WIDTH_P = UUID_WIDTH_P + WID_WIDTH_P + NUM_THREADS_P + PC_WIDTH_P + 1 + VX_NR_BITS + NUM_THREADS_P * XLEN_P;// + 1 + 1 + 1;
     localparam COMMIT_SIZEW = `XM_CLOG2(NUM_THREADS_P + 1);
     localparam COMMIT_ALL_SIZEW = COMMIT_SIZEW + ISSUE_WIDTH_P - 1;
 
     // commit arbitration
 
-    xrv_vx_commit_if commit_arb_if[ISSUE_WIDTH_P]();
+    xrv_vx_commit_if #(
+        .NUM_LANES_P    (NUM_THREADS_P),
+        .XLEN_P         (XLEN_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P)
+    ) commit_arb_if[ISSUE_WIDTH_P]();
 
     wire [ISSUE_WIDTH_P-1:0] per_issue_commit_fire;
     wire [ISSUE_WIDTH_P-1:0][WID_WIDTH_P-1:0] per_issue_commit_wid;
@@ -116,8 +122,8 @@ module xrv_vx_commit import amoeba_gpu_pkg::*; #(
     );
 
     xrv_reduce #(
-        .DATA_WIDTH_P_IN (COMMIT_SIZEW),
-        .DATA_WIDTH_P_OUT (COMMIT_ALL_SIZEW),
+        .DATA_WIDTH_IN_P (COMMIT_SIZEW),
+        .DATA_WIDTH_OUT_P (COMMIT_ALL_SIZEW),
         .N  (ISSUE_WIDTH_P),
         .OP ("+")
     ) commit_size_reduce (

@@ -18,14 +18,15 @@ module xrv_vx_issue_slice import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID   = "",
     parameter ISSUE_ID              = 0,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter XLEN_P                = "inv",
-    parameter PC_WIDTH_P            = "inv",
-    parameter NUM_THREADS_P         = "inv",
-    parameter NUM_WARPS_P           = "inv",
+    parameter XLEN_P                = 64,
+    parameter PC_WIDTH_P            = XLEN_P - 1,
+    parameter NUM_THREADS_P         = 4,
+    parameter NUM_WARPS_P           = 4,
     parameter WID_WIDTH_P           = `XM_CLOG2(NUM_WARPS_P),
     parameter TID_WIDTH_P           = `XM_CLOG2(NUM_THREADS_P),
     parameter UUID_WIDTH_P          = "inv",
     ////////////////////////////////////////////////////////////////////////////////
+    parameter ISSUE_WIDTH_P         = "inv",
     parameter PER_ISSUE_WARPS_P     = "inv"
 ) (
     `SCOPE_IO_DECL
@@ -43,8 +44,20 @@ module xrv_vx_issue_slice import amoeba_gpu_pkg::*; #(
 );
     `XM_UNUSED_PARAM (ISSUE_ID)
 
-    xrv_vx_ibuffer_if ibuffer_if [PER_ISSUE_WARPS_P]();
-    xrv_vx_scoreboard_if scoreboard_if();
+    xrv_vx_ibuffer_if #(
+        .XLEN_P        (XLEN_P),
+        .NUM_THREADS_P (NUM_THREADS_P),
+        .UUID_WIDTH_P  (UUID_WIDTH_P)
+    ) ibuffer_if [PER_ISSUE_WARPS_P]();
+
+    xrv_vx_scoreboard_if #(
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .PC_WIDTH_P     (PC_WIDTH_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .ISSUE_WIDTH_P  (ISSUE_WIDTH_P)
+    ) scoreboard_if();
 
     xrv_vx_operands_if #(
         .XLEN_P         (XLEN_P),
@@ -54,7 +67,15 @@ module xrv_vx_issue_slice import amoeba_gpu_pkg::*; #(
     ) operands_if();
 
     xrv_vx_ibuffer #(
-        .INSTANCE_ID (`SFORMATF(("%s-ibuffer", INSTANCE_ID)))
+        .INSTANCE_ID (`SFORMATF(("%s-ibuffer", INSTANCE_ID))),
+        ////////////////////////////////////////////////////////////////////////////////
+        .XLEN_P             (XLEN_P),
+        .NUM_WARPS_P        (NUM_WARPS_P),
+        .NUM_THREADS_P      (NUM_THREADS_P),
+        .UUID_WIDTH_P       (UUID_WIDTH_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .ISSUE_WIDTH_P      (ISSUE_WIDTH_P),
+        .PER_ISSUE_WARPS_P  (PER_ISSUE_WARPS_P)
     ) ibuffer (
         .clk_i          (clk_i),
         .rst_i          (rst_i),
@@ -66,7 +87,14 @@ module xrv_vx_issue_slice import amoeba_gpu_pkg::*; #(
     );
 
     xrv_vx_scoreboard #(
-        .INSTANCE_ID (`SFORMATF(("%s-scoreboard", INSTANCE_ID)))
+        .INSTANCE_ID (`SFORMATF(("%s-scoreboard", INSTANCE_ID))),
+        .XLEN_P             (XLEN_P),
+        .NUM_THREADS_P      (NUM_THREADS_P),
+        .NUM_WARPS_P        (NUM_WARPS_P),
+        .UUID_WIDTH_P       (UUID_WIDTH_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .ISSUE_WIDTH_P      (ISSUE_WIDTH_P),
+        .PER_ISSUE_WARPS_P  (PER_ISSUE_WARPS_P)
     ) scoreboard (
         .clk_i          (clk_i),
         .rst_i          (rst_i),
@@ -81,7 +109,15 @@ module xrv_vx_issue_slice import amoeba_gpu_pkg::*; #(
     );
 
     xrv_vx_operands #(
-        .INSTANCE_ID (`SFORMATF(("%s-operands", INSTANCE_ID)))
+        .INSTANCE_ID (`SFORMATF(("%s-operands", INSTANCE_ID))),
+        ////////////////////////////////////////////////////////////////////////////////
+        .XLEN_P             (XLEN_P),
+        .NUM_THREADS_P      (NUM_THREADS_P),
+        .NUM_WARPS_P        (NUM_WARPS_P),
+        .UUID_WIDTH_P       (UUID_WIDTH_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .ISSUE_WIDTH_P      (ISSUE_WIDTH_P),
+        .PER_ISSUE_WARPS_P  (PER_ISSUE_WARPS_P)
     ) operands (
         .clk_i          (clk_i),
         .rst_i          (rst_i),
@@ -94,7 +130,15 @@ module xrv_vx_issue_slice import amoeba_gpu_pkg::*; #(
     );
 
     xrv_vx_dispatch #(
-        .INSTANCE_ID (`SFORMATF(("%s-dispatch", INSTANCE_ID)))
+        .INSTANCE_ID    (`SFORMATF(("%s-dispatch", INSTANCE_ID))),
+        ////////////////////////////////////////////////////////////////////////////////
+        .XLEN_P             (XLEN_P),
+        .NUM_THREADS_P      (NUM_THREADS_P),
+        .NUM_WARPS_P        (NUM_WARPS_P),
+        .UUID_WIDTH_P       (UUID_WIDTH_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .ISSUE_WIDTH_P      (ISSUE_WIDTH_P),
+        .PER_ISSUE_WARPS_P  (PER_ISSUE_WARPS_P)
     ) dispatch (
         .clk_i            (clk_i),
         .rst_i          (rst_i),
