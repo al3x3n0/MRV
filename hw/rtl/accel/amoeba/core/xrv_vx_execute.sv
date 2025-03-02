@@ -18,6 +18,8 @@ module xrv_vx_execute import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID   = "",
     parameter CORE_ID               = 0,
     ////////////////////////////////////////////////////////////////////////////////
+    parameter XRA_ENABLED_P         = 0,
+    ////////////////////////////////////////////////////////////////////////////////
     parameter XLEN_P                = "inv",
     parameter PC_WIDTH_P            = XLEN_P - 1,
     parameter NUM_THREADS_P         = "inv",
@@ -25,7 +27,8 @@ module xrv_vx_execute import amoeba_gpu_pkg::*; #(
     parameter UUID_WIDTH_P          = "inv",
     ////////////////////////////////////////////////////////////////////////////////
     parameter NUM_ALU_BLOCKS_P      = "inv",
-    parameter NUM_LSU_BLOCKS_P      = "inv",
+    parameter NUM_LSU_BLOCKS_P      = ISSUE_WIDTH_P,
+    parameter LSU_LINE_SIZE_P       = "inv",
     ////////////////////////////////////////////////////////////////////////////////
     parameter ISSUE_WIDTH_P         = "inv"
 ) (
@@ -65,32 +68,72 @@ module xrv_vx_execute import amoeba_gpu_pkg::*; #(
     xrv_vx_fpu_csr_if fpu_csr_if[`NUM_FPU_BLOCKS]();
 `endif
 
-    xra_array #(
-        .INSTANCE_ID (`SFORMATF(("%s-xra", INSTANCE_ID))),
+    
+    if (XRA_ENABLED_P) begin: g_xra
+        xra_array #(
+            .INSTANCE_ID (`SFORMATF(("%s-xra", INSTANCE_ID))),
+            ////////////////////////////////////////////////////////////////////////////////
+            .XLEN_P                 (XLEN_P),
+            .VX_NUM_WARPS_P         (NUM_WARPS_P),
+            .VX_NUM_THREADS_P       (NUM_THREADS_P),
+            .VX_NUM_LSU_BLOCKS_P    (NUM_LSU_BLOCKS_P)
+        ) xra_unit (
+            .clk_i              (clk_i),
+            .rst_i              (rst_i),
+            ////////////////////////////////////////////////////////////////////////////////
+            .vx_mode_en_i       (vx_mode_en_i),
+            ////////////////////////////////////////////////////////////////////////////////
+            .vx_int_dispatch_if (dispatch_if[VX_EX_ALU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
+            .vx_int_commit_if   (commit_if[VX_EX_ALU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
+            .vx_branch_ctl_if   (branch_ctl_if),
+            ////////////////////////////////////////////////////////////////////////////////
+            .vx_lsu_dispatch_if (dispatch_if[VX_EX_LSU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
+            .vx_lsu_commit_if   (commit_if[VX_EX_LSU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P])
+            //.vx_lsu_mem_if      (lsu_mem_if)
+            ////////////////////////////////////////////////////////////////////////////////
+    `ifdef EXT_F_ENABLE
+            .vx_fpu_dispatch_if (dispatch_if[VX_EX_FPU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
+            .vx_fpu_commit_if   (commit_if[VX_EX_FPU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
+            .vx_fpu_csr_if      (fpu_csr_if)
+    `endif
+        );
+    end else begin
+        xrv_vx_alu_unit #(
+            .INSTANCE_ID (`SFORMATF(("%s-alu", INSTANCE_ID))),
+            ////////////////////////////////////////////////////////////////////////////////
+            .XLEN_P             (XLEN_P),
+            .NUM_THREADS_P      (NUM_THREADS_P),
+            .NUM_WARPS_P        (NUM_WARPS_P),
+            .UUID_WIDTH_P       (UUID_WIDTH_P),
+            .NUM_ALU_BLOCKS_P   (NUM_ALU_BLOCKS_P),
+            ////////////////////////////////////////////////////////////////////////////////
+            .ISSUE_WIDTH_P      (ISSUE_WIDTH_P)
+        ) alu_unit (
+            .clk_i          (clk_i),
+            .rst_i          (rst_i),
+            .dispatch_if    (dispatch_if[VX_EX_ALU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
+            .commit_if      (commit_if[VX_EX_ALU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
+            .branch_ctl_if  (branch_ctl_if)
+        );
+    end
+
+    xrv_vx_lsu_unit #(
+        .INSTANCE_ID    (`SFORMATF(("%s-lsu", INSTANCE_ID))),
         ////////////////////////////////////////////////////////////////////////////////
-        .XLEN_P                 (XLEN_P),
-        .VX_NUM_WARPS_P         (NUM_WARPS_P),
-        .VX_NUM_THREADS_P       (NUM_THREADS_P),
-        .VX_NUM_LSU_BLOCKS_P    (NUM_LSU_BLOCKS_P)
-    ) xra_unit (
-        .clk_i              (clk_i),
-        .rst_i              (rst_i),
+        .XLEN_P         (XLEN_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P),
         ////////////////////////////////////////////////////////////////////////////////
-        .vx_mode_en_i       (vx_mode_en_i),
-        ////////////////////////////////////////////////////////////////////////////////
-        .vx_int_dispatch_if (dispatch_if[VX_EX_ALU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
-        .vx_int_commit_if   (commit_if[VX_EX_ALU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
-        .vx_branch_ctl_if   (branch_ctl_if),
-        ////////////////////////////////////////////////////////////////////////////////
-        .vx_lsu_dispatch_if (dispatch_if[VX_EX_LSU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
-        .vx_lsu_commit_if   (commit_if[VX_EX_LSU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
-        .vx_lsu_mem_if      (lsu_mem_if)
-        ////////////////////////////////////////////////////////////////////////////////
-`ifdef EXT_F_ENABLE
-        .vx_fpu_dispatch_if (dispatch_if[VX_EX_FPU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
-        .vx_fpu_commit_if   (commit_if[VX_EX_FPU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
-        .vx_fpu_csr_if      (fpu_csr_if)
-`endif
+        .ISSUE_WIDTH_P  (ISSUE_WIDTH_P),
+        .LSU_LINE_SIZE_P(LSU_LINE_SIZE_P)
+    ) lsu_unit (
+        `SCOPE_IO_BIND  (0)
+        .clk_i          (clk_i),
+        .rst_i          (rst_i),
+        .dispatch_if    (dispatch_if[VX_EX_LSU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
+        .commit_if      (commit_if[VX_EX_LSU * ISSUE_WIDTH_P +: ISSUE_WIDTH_P]),
+        .lsu_mem_if     (lsu_mem_if)
     );
 
     xrv_vx_sfu_unit #(

@@ -61,9 +61,11 @@ module xrv_vx_issue_slice import amoeba_gpu_pkg::*; #(
 
     xrv_vx_operands_if #(
         .XLEN_P         (XLEN_P),
-        .PC_WIDTH_P     (PC_WIDTH_P),
         .NUM_THREADS_P  (NUM_THREADS_P),
-        .UUID_WIDTH_P   (UUID_WIDTH_P)
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .ISSUE_WIDTH_P  (ISSUE_WIDTH_P)
     ) operands_if();
 
     xrv_vx_ibuffer #(

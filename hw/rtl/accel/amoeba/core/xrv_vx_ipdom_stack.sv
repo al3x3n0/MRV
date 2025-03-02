@@ -72,7 +72,7 @@ module xrv_vx_ipdom_stack #(
 
     wire [WIDTH * 2:0] qout = push ? {1'b0, q1, q0} : {1'b1, d1, d0};
 
-    xrv_mem_r1w1 #(
+    xrv_mem_r1w1_sync #(
         .DATA_WIDTH_P   (1 + WIDTH * 2),
         .DEPTH_P        (DEPTH)
         //.OUT_REG (1), // FIXME

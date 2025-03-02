@@ -17,9 +17,16 @@
 module xrv_vx_lsu_unit import amoeba_gpu_pkg::*; #(
     parameter `STRING INSTANCE_ID   = "",
     ////////////////////////////////////////////////////////////////////////////////
+    parameter XLEN_P                = "inv",
+    parameter NUM_THREADS_P         = "inv",
+    parameter NUM_WARPS_P           = "inv",
+    parameter UUID_WIDTH_P          = "inv",
+    ////////////////////////////////////////////////////////////////////////////////
     parameter ISSUE_WIDTH_P         = "inv",
-    parameter NUM_LSU_BLOCKS_P      = "inv",
-    parameter NUM_LSU_LANES_P       = "inv"
+    ////////////////////////////////////////////////////////////////////////////////
+    parameter LSU_LINE_SIZE_P       = "inv",
+    parameter NUM_LSU_BLOCKS_P      = ISSUE_WIDTH_P,
+    parameter NUM_LSU_LANES_P       = NUM_THREADS_P
 ) (
     `SCOPE_IO_DECL
 
@@ -39,46 +46,76 @@ module xrv_vx_lsu_unit import amoeba_gpu_pkg::*; #(
     `SCOPE_IO_SWITCH (BLOCK_SIZE);
 
     xrv_vx_execute_if #(
-        .NUM_LANES (NUM_LANES)
+        .NUM_LANES_P    (NUM_LANES),
+        .XLEN_P         (XLEN_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P)
     ) per_block_execute_if[BLOCK_SIZE]();
 
     xrv_vx_dispatch_unit #(
         .BLOCK_SIZE (BLOCK_SIZE),
         .NUM_LANES  (NUM_LANES),
-        .OUT_BUF    (3)
+        .OUT_BUF    (3),
+        ////////////////////////////////////////////////////////////////////////////////
+        .XLEN_P         (XLEN_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .ISSUE_WIDTH_P  (ISSUE_WIDTH_P)
     ) dispatch_unit (
-        .clk_i        (clk_i),
-        .rst_i      (rst_i),
-        .dispatch_if(dispatch_if),
-        .execute_if (per_block_execute_if)
+        .clk_i          (clk_i),
+        .rst_i          (rst_i),
+        .dispatch_if    (dispatch_if),
+        .execute_if     (per_block_execute_if)
     );
 
     xrv_vx_commit_if #(
-        .NUM_LANES (NUM_LANES)
+        .NUM_LANES_P    (NUM_LANES),
+        .XLEN_P         (XLEN_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P)
     ) per_block_commit_if[BLOCK_SIZE]();
 
     for (genvar block_idx = 0; block_idx < BLOCK_SIZE; ++block_idx) begin : g_slices
         xrv_vx_lsu_slice #(
-            .INSTANCE_ID (`SFORMATF(("%s%0d", INSTANCE_ID, block_idx)))
+            .INSTANCE_ID        (`SFORMATF(("%s%0d", INSTANCE_ID, block_idx))),
+            ////////////////////////////////////////////////////////////////////////////////
+            .XLEN_P             (XLEN_P),
+            .NUM_THREADS_P      (NUM_THREADS_P),
+            .NUM_WARPS_P        (NUM_WARPS_P),
+            .UUID_WIDTH_P       (UUID_WIDTH_P),
+            ////////////////////////////////////////////////////////////////////////////////
+            .LSU_LINE_SIZE_P    (LSU_LINE_SIZE_P),
+            .NUM_LSU_BLOCKS_P   (ISSUE_WIDTH_P)
         ) lsu_slice(
             `SCOPE_IO_BIND  (block_idx)
-            .clk_i        (clk_i),
-            .rst_i      (rst_i),
-            .execute_if (per_block_execute_if[block_idx]),
-            .commit_if  (per_block_commit_if[block_idx]),
-            .lsu_mem_if (lsu_mem_if[block_idx])
+            .clk_i          (clk_i),
+            .rst_i          (rst_i),
+            .execute_if     (per_block_execute_if[block_idx]),
+            .commit_if      (per_block_commit_if[block_idx]),
+            .lsu_mem_if     (lsu_mem_if[block_idx])
         );
     end
 
     xrv_vx_gather_unit #(
-        .BLOCK_SIZE (BLOCK_SIZE),
-        .NUM_LANES  (NUM_LANES),
-        .OUT_BUF    (3)
+        .BLOCK_SIZE     (BLOCK_SIZE),
+        .NUM_LANES_P    (NUM_LANES),
+        .OUT_BUF        (3),
+        ////////////////////////////////////////////////////////////////////////////////
+        .XLEN_P         (XLEN_P),
+        .NUM_THREADS_P  (NUM_THREADS_P),
+        .NUM_WARPS_P    (NUM_WARPS_P),
+        .UUID_WIDTH_P   (UUID_WIDTH_P),
+        ////////////////////////////////////////////////////////////////////////////////
+        .ISSUE_WIDTH_P  (ISSUE_WIDTH_P)
     ) gather_unit (
-        .clk_i           (clk_i),
-        .rst_i         (rst_i),
-        .commit_in_if  (per_block_commit_if),
-        .commit_out_if (commit_if)
+        .clk_i          (clk_i),
+        .rst_i          (rst_i),
+        .commit_in_if   (per_block_commit_if),
+        .commit_out_if  (commit_if)
     );
 
 endmodule

@@ -49,7 +49,6 @@ module xrv_vx_commit import amoeba_gpu_pkg::*; #(
     localparam COMMIT_ALL_SIZEW = COMMIT_SIZEW + ISSUE_WIDTH_P - 1;
 
     // commit arbitration
-
     xrv_vx_commit_if #(
         .NUM_LANES_P    (NUM_THREADS_P),
         .XLEN_P         (XLEN_P),
@@ -97,7 +96,6 @@ module xrv_vx_commit import amoeba_gpu_pkg::*; #(
     end
 
     // CSRs update
-
     wire [ISSUE_WIDTH_P-1:0][COMMIT_SIZEW-1:0] commit_size, commit_size_r;
     wire [COMMIT_ALL_SIZEW-1:0] commit_size_all_r, commit_size_all_rr;
     wire commit_fire_any, commit_fire_any_r, commit_fire_any_rr;
@@ -122,8 +120,8 @@ module xrv_vx_commit import amoeba_gpu_pkg::*; #(
     );
 
     xrv_reduce #(
-        .DATA_WIDTH_IN_P (COMMIT_SIZEW),
-        .DATA_WIDTH_OUT_P (COMMIT_ALL_SIZEW),
+        .DATA_WIDTH_IN_P    (COMMIT_SIZEW),
+        .DATA_WIDTH_OUT_P   (COMMIT_ALL_SIZEW),
         .N  (ISSUE_WIDTH_P),
         .OP ("+")
     ) commit_size_reduce (
@@ -155,7 +153,6 @@ module xrv_vx_commit import amoeba_gpu_pkg::*; #(
     assign commit_csr_if.instret = instret;
 
     // Track committed instructions
-
     reg [NUM_WARPS_P-1:0] committed_warps;
 
     always_comb begin

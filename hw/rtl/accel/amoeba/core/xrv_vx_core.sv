@@ -33,11 +33,11 @@ module xrv_vx_core import amoeba_gpu_pkg::*; #(
     parameter UUID_WIDTH_P          = "inv",
     ////////////////////////////////////////////////////////////////////////////////
     parameter NUM_ALU_BLOCKS_P      = 1,
-    parameter NUM_LSU_BLOCKS_P      = 1,
+    parameter NUM_LSU_BLOCKS_P      = ISSUE_WIDTH_P,
     ////////////////////////////////////////////////////////////////////////////////
     parameter NUM_LSU_LANES_P       = NUM_THREADS_P,
     ////////////////////////////////////////////////////////////////////////////////
-    parameter ISSUE_WIDTH_P         = (NUM_WARPS_P / 8),
+    parameter ISSUE_WIDTH_P         = `XM_UP(NUM_WARPS_P / 8),
     parameter L1_LINE_SIZE_P        = "inv",
     ////////////////////////////////////////////////////////////////////////////////
     // LSU 
@@ -312,6 +312,7 @@ module xrv_vx_core import amoeba_gpu_pkg::*; #(
         ////////////////////////////////////////////////////////////////////////////////
         .NUM_ALU_BLOCKS_P   (NUM_ALU_BLOCKS_P),
         .NUM_LSU_BLOCKS_P   (NUM_LSU_BLOCKS_P),
+        .LSU_LINE_SIZE_P    (LSU_LINE_SIZE_P),
         ////////////////////////////////////////////////////////////////////////////////
         .ISSUE_WIDTH_P      (ISSUE_WIDTH_P)
     ) execute (
